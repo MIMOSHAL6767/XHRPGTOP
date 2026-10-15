@@ -1,4 +1,3 @@
-typescript
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { jwtVerify, type JWTPayload } from "jose";
