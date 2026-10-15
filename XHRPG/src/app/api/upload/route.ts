@@ -1,5 +1,7 @@
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isSiteOwner } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,13 +22,30 @@ function errorResponse(message: string, status: number) {
 }
 
 export async function POST(req: Request) {
+  // 只有站长可以上传或替换游戏封面
+  if (!(await isSiteOwner())) {
+    return errorResponse(
+      "无权上传图片，请使用站长账号登录",
+      401
+    );
+  }
+
   try {
     // Use the same GitHub image-storage variables as the banner uploader,
     // while retaining compatibility with the original GITHUB_* names.
-    const token = process.env.GITHUB_IMAGE_TOKEN || process.env.GITHUB_TOKEN;
-    const owner = process.env.GITHUB_IMAGE_OWNER || process.env.GITHUB_OWNER;
-    const repo = process.env.GITHUB_IMAGE_REPO || process.env.GITHUB_REPO;
-    const branch = process.env.GITHUB_IMAGE_BRANCH || process.env.GITHUB_BRANCH || "main";
+    const token =
+      process.env.GITHUB_IMAGE_TOKEN || process.env.GITHUB_TOKEN;
+
+    const owner =
+      process.env.GITHUB_IMAGE_OWNER || process.env.GITHUB_OWNER;
+
+    const repo =
+      process.env.GITHUB_IMAGE_REPO || process.env.GITHUB_REPO;
+
+    const branch =
+      process.env.GITHUB_IMAGE_BRANCH ||
+      process.env.GITHUB_BRANCH ||
+      "main";
 
     if (!token || !owner || !repo) {
       return errorResponse("GitHub 图片存储服务未配置", 500);
@@ -116,11 +135,14 @@ export async function POST(req: Request) {
     };
 
     // 查询同名文件：更新时必须提供已有文件的 SHA
-    const existingResponse = await fetch(`${apiUrl}?ref=${encodeURIComponent(branch)}`, {
-      method: "GET",
-      headers,
-      cache: "no-store",
-    });
+    const existingResponse = await fetch(
+      `${apiUrl}?ref=${encodeURIComponent(branch)}`,
+      {
+        method: "GET",
+        headers,
+        cache: "no-store",
+      }
+    );
 
     let sha: string | undefined;
 
@@ -191,9 +213,18 @@ export async function POST(req: Request) {
     }
 
     // GitHub must confirm that the requested path was actually committed.
-    if (uploadResult?.content?.path !== repoPath || !uploadResult?.content?.sha) {
-      console.error("GitHub 返回成功状态，但响应中没有预期的文件路径或 SHA");
-      return errorResponse("GitHub 未确认封面文件已保存，请重试", 502);
+    if (
+      uploadResult?.content?.path !== repoPath ||
+      !uploadResult?.content?.sha
+    ) {
+      console.error(
+        "GitHub 返回成功状态，但响应中没有预期的文件路径或 SHA"
+      );
+
+      return errorResponse(
+        "GitHub 未确认封面文件已保存，请重试",
+        502
+      );
     }
 
     const url =
