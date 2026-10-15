@@ -517,38 +517,6 @@ onClick={logout}
 
 
 
-:
-
-
-<>
-
-
-<Link href="/register">
-
-<button>
-
-注册
-
-</button>
-
-</Link>
-
-
-
-<Link href="/login">
-
-<button>
-
-登录
-
-</button>
-
-</Link>
-
-
-
-</>
-
 
 }
 
