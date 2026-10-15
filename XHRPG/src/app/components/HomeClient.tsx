@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -18,9 +19,10 @@ export default function HomeClient({
   const [bannerIndex, setBannerIndex] = useState(0);
   const [search, setSearch] = useState("");
 
-  const banner = banners[bannerIndex];
+  const banner = banners.length
+    ? banners[bannerIndex % banners.length]
+    : null;
 
-  // 打开个人空间
   async function openMySpace() {
     try {
       const res = await fetch("/api/auth/me", {
@@ -41,14 +43,14 @@ export default function HomeClient({
 
   // 自动轮播
   useEffect(() => {
-    if (!banners.length) return;
+    if (banners.length <= 1) return;
 
     const timer = setInterval(() => {
       setBannerIndex((index) => (index + 1) % banners.length);
     }, 5000);
 
     return () => clearInterval(timer);
-  }, [banners]);
+  }, [banners.length]);
 
   // 读取登录状态
   useEffect(() => {
@@ -64,14 +66,12 @@ export default function HomeClient({
     }
   }, []);
 
-  // 退出登录
   function logout() {
     localStorage.removeItem("user");
     setUser(null);
     router.refresh();
   }
 
-  // 搜索过滤
   const filteredGames = games.filter((game) => {
     const key = search.trim().toLowerCase();
 
@@ -84,6 +84,21 @@ export default function HomeClient({
       game.category?.toLowerCase().includes(key)
     );
   });
+
+  // 兼容数据库里可能保存的数字、"40" 或 "40px"
+  function cssSize(value: unknown, fallback: string) {
+    if (value === null || value === undefined || value === "") {
+      return fallback;
+    }
+
+    const str = String(value);
+    return /^\d+(\.\d+)?$/.test(str) ? `${str}px` : str;
+  }
+
+  function percent(value: unknown, fallback: number) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : fallback;
+  }
 
   return (
     <main className="xhrpg-home">
@@ -110,7 +125,6 @@ export default function HomeClient({
           />
 
           <div className="user-area">
-            {/* 未登录时不渲染登录或注册按钮 */}
             {user && (
               <>
                 <div className="avatar">
@@ -127,9 +141,7 @@ export default function HomeClient({
                   </button>
                 )}
 
-                <button onClick={logout}>
-                  退出
-                </button>
+                <button onClick={logout}>退出</button>
               </>
             )}
           </div>
@@ -141,66 +153,127 @@ export default function HomeClient({
             className="latest-box"
             style={{
               position: "relative",
+              width: "100%",
+              height: "420px",
+              minHeight: "320px",
               overflow: "hidden",
+              isolation: "isolate",
+              borderRadius: "12px",
+              backgroundColor: "#171717",
             }}
           >
-            {/* 上一张 */}
-            <button
-              onClick={() =>
-                setBannerIndex(
-                  (bannerIndex - 1 + banners.length) % banners.length
-                )
-              }
-            >
-              ‹
-            </button>
+            {/* 背景图：铺满整个轮播区域 */}
+            {banner.background && (
+              <img
+                key={banner.background}
+                src={banner.background}
+                alt=""
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  objectPosition: "center",
+                  zIndex: 0,
+                }}
+              />
+            )}
 
+            {/* 背景遮罩，保证文字可读 */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                background:
+                  "linear-gradient(90deg, rgba(0,0,0,0.45), rgba(0,0,0,0.05))",
+                zIndex: 1,
+                pointerEvents: "none",
+              }}
+            />
+
+            {/* 轮播内容 */}
             <div
               className="latest-inner"
               style={{
-                position: "relative",
-                width: "100%",
-                height: "100%",
+                position: "absolute",
+                inset: 0,
+                zIndex: 2,
               }}
             >
-              {/* 轮播封面 */}
+              {/* 封面：按百分比定位，并以图片中心作为定位点 */}
               {banner.cover && (
                 <img
+                  key={banner.cover}
                   src={banner.cover}
                   alt={banner.title || "轮播封面"}
                   style={{
-                    width: banner.coverWidth,
-                    height: banner.coverHeight,
                     position: "absolute",
-                    left: `${banner.coverX}%`,
-                    top: `${banner.coverY}%`,
-                    objectFit: banner.coverFit,
+                    width: `min(${cssSize(
+                      banner.coverWidth,
+                      "300px"
+                    )}, 45%)`,
+                    height: `min(${cssSize(
+                      banner.coverHeight,
+                      "300px"
+                    )}, 90%)`,
+                    left: `${percent(banner.coverX, 50)}%`,
+                    top: `${percent(banner.coverY, 50)}%`,
+                    transform: "translate(-50%, -50%)",
+                    objectFit: banner.coverFit || "contain",
+                    objectPosition: "center",
+                    zIndex: 3,
                   }}
                 />
               )}
 
-              {/* 轮播文字 */}
+              {/* 标题：读取后台的 titleX / titleY */}
               <div
                 style={{
                   position: "absolute",
-                  left: `${banner.textX}%`,
-                  top: `${banner.textY}%`,
+                  left: `${percent(banner.titleX, 50)}%`,
+                  top: `${percent(banner.titleY, 30)}%`,
                   transform: "translate(-50%, -50%)",
+                  maxWidth: "48%",
+                  zIndex: 4,
+                  overflowWrap: "anywhere",
                 }}
               >
                 <h1
                   style={{
-                    fontSize: banner.titleSize,
-                    color: banner.titleColor,
+                    margin: 0,
+                    fontSize: cssSize(banner.titleSize, "40px"),
+                    color: banner.titleColor || "#ffffff",
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
+                    textShadow: "0 2px 8px rgba(0,0,0,0.65)",
                   }}
                 >
                   {banner.title}
                 </h1>
+              </div>
 
+              {/* 简介：读取后台的 descX / descY */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: `${percent(banner.descX, 50)}%`,
+                  top: `${percent(banner.descY, 50)}%`,
+                  transform: "translate(-50%, -50%)",
+                  width: "min(42%, 560px)",
+                  zIndex: 4,
+                  overflowWrap: "anywhere",
+                }}
+              >
                 <p
                   style={{
-                    fontSize: banner.descSize,
-                    color: banner.descColor,
+                    margin: 0,
+                    fontSize: cssSize(banner.descSize, "18px"),
+                    color: banner.descColor || "#ffffff",
+                    whiteSpace: "pre-wrap",
+                    textShadow: "0 2px 8px rgba(0,0,0,0.65)",
                   }}
                 >
                   {banner.description}
@@ -208,16 +281,47 @@ export default function HomeClient({
               </div>
             </div>
 
+            {/* 上一张 */}
+            {banners.length > 1 && (
+              <button
+                type="button"
+                aria-label="上一张轮播图"
+                onClick={() =>
+                  setBannerIndex(
+                    (index) => (index - 1 + banners.length) % banners.length
+                  )
+                }
+                style={{
+                  position: "absolute",
+                  left: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 5,
+                }}
+              >
+                ‹
+              </button>
+            )}
+
             {/* 下一张 */}
-            <button
-              onClick={() =>
-                setBannerIndex(
-                  (bannerIndex + 1) % banners.length
-                )
-              }
-            >
-              ›
-            </button>
+            {banners.length > 1 && (
+              <button
+                type="button"
+                aria-label="下一张轮播图"
+                onClick={() =>
+                  setBannerIndex((index) => (index + 1) % banners.length)
+                }
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  zIndex: 5,
+                }}
+              >
+                ›
+              </button>
+            )}
           </section>
         )}
 
@@ -242,15 +346,11 @@ export default function HomeClient({
                 />
               </div>
 
-              <div className="game-title">
-                {game.name}
-              </div>
+              <div className="game-title">{game.name}</div>
             </Link>
           ))}
 
-          {filteredGames.length === 0 && (
-            <div>没有找到相关游戏</div>
-          )}
+          {filteredGames.length === 0 && <div>没有找到相关游戏</div>}
         </div>
       </section>
     </main>
