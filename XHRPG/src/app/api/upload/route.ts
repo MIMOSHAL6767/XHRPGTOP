@@ -1,5 +1,8 @@
+// src/app/api/upload/route.ts
 
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,25 +15,69 @@ const MIME_EXTENSIONS: Record<string, string> = {
   "image/webp": "webp",
 };
 
+function jsonError(message: string, status: number) {
+  return NextResponse.json(
+    { success: false, message },
+    { status }
+  );
+}
+
+function isValidImage(bytes: Buffer, ext: string): boolean {
+  const isPng =
+    bytes.length >= 8 &&
+    bytes.subarray(0, 8).equals(
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+    );
+
+  const isJpeg =
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff;
+
+  const isWebp =
+    bytes.length >= 12 &&
+    bytes.toString("ascii", 0, 4) === "RIFF" &&
+    bytes.toString("ascii", 8, 12) === "WEBP";
+
+  return (
+    (ext === "png" && isPng) ||
+    (ext === "jpg" && isJpeg) ||
+    (ext === "webp" && isWebp)
+  );
+}
+
 export async function POST(req: Request) {
   try {
-    // 需要配置的服务端环境变量
+    // 1. 管理员鉴权：需与你项目实际的 Auth.js 配置一致
+    const session = await auth();
+
+    if (!session?.user) {
+      return jsonError("请先登录管理员账号", 401);
+    }
+
+    // 重要：登录用户不一定是管理员。
+    // 请按你项目实际的角色字段检查管理员权限。
+    const user = session.user as typeof session.user & {
+      role?: string;
+      isAdmin?: boolean;
+    };
+
+    if (user.role !== "admin" && user.isAdmin !== true) {
+      return jsonError("没有管理员上传权限", 403);
+    }
+
+    // 2. 检查服务端环境变量
     const token = process.env.GITHUB_TOKEN;
     const owner = process.env.GITHUB_OWNER;
     const repo = process.env.GITHUB_REPO;
     const branch = process.env.GITHUB_BRANCH || "main";
 
     if (!token || !owner || !repo) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "图片存储服务尚未配置",
-        },
-        { status: 500 }
-      );
+      return jsonError("图片存储服务尚未配置", 500);
     }
 
-    // 读取上传表单
+    // 3. 读取表单
     const formData = await req.formData();
     const file = formData.get("file");
     const id = formData.get("id");
@@ -40,95 +87,67 @@ export async function POST(req: Request) {
       typeof id !== "string" ||
       !/^[1-9]\d*$/.test(id)
     ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "缺少有效的文件或游戏ID",
-        },
-        { status: 400 }
-      );
+      return jsonError("缺少有效的图片文件或游戏 ID", 400);
     }
 
-    // 限制文件大小
+    // 4. 校验大小和 MIME 类型
     if (file.size === 0 || file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "图片不能为空，且不能超过 5 MB",
-        },
-        { status: 400 }
-      );
+      return jsonError("图片不能为空，且不能超过 5 MB", 400);
     }
 
-    // 只允许明确支持的图片格式
     const ext = MIME_EXTENSIONS[file.type];
 
     if (!ext) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "只支持 PNG、JPG、WebP 图片",
-        },
-        { status: 415 }
-      );
+      return jsonError("只支持 PNG、JPG、WebP 图片", 415);
     }
 
-    // 检查文件实际签名，避免仅凭 MIME 类型判断
+    // 5. 确认该游戏确实存在
+    const gameId = Number(id);
+
+    if (!Number.isSafeInteger(gameId) || gameId <= 0) {
+      return jsonError("游戏 ID 无效", 400);
+    }
+
+    const game = await prisma.game.findUnique({
+      where: { id: gameId },
+      select: { id: true },
+    });
+
+    if (!game) {
+      return jsonError("该游戏不存在，请先创建游戏记录", 404);
+    }
+
+    // 6. 校验真实文件签名
     const bytes = Buffer.from(await file.arrayBuffer());
 
-    const isPng =
-      bytes.length >= 8 &&
-      bytes.subarray(0, 8).equals(
-        Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
-      );
-
-    const isJpeg =
-      bytes.length >= 3 &&
-      bytes[0] === 0xff &&
-      bytes[1] === 0xd8 &&
-      bytes[2] === 0xff;
-
-    const isWebp =
-      bytes.length >= 12 &&
-      bytes.toString("ascii", 0, 4) === "RIFF" &&
-      bytes.toString("ascii", 8, 12) === "WEBP";
-
-    const signatureMatches =
-      (ext === "png" && isPng) ||
-      (ext === "jpg" && isJpeg) ||
-      (ext === "webp" && isWebp);
-
-    if (!signatureMatches) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "文件内容与图片格式不匹配",
-        },
-        { status: 400 }
-      );
+    if (
+      bytes.length === 0 ||
+      bytes.length > MAX_FILE_SIZE ||
+      !isValidImage(bytes, ext)
+    ) {
+      return jsonError("文件内容与图片格式不匹配", 400);
     }
 
-    // 文件名固定由游戏ID生成，不接受用户提供的路径
-    const filename = `games${id}.${ext}`;
+    // 7. 固定文件路径，不允许用户传入路径
+    const filename = `games${gameId}.${ext}`;
     const repoPath = `games/${filename}`;
 
     const apiUrl =
       `https://api.github.com/repos/` +
       `${encodeURIComponent(owner)}/` +
       `${encodeURIComponent(repo)}/contents/` +
-      repoPath
-        .split("/")
-        .map(encodeURIComponent)
-        .join("/");
+      repoPath.split("/").map(encodeURIComponent).join("/");
 
-    // 查询已有文件，以便同名封面可以更新
+    const headers = {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+    };
+
+    // 8. 查询同名文件，存在时获取 SHA 以便更新
     const existingResponse = await fetch(apiUrl, {
       method: "GET",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
+      headers,
       cache: "no-store",
     });
 
@@ -143,16 +162,13 @@ export async function POST(req: Request) {
         existingResponse.status
       );
 
-      return NextResponse.json(
-        {
-          success: false,
-          message: "无法检查 GitHub 文件，请检查仓库权限和配置",
-        },
-        { status: 502 }
+      return jsonError(
+        "无法检查 GitHub 文件，请检查 Token、仓库权限和分支配置",
+        502
       );
     }
 
-    // 调用 GitHub Contents API 上传或更新文件
+    // 9. 上传或更新 GitHub 仓库中的图片
     const payload: {
       message: string;
       content: string;
@@ -171,9 +187,7 @@ export async function POST(req: Request) {
     const uploadResponse = await fetch(apiUrl, {
       method: "PUT",
       headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
+        ...headers,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
@@ -183,50 +197,54 @@ export async function POST(req: Request) {
     if (!uploadResponse.ok) {
       const errorText = await uploadResponse.text();
 
-      // 日志不记录 Token
+      // 不记录 Token 或请求头
       console.error(
         "GitHub 上传失败:",
         uploadResponse.status,
-        errorText.slice(0, 1000)
+        errorText.slice(0, 500)
       );
 
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            uploadResponse.status === 401 ||
-            uploadResponse.status === 403
-              ? "GitHub 权限不足或 Token 无效"
-              : uploadResponse.status === 404
-                ? "找不到目标仓库或分支"
-                : uploadResponse.status === 409 ||
-                    uploadResponse.status === 422
-                  ? "GitHub 文件更新冲突，请重试"
-                  : "GitHub 图片上传失败",
-        },
-        { status: 502 }
-      );
+      if (
+        uploadResponse.status === 401 ||
+        uploadResponse.status === 403
+      ) {
+        return jsonError("GitHub Token 无效或缺少仓库写入权限", 502);
+      }
+
+      if (uploadResponse.status === 404) {
+        return jsonError("找不到目标仓库或分支，请检查环境变量", 502);
+      }
+
+      if (
+        uploadResponse.status === 409 ||
+        uploadResponse.status === 422
+      ) {
+        return jsonError("GitHub 文件更新冲突，请稍后重试", 502);
+      }
+
+      return jsonError("GitHub 图片上传失败", 502);
     }
 
-    // 返回稳定的 Raw 图片 URL
+    // 10. 返回 Raw 图片地址
     const url =
       `https://raw.githubusercontent.com/` +
-      `${owner}/${repo}/${branch}/${repoPath}`;
+      `${encodeURIComponent(owner)}/` +
+      `${encodeURIComponent(repo)}/` +
+      `${encodeURIComponent(branch)}/` +
+      repoPath.split("/").map(encodeURIComponent).join("/");
 
     return NextResponse.json({
       success: true,
       url,
       filename,
+      gameId,
     });
   } catch (error) {
-    console.error("图片上传异常:", error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "图片上传失败，请检查服务日志",
-      },
-      { status: 500 }
+    console.error(
+      "图片上传异常:",
+      error instanceof Error ? error.message : "未知错误"
     );
+
+    return jsonError("图片上传失败，请检查服务配置和服务日志", 500);
   }
 }
