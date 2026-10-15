@@ -280,7 +280,7 @@ list.map(game=>(
 
 <img
 
-src={`/assets/games/games${game.id}.png`}
+src={game.cover || `/assets/games/games${game.id}.png`}
 
 className="admin-cover"
 
