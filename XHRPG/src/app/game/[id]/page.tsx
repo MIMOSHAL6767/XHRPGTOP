@@ -54,7 +54,7 @@ export default async function GamePage({
     notFound();
   }
 
-  const cover = `/assets/games/games${game.id}.png`;
+  const cover = game.cover?.trim() || `/assets/games/games${game.id}.png`;
   const history = parseHistory(game.history);
 
   return (
