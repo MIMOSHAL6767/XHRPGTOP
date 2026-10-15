@@ -95,7 +95,6 @@ export default async function GamePage({
                 <p>作者：{game.author}</p>
                 <p>类型：{game.category}</p>
                 <p>版本：{game.version}</p>
-                <p>下载量：{game.downloads}</p>
               </div>
 
               {/* 当前版本下载 */}
