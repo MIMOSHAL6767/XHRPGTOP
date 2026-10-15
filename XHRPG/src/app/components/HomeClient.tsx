@@ -357,17 +357,17 @@ RPG
 
 [
 
-"×首页",
+"",
 
-"√游戏库",
+"游戏库",
 
-"×作者",
+"",
 
-"×活动",
+×活动",
 
-"×上传",
+"",
 
-"√个人"
+"个人"
 
 ]
 
@@ -384,7 +384,7 @@ key={item}
 onClick={()=>{
 
 
-if(item==="√个人"){
+if(item==="个人"){
 
 
 openMySpace();
@@ -831,7 +831,7 @@ href={`/game/${game.id}`}
 
 className="cover-img"
 
-src={`/assets/games/games${game.id}.png`}
+src={game.cover || `/assets/games/games${game.id}.png`}
 
 alt={game.name}
 
