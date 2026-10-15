@@ -1,43 +1,43 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-
-import Link from "next/link";
-
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function EditGame({
-  params,
+export default function EditGameClient({
+  id,
 }: {
-  params: Promise<{ id: string }>;
+  id: string;
 }) {
-  const { id } = use(params);
-
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
-
   const [form, setForm] = useState<any>(null);
-
   const [coverFile, setCoverFile] = useState<File | null>(null);
-
   const [preview, setPreview] = useState("");
-
   const [history, setHistory] = useState<any[]>([]);
 
   // 获取游戏
   useEffect(() => {
     async function load() {
-      const res = await fetch(`/api/admin/games/${id}`);
+      try {
+        const res = await fetch(`/api/admin/games/${id}`);
+        const data = await res.json();
 
-      const data = await res.json();
+        if (!res.ok) {
+          alert(data.message || "获取游戏失败，请确认已登录站长账号");
+          return;
+        }
 
-      if (data.game) {
-        setForm(data.game);
-
-        setHistory(data.game.history || []);
-
-        setPreview(data.game.cover);
+        if (data.game) {
+          setForm(data.game);
+          setHistory(data.game.history || []);
+          setPreview(data.game.cover || "");
+        } else {
+          alert(data.message || "没有找到这个游戏");
+        }
+      } catch (e) {
+        console.error("获取游戏失败:", e);
+        alert("获取游戏失败，请检查网络连接");
       }
     }
 
@@ -49,7 +49,6 @@ export default function EditGame({
   ) {
     setForm({
       ...form,
-
       [e.target.name]: e.target.value,
     });
   }
@@ -59,11 +58,13 @@ export default function EditGame({
     if (!file) return;
 
     const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
+
     if (!allowedTypes.includes(file.type)) {
       alert("只支持 PNG、JPG、WebP 图片");
       e.target.value = "";
       return;
     }
+
     if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
       alert("图片不能为空，且不能超过 5 MB");
       e.target.value = "";
@@ -71,6 +72,7 @@ export default function EditGame({
     }
 
     setCoverFile(file);
+
     setPreview(URL.createObjectURL(file));
   }
 
@@ -85,7 +87,6 @@ export default function EditGame({
   function addHistory() {
     setHistory([
       ...history,
-
       {
         version: "",
         date: "",
@@ -103,6 +104,7 @@ export default function EditGame({
     if (!coverFile) return form.cover || "";
 
     const fd = new FormData();
+
     fd.append("file", coverFile);
     fd.append("id", id);
 
@@ -110,10 +112,13 @@ export default function EditGame({
       method: "POST",
       body: fd,
     });
+
     const data = await res.json().catch(() => null);
 
     if (!res.ok || !data?.success) {
-      throw new Error(data?.message || `封面上传失败（HTTP ${res.status}）`);
+      throw new Error(
+        data?.message || `封面上传失败（HTTP ${res.status}）`
+      );
     }
 
     if (
@@ -127,6 +132,8 @@ export default function EditGame({
   }
 
   async function save() {
+    if (!form || loading) return;
+
     setLoading(true);
 
     try {
@@ -136,38 +143,35 @@ export default function EditGame({
         cover = await uploadCover();
       }
 
-      const res = await fetch(
-        `/api/admin/games/${id}`,
-
-        {
-          method: "PUT",
-
-          headers: {
-            "Content-Type": "application/json",
-          },
-
-          body: JSON.stringify({
-            ...form,
-
-            cover,
-
-            history,
-          }),
-        }
-      );
+      const res = await fetch(`/api/admin/games/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...form,
+          cover,
+          history,
+        }),
+      });
 
       const data = await res.json();
 
-      if (data.success) {
-        alert("修改成功");
-
-        router.push("/admin/games");
-      } else {
-        alert(data.message || "修改失败");
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "修改失败");
       }
+
+      alert("修改成功");
+
+      router.push("/admin/games");
     } catch (e) {
       console.error("保存游戏或上传封面失败:", e);
-      alert(e instanceof Error ? e.message : "保存失败，请检查网络和服务器日志");
+
+      alert(
+        e instanceof Error
+          ? e.message
+          : "保存失败，请检查网络和服务器日志"
+      );
     } finally {
       setLoading(false);
     }
@@ -175,48 +179,71 @@ export default function EditGame({
 
   // 隐藏 / 显示
   async function toggleStatus() {
+    if (!form || loading) return;
+
     const newStatus = form.status === "隐藏" ? "已发布" : "隐藏";
 
-    await fetch(
-      `/api/admin/games/${id}`,
+    setLoading(true);
 
-      {
+    try {
+      const res = await fetch(`/api/admin/games/${id}`, {
         method: "PUT",
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify({
           status: newStatus,
         }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "修改游戏状态失败");
       }
-    );
 
-    setForm({
-      ...form,
+      setForm({
+        ...form,
+        status: newStatus,
+      });
 
-      status: newStatus,
-    });
+      alert(newStatus === "隐藏" ? "游戏已隐藏" : "游戏已显示");
+    } catch (e) {
+      console.error("修改游戏状态失败:", e);
+
+      alert(
+        e instanceof Error ? e.message : "修改游戏状态失败"
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function remove() {
     if (!confirm("确定永久删除这个游戏吗？")) return;
 
-    const res = await fetch(
-      `/api/admin/games/${id}`,
+    setLoading(true);
 
-      {
+    try {
+      const res = await fetch(`/api/admin/games/${id}`, {
         method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "删除失败");
       }
-    );
 
-    const data = await res.json();
-
-    if (data.success) {
       alert("删除成功");
 
       router.push("/admin/games");
+    } catch (e) {
+      console.error("删除游戏失败:", e);
+
+      alert(e instanceof Error ? e.message : "删除失败");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -243,38 +270,63 @@ export default function EditGame({
         <div className="form-grid">
           <label>
             游戏名称
-            <input name="name" value={form.name} onChange={change} />
+            <input
+              name="name"
+              value={form.name || ""}
+              onChange={change}
+            />
           </label>
 
           <label>
             英文名称
-            <input name="en" value={form.en || ""} onChange={change} />
+            <input
+              name="en"
+              value={form.en || ""}
+              onChange={change}
+            />
           </label>
 
           <label>
             作者
-            <input name="author" value={form.author} onChange={change} />
+            <input
+              name="author"
+              value={form.author || ""}
+              onChange={change}
+            />
           </label>
 
           <label>
             版本
-            <input name="version" value={form.version} onChange={change} />
+            <input
+              name="version"
+              value={form.version || ""}
+              onChange={change}
+            />
           </label>
 
           <label>
             分类
-            <input name="category" value={form.category} onChange={change} />
+            <input
+              name="category"
+              value={form.category || ""}
+              onChange={change}
+            />
           </label>
 
           <label>
             重新上传封面
-            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={selectCover} />
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={selectCover}
+            />
+
             {preview && (
               <img
                 src={preview}
+                alt="游戏封面预览"
                 style={{
                   width: "180px",
-
                   marginTop: "10px",
                 }}
               />
@@ -283,12 +335,20 @@ export default function EditGame({
 
           <label>
             蓝奏云
-            <input name="lanzou" value={form.lanzou} onChange={change} />
+            <input
+              name="lanzou"
+              value={form.lanzou || ""}
+              onChange={change}
+            />
           </label>
 
           <label>
             123云盘
-            <input name="pan123" value={form.pan123} onChange={change} />
+            <input
+              name="pan123"
+              value={form.pan123 || ""}
+              onChange={change}
+            />
           </label>
         </div>
 
@@ -296,7 +356,7 @@ export default function EditGame({
           游戏简介
           <textarea
             name="description"
-            value={form.description}
+            value={form.description || ""}
             onChange={change}
           />
         </label>
@@ -307,29 +367,40 @@ export default function EditGame({
           <div className="history-item" key={index}>
             <input
               placeholder="版本"
-              value={item.version}
-              onChange={(e) => changeHistory(index, "version", e.target.value)}
+              value={item.version || ""}
+              onChange={(e) =>
+                changeHistory(index, "version", e.target.value)
+              }
             />
 
             <input
               placeholder="日期"
-              value={item.date}
-              onChange={(e) => changeHistory(index, "date", e.target.value)}
+              value={item.date || ""}
+              onChange={(e) =>
+                changeHistory(index, "date", e.target.value)
+              }
             />
 
             <input
               placeholder="蓝奏云"
-              value={item.lanzou}
-              onChange={(e) => changeHistory(index, "lanzou", e.target.value)}
+              value={item.lanzou || ""}
+              onChange={(e) =>
+                changeHistory(index, "lanzou", e.target.value)
+              }
             />
 
             <input
               placeholder="123云盘"
-              value={item.pan123}
-              onChange={(e) => changeHistory(index, "pan123", e.target.value)}
+              value={item.pan123 || ""}
+              onChange={(e) =>
+                changeHistory(index, "pan123", e.target.value)
+              }
             />
 
-            <button type="button" onClick={() => removeHistory(index)}>
+            <button
+              type="button"
+              onClick={() => removeHistory(index)}
+            >
               删除
             </button>
           </div>
@@ -341,16 +412,23 @@ export default function EditGame({
 
         <div className="form-buttons">
           <button onClick={save} disabled={loading}>
-            保存修改
+            {loading ? "处理中..." : "保存修改"}
           </button>
 
-          <button onClick={toggleStatus}>
+          <button onClick={toggleStatus} disabled={loading}>
             {form.status === "隐藏" ? "显示游戏" : "隐藏游戏"}
           </button>
 
-          <button onClick={remove}>永久删除</button>
+          <button onClick={remove} disabled={loading}>
+            永久删除
+          </button>
 
-          <button onClick={() => router.back()}>返回</button>
+          <button
+            onClick={() => router.back()}
+            disabled={loading}
+          >
+            返回
+          </button>
         </div>
       </div>
     </main>
