@@ -521,13 +521,6 @@ onClick={logout}
 
 
 
-
-</div>
-
-
-
-
-
 </header>
 
 
