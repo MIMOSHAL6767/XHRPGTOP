@@ -154,7 +154,7 @@ export default function HomeClient({
             style={{
               position: "relative",
               width: "100%",
-              height: "420px",
+              height: "500px",
               minHeight: "320px",
               overflow: "hidden",
               isolation: "isolate",
@@ -203,7 +203,7 @@ export default function HomeClient({
                 zIndex: 2,
               }}
             >
-              {/* 封面：按百分比定位，并以图片中心作为定位点 */}
+              {/* 封面：隐藏边框、红线、轮廓和阴影 */}
               {banner.cover && (
                 <img
                   key={banner.cover}
@@ -225,6 +225,14 @@ export default function HomeClient({
                     objectFit: banner.coverFit || "contain",
                     objectPosition: "center",
                     zIndex: 3,
+
+                    // 仅针对轮播封面图片
+                    border: "none",
+                    outline: "none",
+                    boxShadow: "none",
+                    background: "transparent",
+                    WebkitAppearance: "none",
+                    filter: "none",
                   }}
                 />
               )}
