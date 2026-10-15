@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function NewBanner() {
+export default function NewBannerForm() {
   const router = useRouter();
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [backgroundFile, setBackgroundFile] = useState<File | null>(null);
-
   const [preview, setPreview] = useState("");
   const [backgroundPreview, setBackgroundPreview] = useState("");
   const [saving, setSaving] = useState(false);
@@ -43,7 +42,6 @@ export default function NewBanner() {
     }));
   }
 
-  // 选择封面图片
   function selectImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -52,7 +50,6 @@ export default function NewBanner() {
     setPreview(URL.createObjectURL(file));
   }
 
-  // 选择背景图片
   function selectBackground(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -61,7 +58,6 @@ export default function NewBanner() {
     setBackgroundPreview(URL.createObjectURL(file));
   }
 
-  // 上传图片到 GitHub 的 banner 目录
   async function uploadFile(file: File): Promise<string> {
     const fd = new FormData();
     fd.append("file", file);
@@ -82,7 +78,6 @@ export default function NewBanner() {
     return data.url;
   }
 
-  // 保存轮播图
   async function save() {
     if (saving) return;
 
@@ -92,17 +87,14 @@ export default function NewBanner() {
       let cover = form.cover;
       let background = form.background;
 
-      // 上传封面图片
       if (imageFile) {
         cover = await uploadFile(imageFile);
       }
 
-      // 上传背景图片
       if (backgroundFile) {
         background = await uploadFile(backgroundFile);
       }
 
-      // 如果选择了图片却没有获得有效 URL，则不创建数据库记录
       if (imageFile && !cover) {
         throw new Error("封面图片上传失败，没有获取到图片地址");
       }
@@ -111,7 +103,6 @@ export default function NewBanner() {
         throw new Error("背景图片上传失败，没有获取到图片地址");
       }
 
-      // 创建轮播图数据库记录
       const res = await fetch("/api/admin/banner", {
         method: "POST",
         headers: {
@@ -156,11 +147,7 @@ export default function NewBanner() {
         <div className="form-grid">
           <label>
             标题
-            <input
-              name="title"
-              value={form.title}
-              onChange={change}
-            />
+            <input name="title" value={form.title} onChange={change} />
           </label>
 
           <label>
@@ -209,38 +196,22 @@ export default function NewBanner() {
 
           <label>
             标题字体大小
-            <input
-              name="titleSize"
-              value={form.titleSize}
-              onChange={change}
-            />
+            <input name="titleSize" value={form.titleSize} onChange={change} />
           </label>
 
           <label>
             标题颜色
-            <input
-              name="titleColor"
-              value={form.titleColor}
-              onChange={change}
-            />
+            <input name="titleColor" value={form.titleColor} onChange={change} />
           </label>
 
           <label>
             标题 X 位置 %
-            <input
-              name="titleX"
-              value={form.titleX}
-              onChange={change}
-            />
+            <input name="titleX" value={form.titleX} onChange={change} />
           </label>
 
           <label>
             标题 Y 位置 %
-            <input
-              name="titleY"
-              value={form.titleY}
-              onChange={change}
-            />
+            <input name="titleY" value={form.titleY} onChange={change} />
           </label>
 
           <label>
@@ -259,92 +230,52 @@ export default function NewBanner() {
 
           <label>
             简介字体大小
-            <input
-              name="descSize"
-              value={form.descSize}
-              onChange={change}
-            />
+            <input name="descSize" value={form.descSize} onChange={change} />
           </label>
 
           <label>
             简介颜色
-            <input
-              name="descColor"
-              value={form.descColor}
-              onChange={change}
-            />
+            <input name="descColor" value={form.descColor} onChange={change} />
           </label>
 
           <label>
             简介 X 位置 %
-            <input
-              name="descX"
-              value={form.descX}
-              onChange={change}
-            />
+            <input name="descX" value={form.descX} onChange={change} />
           </label>
 
           <label>
             简介 Y 位置 %
-            <input
-              name="descY"
-              value={form.descY}
-              onChange={change}
-            />
+            <input name="descY" value={form.descY} onChange={change} />
           </label>
 
           <label>
             封面宽度
-            <input
-              name="coverWidth"
-              value={form.coverWidth}
-              onChange={change}
-            />
+            <input name="coverWidth" value={form.coverWidth} onChange={change} />
           </label>
 
           <label>
             封面高度
-            <input
-              name="coverHeight"
-              value={form.coverHeight}
-              onChange={change}
-            />
+            <input name="coverHeight" value={form.coverHeight} onChange={change} />
           </label>
 
           <label>
             封面 X 位置 %
-            <input
-              name="coverX"
-              value={form.coverX}
-              onChange={change}
-            />
+            <input name="coverX" value={form.coverX} onChange={change} />
           </label>
 
           <label>
             封面 Y 位置 %
-            <input
-              name="coverY"
-              value={form.coverY}
-              onChange={change}
-            />
+            <input name="coverY" value={form.coverY} onChange={change} />
           </label>
 
           <label>
             封面适配
-            <input
-              name="coverFit"
-              value={form.coverFit}
-              onChange={change}
-            />
+            <input name="coverFit" value={form.coverFit} onChange={change} />
           </label>
         </div>
 
         <div className="form-buttons">
-          <button
-            type="button"
-            onClick={save}
-            disabled={saving}
-          >
+          <button type="button" onClick={save} disabled={saving}>
             {saving ? "正在上传并保存..." : "保存轮播图"}
           </button>
 
