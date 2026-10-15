@@ -56,11 +56,21 @@ export default function EditGame({
 
   function selectCover(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-
     if (!file) return;
 
-    setCoverFile(file);
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      alert("只支持 PNG、JPG、WebP 图片");
+      e.target.value = "";
+      return;
+    }
+    if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
+      alert("图片不能为空，且不能超过 5 MB");
+      e.target.value = "";
+      return;
+    }
 
+    setCoverFile(file);
     setPreview(URL.createObjectURL(file));
   }
 
@@ -89,24 +99,31 @@ export default function EditGame({
     setHistory(history.filter((_, i) => i !== index));
   }
 
-  async function uploadCover() {
-    if (!coverFile) return form.cover;
+  async function uploadCover(): Promise<string> {
+    if (!coverFile) return form.cover || "";
 
     const fd = new FormData();
-
     fd.append("file", coverFile);
-
     fd.append("id", id);
 
     const res = await fetch("/api/upload", {
       method: "POST",
-
       body: fd,
     });
+    const data = await res.json().catch(() => null);
 
-    const data = await res.json();
+    if (!res.ok || !data?.success) {
+      throw new Error(data?.message || `封面上传失败（HTTP ${res.status}）`);
+    }
 
-    return data.url || form.cover;
+    if (
+      typeof data.url !== "string" ||
+      !data.url.startsWith("https://raw.githubusercontent.com/")
+    ) {
+      throw new Error("上传接口没有返回有效的 GitHub Raw 图片地址");
+    }
+
+    return data.url;
   }
 
   async function save() {
@@ -149,10 +166,11 @@ export default function EditGame({
         alert(data.message || "修改失败");
       }
     } catch (e) {
-      alert("保存失败");
+      console.error("保存游戏或上传封面失败:", e);
+      alert(e instanceof Error ? e.message : "保存失败，请检查网络和服务器日志");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   // 隐藏 / 显示
@@ -250,7 +268,7 @@ export default function EditGame({
 
           <label>
             重新上传封面
-            <input type="file" accept="image/*" onChange={selectCover} />
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={selectCover} />
             {preview && (
               <img
                 src={preview}
