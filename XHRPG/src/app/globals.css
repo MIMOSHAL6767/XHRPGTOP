@@ -130,9 +130,9 @@ height:100vh;
 
 width:100px;
 
-background:#fff;
+background:#8b1e2d;
 
-color:#111;
+color:#8b1e2d;
 
 overflow:hidden;
 
@@ -148,7 +148,7 @@ border-right:1px solid var(--line);
 
 .drawer-nav.open{
 
-width:230px;
+width:100px;
 
 }
 
