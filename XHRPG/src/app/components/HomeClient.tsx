@@ -97,20 +97,6 @@ export default function HomeClient({
           <b>喜灰</b>
           <span>RPG</span>
         </div>
-
-        {["个人"].map((item) => (
-          <div
-            className="nav-item"
-            key={item}
-            onClick={() => {
-              if (item === "个人") {
-                openMySpace();
-              }
-            }}
-          >
-            {item}
-          </div>
-        ))}
       </aside>
 
       {/* 首页主体 */}
