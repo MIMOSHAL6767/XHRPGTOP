@@ -21,10 +21,12 @@ function errorResponse(message: string, status: number) {
 
 export async function POST(req: Request) {
   try {
-    const token = process.env.GITHUB_TOKEN;
-    const owner = process.env.GITHUB_OWNER;
-    const repo = process.env.GITHUB_REPO;
-    const branch = process.env.GITHUB_BRANCH || "main";
+    // Use the same GitHub image-storage variables as the banner uploader,
+    // while retaining compatibility with the original GITHUB_* names.
+    const token = process.env.GITHUB_IMAGE_TOKEN || process.env.GITHUB_TOKEN;
+    const owner = process.env.GITHUB_IMAGE_OWNER || process.env.GITHUB_OWNER;
+    const repo = process.env.GITHUB_IMAGE_REPO || process.env.GITHUB_REPO;
+    const branch = process.env.GITHUB_IMAGE_BRANCH || process.env.GITHUB_BRANCH || "main";
 
     if (!token || !owner || !repo) {
       return errorResponse("GitHub 图片存储服务未配置", 500);
@@ -114,7 +116,7 @@ export async function POST(req: Request) {
     };
 
     // 查询同名文件：更新时必须提供已有文件的 SHA
-    const existingResponse = await fetch(apiUrl, {
+    const existingResponse = await fetch(`${apiUrl}?ref=${encodeURIComponent(branch)}`, {
       method: "GET",
       headers,
       cache: "no-store",
@@ -163,13 +165,15 @@ export async function POST(req: Request) {
       cache: "no-store",
     });
 
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
+    const uploadResult = await uploadResponse.json().catch(() => null);
 
+    if (!uploadResponse.ok) {
       console.error(
         "GitHub 图片上传失败:",
         uploadResponse.status,
-        errorText.slice(0, 500)
+        typeof uploadResult?.message === "string"
+          ? uploadResult.message
+          : "GitHub API returned an error"
       );
 
       return errorResponse(
@@ -186,6 +190,12 @@ export async function POST(req: Request) {
       );
     }
 
+    // GitHub must confirm that the requested path was actually committed.
+    if (uploadResult?.content?.path !== repoPath || !uploadResult?.content?.sha) {
+      console.error("GitHub 返回成功状态，但响应中没有预期的文件路径或 SHA");
+      return errorResponse("GitHub 未确认封面文件已保存，请重试", 502);
+    }
+
     const url =
       `https://raw.githubusercontent.com/` +
       `${encodeURIComponent(owner)}/` +
@@ -198,6 +208,8 @@ export async function POST(req: Request) {
       url,
       filename,
       gameId,
+      path: repoPath,
+      commit: uploadResult?.commit?.sha || null,
     });
   } catch (error) {
     console.error(
