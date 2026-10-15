@@ -27,10 +27,12 @@ export default function NewGame() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
 
-  // 释放本地图片预览的 URL，避免重复选择图片时泄漏资源
+  // 释放本地图片预览 URL，避免资源泄漏
   useEffect(() => {
     return () => {
-      if (preview) URL.revokeObjectURL(preview);
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
     };
   }, [preview]);
 
@@ -45,6 +47,7 @@ export default function NewGame() {
     }));
   }
 
+  // 选择游戏封面
   function selectCover(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
 
@@ -72,6 +75,7 @@ export default function NewGame() {
     setPreview(URL.createObjectURL(file));
   }
 
+  // 添加版本历史
   function addHistory() {
     setHistory((prev) => [
       ...prev,
@@ -84,6 +88,7 @@ export default function NewGame() {
     ]);
   }
 
+  // 修改版本历史
   function changeHistory(
     index: number,
     key: string,
@@ -96,10 +101,12 @@ export default function NewGame() {
     );
   }
 
+  // 删除版本历史
   function removeHistory(index: number) {
     setHistory((prev) => prev.filter((_, i) => i !== index));
   }
 
+  // 统一处理 API 响应
   async function readResponse(res: Response) {
     const data = await res.json().catch(() => null);
 
@@ -112,6 +119,7 @@ export default function NewGame() {
     return data;
   }
 
+  // 上传封面
   async function uploadCover(id: number): Promise<string> {
     if (!coverFile) return "";
 
@@ -128,14 +136,19 @@ export default function NewGame() {
 
     if (
       typeof data.url !== "string" ||
-      !data.url.startsWith("https://raw.githubusercontent.com/")
+      !data.url.startsWith(
+        "https://raw.githubusercontent.com/"
+      )
     ) {
-      throw new Error("上传接口没有返回有效的 GitHub Raw 图片地址");
+      throw new Error(
+        "上传接口没有返回有效的 GitHub Raw 图片地址"
+      );
     }
 
     return data.url;
   }
 
+  // 提交游戏
   async function submit() {
     if (loading) return;
 
@@ -168,14 +181,16 @@ export default function NewGame() {
       const id = Number(created.game?.id);
 
       if (!Number.isSafeInteger(id) || id <= 0) {
-        throw new Error("游戏创建接口没有返回有效的游戏 ID");
+        throw new Error(
+          "游戏创建接口没有返回有效的游戏 ID"
+        );
       }
 
       // 第二步：有选择封面才上传
       if (coverFile) {
         const coverUrl = await uploadCover(id);
 
-        // 第三步：保存 GitHub 图片 URL 到数据库
+        // 第三步：将封面 URL 保存到数据库
         const updateResponse = await fetch(
           `/api/admin/games/${id}`,
           {
@@ -280,7 +295,8 @@ export default function NewGame() {
                   width: "180px",
                   marginTop: "10px",
                 }}
-              )}
+              />
+            )}
           </label>
 
           <label>
@@ -303,3 +319,105 @@ export default function NewGame() {
         </div>
 
         <label>
+          游戏介绍
+          <textarea
+            name="description"
+            value={form.description}
+            onChange={change}
+            rows={5}
+          />
+        </label>
+
+        <div className="history-section">
+          <h2>版本历史</h2>
+
+          {history.map((item, index) => (
+            <div
+              key={index}
+              className="history-item"
+            >
+              <label>
+                版本号
+                <input
+                  value={item.version}
+                  onChange={(e) =>
+                    changeHistory(
+                      index,
+                      "version",
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                更新日期
+                <input
+                  type="date"
+                  value={item.date}
+                  onChange={(e) =>
+                    changeHistory(
+                      index,
+                      "date",
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                蓝奏云链接
+                <input
+                  value={item.lanzou}
+                  onChange={(e) =>
+                    changeHistory(
+                      index,
+                      "lanzou",
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <label>
+                123 云盘链接
+                <input
+                  value={item.pan123}
+                  onChange={(e) =>
+                    changeHistory(
+                      index,
+                      "pan123",
+                      e.target.value
+                    )
+                  }
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={() => removeHistory(index)}
+              >
+                删除此版本
+              </button>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={addHistory}
+          >
+            添加版本
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={submit}
+          disabled={loading}
+        >
+          {loading ? "正在发布..." : "发布游戏"}
+        </button>
+      </div>
+    </main>
+  );
+}
