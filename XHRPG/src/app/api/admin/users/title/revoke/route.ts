@@ -1,398 +1,115 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { jwtVerify } from "jose";
+import { isSiteOwner } from "@/lib/admin-auth";
 
-
-
-
-// 获取当前用户
-
-async function getUser(){
-
-const cookieStore =
-await cookies();
-
-
-const token =
-cookieStore.get("token")?.value;
-
-
-if(!token){
-
-return null;
-
+function errorResponse(message: string, status: number) {
+  return NextResponse.json(
+    { success: false, message },
+    { status }
+  );
 }
 
-
-try{
-
-
-const secret =
-new TextEncoder().encode(
-
-process.env.JWT_SECRET ||
-
-"xhrzyz-secret"
-
-);
-
-
-
-const {payload}=
-
-await jwtVerify(
-
-token,
-
-secret
-
-);
-
-
-
-return Number(payload.id);
-
-
-
-}catch{
-
-
-return null;
-
-
-}
-
-
-}
-
-
-
-
-
-
-
-
-
-// =====================
-// POST
-// 收回称号
-// owner专用
-// =====================
-
-
-export async function POST(
-
-req:Request
-
-){
-
-
-try{
-
-
-const operatorId =
-await getUser();
-
-
-
-if(!operatorId){
-
-
-return NextResponse.json({
-
-success:false,
-
-message:"未登录"
-
-});
-
-
-}
-
-
-
-
-
-
-
-
-const operator =
-
-await prisma.user.findUnique({
-
-where:{
-
-id:operatorId
-
-},
-
-
-select:{
-
-role:true
-
-}
-
-
-});
-
-
-
-
-
-
-
-if(!operator || operator.role!=="owner"){
-
-
-return NextResponse.json({
-
-success:false,
-
-message:"没有权限"
-
-});
-
-
-}
-
-
-
-
-
-
-
-
-
-const body =
-await req.json();
-
-
-
-
-
-const userId =
-Number(body.userId);
-
-
-
-const titleId =
-Number(body.titleId);
-
-
-
-
-
-
-
-if(!userId || !titleId){
-
-
-return NextResponse.json({
-
-success:false,
-
-message:"参数错误"
-
-});
-
-
-}
-
-
-
-
-
-
-
-
-
-
-// 查询称号
-
-const title =
-
-await prisma.userTitle.findUnique({
-
-where:{
-
-id:titleId
-
-}
-
-});
-
-
-
-
-
-if(!title){
-
-
-return NextResponse.json({
-
-success:false,
-
-message:"称号不存在"
-
-});
-
-
-}
-
-
-
-
-
-
-
-
-
-// 删除拥有记录
-
-await prisma.userTitleGrant.delete({
-
-where:{
-
-userId_titleId:{
-
-userId,
-
-titleId
-
-}
-
-}
-
-});
-
-
-
-
-
-
-
-
-
-
-
-// 如果当前佩戴的是该称号
-// 一并取消
-
-const user =
-
-await prisma.user.findUnique({
-
-where:{
-
-id:userId
-
-},
-
-
-select:{
-
-title:true
-
-}
-
-});
-
-
-
-
-
-
-
-if(
-
-user &&
-
-user.title===title.name
-
-){
-
-
-await prisma.user.update({
-
-where:{
-
-id:userId
-
-},
-
-
-data:{
-
-
-title:null,
-
-
-titleStyle:{},
-
-
-showTitle:false
-
-
-}
-
-
-});
-
-
-}
-
-
-
-
-
-
-
-
-
-return NextResponse.json({
-
-success:true,
-
-message:"称号已收回"
-
-
-});
-
-
-
-
-
-
-
-
-
-}catch(e:any){
-
-
-
-console.error(
-
-"收回称号失败:",
-
-e
-
-);
-
-
-
-return NextResponse.json({
-
-success:false,
-
-message:e.message || "收回失败"
-
-});
-
-
-}
-
-
-
+export async function POST(req: Request) {
+  try {
+    if (!(await isSiteOwner())) {
+      return errorResponse("未登录或没有站长权限", 403);
+    }
+
+    let body: unknown;
+
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse("请求数据不是有效的 JSON", 400);
+    }
+
+    if (
+      !body ||
+      typeof body !== "object" ||
+      Array.isArray(body)
+    ) {
+      return errorResponse("请求数据格式错误", 400);
+    }
+
+    const data = body as Record<string, unknown>;
+    const userId = data.userId;
+    const titleId = data.titleId;
+
+    if (
+      typeof userId !== "number" ||
+      !Number.isSafeInteger(userId) ||
+      userId <= 0 ||
+      typeof titleId !== "number" ||
+      !Number.isSafeInteger(titleId) ||
+      titleId <= 0
+    ) {
+      return errorResponse("用户 ID 或称号 ID 无效", 400);
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const [user, title, grant] = await Promise.all([
+        tx.user.findUnique({
+          where: { id: userId },
+          select: { id: true, title: true },
+        }),
+        tx.userTitle.findUnique({
+          where: { id: titleId },
+          select: { id: true, name: true },
+        }),
+        tx.userTitleGrant.findUnique({
+          where: {
+            userId_titleId: { userId, titleId },
+          },
+          select: { userId: true, titleId: true },
+        }),
+      ]);
+
+      if (!user) {
+        return { error: "目标用户不存在", status: 404 as const };
+      }
+
+      if (!title) {
+        return { error: "称号不存在", status: 404 as const };
+      }
+
+      if (!grant) {
+        return {
+          error: "该用户没有获得这个称号",
+          status: 404 as const,
+        };
+      }
+
+      await tx.userTitleGrant.delete({
+        where: {
+          userId_titleId: { userId, titleId },
+        },
+      });
+
+      // 仅当用户当前佩戴的正是被撤销的称号时才清除佩戴状态
+      if (user.title === title.name) {
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            title: null,
+            titleStyle: {},
+            showTitle: false,
+          },
+        });
+      }
+
+      return { error: null, status: 200 as const };
+    });
+
+    if (result.error) {
+      return errorResponse(result.error, result.status);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "称号已收回",
+    });
+  } catch (error) {
+    console.error("收回称号失败:", error);
+    return errorResponse("收回称号失败，请稍后重试", 500);
+  }
 }
