@@ -389,7 +389,7 @@ export default function HomeClient({
                 transition: "background 0.2s, border-color 0.2s",
               }}
             >
-              最新发布
+              最新上传
             </button>
           </div>
         </div>
