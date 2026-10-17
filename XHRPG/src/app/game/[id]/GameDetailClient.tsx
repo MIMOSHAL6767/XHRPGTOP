@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -46,13 +45,28 @@ export default function GameDetailClient({
   detailBackgroundFit,
   screenshots,
 }: Props) {
-  const gallery = Array.from(
-    new Set([cover, ...screenshots].filter(Boolean))
+  // 过滤空图片和重复图片。
+  // 有独立预览图时不自动加入封面；
+  // 没有预览图时才使用首页游戏卡片的封面。
+  const previewImages = Array.from(
+    new Set(
+      screenshots.filter(
+        (image) => Boolean(image) && image !== cover
+      )
+    )
   );
 
+  const gallery =
+    previewImages.length > 0
+      ? previewImages
+      : cover
+        ? [cover]
+        : [];
+
   const [activeImage, setActiveImage] = useState(
-    gallery[0] || cover
+    gallery[0] || ""
   );
+
   const [selectedVersion, setSelectedVersion] = useState("-1");
 
   const selectedHistory =
@@ -84,10 +98,13 @@ export default function GameDetailClient({
 
   return (
     <main className="steam-detail-page">
+      {/* 详情页背景 */}
       <div
         className="steam-detail-background"
         style={{
-          backgroundImage: `url("${backgroundImage}")`,
+          backgroundImage: backgroundImage
+            ? `url("${backgroundImage}")`
+            : "none",
           backgroundSize: backgroundFit,
           opacity: backgroundOpacity / 100,
         }}
@@ -95,6 +112,7 @@ export default function GameDetailClient({
 
       <div className="steam-detail-overlay" />
 
+      {/* 顶部导航与游戏标题 */}
       <header className="steam-detail-topbar">
         <Link href="/" className="steam-back">
           ← 返回游戏库
@@ -110,14 +128,22 @@ export default function GameDetailClient({
       </header>
 
       <div className="steam-detail-layout">
+        {/* 图片预览区域 */}
         <section className="steam-gallery">
           <div className="steam-main-image">
-            <img
-              src={activeImage}
-              alt={`${name} 预览图`}
-            />
+            {activeImage ? (
+              <img
+                src={activeImage}
+                alt={`${name} 预览图`}
+              />
+            ) : (
+              <div className="steam-no-preview">
+                暂无预览图片
+              </div>
+            )}
           </div>
 
+          {/* 多张图片时显示缩略图 */}
           {gallery.length > 1 && (
             <div className="steam-thumbnails">
               {gallery.map((image, index) => (
@@ -140,6 +166,7 @@ export default function GameDetailClient({
           )}
         </section>
 
+        {/* 游戏信息区域 */}
         <aside className="steam-game-info">
           <h1>{name}</h1>
 
@@ -162,6 +189,7 @@ export default function GameDetailClient({
             </div>
           </dl>
 
+          {/* 下载面板 */}
           <section className="steam-download-panel">
             <div className="steam-download-heading">
               <div>
@@ -176,6 +204,7 @@ export default function GameDetailClient({
                 </span>
               </div>
 
+              {/* 版本选择 */}
               {history.length > 0 && (
                 <label className="steam-version-select">
                   <span>选择版本</span>
@@ -201,6 +230,7 @@ export default function GameDetailClient({
               )}
             </div>
 
+            {/* 下载按钮 */}
             <div className="steam-download-buttons">
               {activeLanzou && (
                 <a
