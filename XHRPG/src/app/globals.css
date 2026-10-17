@@ -1842,20 +1842,43 @@ line-height:2;
   overflow-wrap: anywhere;
 }
 
-/* Logo 图片 */
+
+/* 游戏标题 PNG：放大显示，保持原始比例 */
 .steam-brand img {
   display: block;
 
   width: auto;
   height: auto;
-  max-width: min(100%, 360px);
-  max-height: 120px;
+
+  /* 允许标题使用更大的显示区域 */
+  max-width: min(90vw, 900px);
+  max-height: 240px;
 
   margin: 0 !important;
+  padding: 0;
 
   object-fit: contain;
   object-position: left center;
+
+  flex-shrink: 0;
 }
+
+/* 平板 */
+@media (max-width: 1000px) {
+  .steam-brand img {
+    max-width: 90vw;
+    max-height: 180px;
+  }
+}
+
+/* 手机 */
+@media (max-width: 600px) {
+  .steam-brand img {
+    max-width: 90vw;
+    max-height: 120px;
+  }
+}
+
 
 /* Logo 下方的游戏内容区域 */
 .steam-detail-layout {
