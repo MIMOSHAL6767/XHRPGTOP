@@ -1,6 +1,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 export type DetailHistoryItem = {
@@ -49,7 +50,9 @@ export default function GameDetailClient({
     new Set([cover, ...screenshots].filter(Boolean))
   );
 
-  const [activeImage, setActiveImage] = useState(gallery[0] || cover);
+  const [activeImage, setActiveImage] = useState(
+    gallery[0] || cover
+  );
   const [selectedVersion, setSelectedVersion] = useState("-1");
 
   const selectedHistory =
@@ -93,9 +96,9 @@ export default function GameDetailClient({
       <div className="steam-detail-overlay" />
 
       <header className="steam-detail-topbar">
-        <a href="/" className="steam-back">
+        <Link href="/" className="steam-back">
           ← 返回游戏库
-        </a>
+        </Link>
 
         <div className="steam-brand">
           {titleMode === "image" && titleLogo ? (
@@ -147,10 +150,12 @@ export default function GameDetailClient({
               <dt>作者</dt>
               <dd>{author || "未填写"}</dd>
             </div>
+
             <div>
               <dt>类型</dt>
               <dd>{category || "未分类"}</dd>
             </div>
+
             <div>
               <dt>版本</dt>
               <dd>{displayVersion || "未填写"}</dd>
@@ -163,6 +168,7 @@ export default function GameDetailClient({
                 <strong>
                   {selectedHistory ? "历史版本下载" : "下载游戏"}
                 </strong>
+
                 <span>
                   {selectedHistory
                     ? `版本：${selectedHistory.version || "历史版本"}`
@@ -173,6 +179,7 @@ export default function GameDetailClient({
               {history.length > 0 && (
                 <label className="steam-version-select">
                   <span>选择版本</span>
+
                   <select
                     value={selectedVersion}
                     onChange={(event) =>
@@ -182,6 +189,7 @@ export default function GameDetailClient({
                     <option value="-1">
                       当前版本（{version || "最新版"}）
                     </option>
+
                     {history.map((item, index) => (
                       <option key={index} value={String(index)}>
                         {item.version || `历史版本 ${index + 1}`}
