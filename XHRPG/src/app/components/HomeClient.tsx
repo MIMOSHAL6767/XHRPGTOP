@@ -179,7 +179,7 @@ export default function HomeClient({
             alignItems: "center",
             justifyContent: "flex-end",
             gap: "14px",
-            flex: "1 1 auto",
+            flex: "0 1 auto",
             minWidth: 0,
             marginLeft: "auto",
             padding: "7px 0 0",
@@ -193,9 +193,13 @@ export default function HomeClient({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
-              width: "min(200px, 25vw)",
-              minWidth: "120px",
-              maxWidth: "100%",
+              // 固定搜索框宽度，避免被 .top-bar input 的全宽/伸展样式撑开
+              width: "160px",
+              minWidth: "160px",
+              maxWidth: "160px",
+              flex: "0 0 160px",
+              flexGrow: 0,
+              flexShrink: 0,
               boxSizing: "border-box",
             }}
           />
