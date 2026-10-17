@@ -132,7 +132,7 @@ export default function HomeClient({
           width: "100%",
           minWidth: 0,
           maxWidth: "none",
-          height: "78px",
+          height: "64px",
           minHeight: "78px",
           flex: "0 0 78px",
           display: "flex",
