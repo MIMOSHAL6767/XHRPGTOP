@@ -164,34 +164,48 @@ export default function HomeClient({
             whiteSpace: "nowrap",
           }}
         >
-          <b style={{ fontSize: "24px", lineHeight: 1 }}>喜灰</b>
+          <b style={{ fontSize: "24px", lineHeight: 1, color: "#111111" }}>喜灰</b>
           <span style={{ fontSize: "24px", lineHeight: 1 }}>RPG</span>
         </div>
-      </aside>
 
-      {/* 首页主体：轮播和游戏卡片使用同一居中内容宽度 */}
-      <section
-        className="content-area"
-        style={{
-          position: "relative",
-          width: "min(100% - 32px, 1440px)",
-          maxWidth: "1440px",
-          minWidth: 0,
-          margin: "0 auto",
-          padding: "24px 0 40px",
-          boxSizing: "border-box",
-          alignSelf: "center",
-        }}
-      >
-        {/* 顶部搜索和用户区域 */}
-        <header className="top-bar" style={{ width: "100%", boxSizing: "border-box" }}>
+        {/* 搜索栏和用户信息放入顶部红色导航栏 */}
+        <header
+          className="top-bar"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: "16px",
+            flex: "1 1 auto",
+            minWidth: 0,
+            marginLeft: "auto",
+            padding: 0,
+            background: "transparent",
+            boxSizing: "border-box",
+          }}
+        >
           <input
             placeholder="搜索 RPG 游戏..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: "min(360px, 36vw)",
+              minWidth: "140px",
+              maxWidth: "100%",
+              boxSizing: "border-box",
+            }}
           />
 
-          <div className="user-area">
+          <div
+            className="user-area"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: "12px",
+              flexShrink: 0,
+            }}
+          >
             {user && (
               <>
                 <div className="avatar">
@@ -213,7 +227,22 @@ export default function HomeClient({
             )}
           </div>
         </header>
+      </aside>
 
+      {/* 首页主体：轮播和游戏卡片使用同一居中内容宽度 */}
+      <section
+        className="content-area"
+        style={{
+          position: "relative",
+          width: "min(100% - 32px, 1440px)",
+          maxWidth: "1440px",
+          minWidth: 0,
+          margin: "0 auto",
+          padding: "24px 0 40px",
+          boxSizing: "border-box",
+          alignSelf: "center",
+        }}
+      >
         {/* 首页轮播 */}
         {banner && (
           <section
