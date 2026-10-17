@@ -108,23 +108,83 @@ export default function HomeClient({
   }
 
   return (
-    <main className="xhrpg-home">
-      {/* 左侧抽屉 */}
+    <main
+      className="xhrpg-home"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        width: "100%",
+        minHeight: "100vh",
+        margin: 0,
+      }}
+    >
+      {/* 顶部导航：将原左侧红色栏移至页面顶部 */}
       <aside
-        className={open ? "drawer-nav open" : "drawer-nav"}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
+        className="drawer-nav"
+        style={{
+          position: "relative",
+          inset: "auto",
+          top: "auto",
+          left: "auto",
+          right: "auto",
+          bottom: "auto",
+          width: "100%",
+          minWidth: 0,
+          maxWidth: "none",
+          height: "64px",
+          minHeight: "64px",
+          flex: "0 0 64px",
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "flex-start",
+          overflow: "visible",
+          zIndex: 20,
+          background: "#e73550",
+          boxSizing: "border-box",
+          padding: "0 clamp(16px, 3vw, 36px)",
+        }}
       >
-        <div className="logo-box">
-          <b>喜灰</b>
-          <span>RPG</span>
+        <div
+          className="logo-box"
+          style={{
+            position: "static",
+            width: "auto",
+            height: "100%",
+            minWidth: "unset",
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "6px",
+            padding: "0 8px",
+            background: "transparent",
+            boxSizing: "border-box",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <b style={{ fontSize: "24px", lineHeight: 1 }}>喜灰</b>
+          <span style={{ fontSize: "24px", lineHeight: 1 }}>RPG</span>
         </div>
       </aside>
 
-      {/* 首页主体 */}
-      <section className="content-area">
+      {/* 首页主体：轮播和游戏卡片使用同一居中内容宽度 */}
+      <section
+        className="content-area"
+        style={{
+          position: "relative",
+          width: "min(100% - 32px, 1440px)",
+          maxWidth: "1440px",
+          minWidth: 0,
+          margin: "0 auto",
+          padding: "24px 0 40px",
+          boxSizing: "border-box",
+          alignSelf: "center",
+        }}
+      >
         {/* 顶部搜索和用户区域 */}
-        <header className="top-bar">
+        <header className="top-bar" style={{ width: "100%", boxSizing: "border-box" }}>
           <input
             placeholder="搜索 RPG 游戏..."
             value={search}
@@ -161,6 +221,9 @@ export default function HomeClient({
             style={{
               position: "relative",
               width: "100%",
+              maxWidth: "100%",
+              marginLeft: "auto",
+              marginRight: "auto",
               height: "500px",
               minHeight: "320px",
               overflow: "hidden",
@@ -394,7 +457,7 @@ export default function HomeClient({
           </div>
         </div>
 
-        <div className="game-grid">
+        <div className="game-grid" style={{ width: "100%", maxWidth: "100%", marginLeft: "auto", marginRight: "auto", boxSizing: "border-box" }}>
           {filteredGames.map((game) => (
             <Link
               key={game.id}
