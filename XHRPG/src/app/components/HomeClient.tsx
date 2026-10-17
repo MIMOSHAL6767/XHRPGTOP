@@ -132,9 +132,9 @@ export default function HomeClient({
           width: "100%",
           minWidth: 0,
           maxWidth: "none",
-          height: "64px",
-          minHeight: "64px",
-          flex: "0 0 64px",
+          height: "78px",
+          minHeight: "78px",
+          flex: "0 0 78px",
           display: "flex",
           flexDirection: "row",
           alignItems: "center",
@@ -143,7 +143,7 @@ export default function HomeClient({
           zIndex: 20,
           background: "#e73550",
           boxSizing: "border-box",
-          padding: "0 clamp(16px, 3vw, 36px)",
+          padding: "0 clamp(20px, 3vw, 40px)",
         }}
       >
         <div
@@ -160,6 +160,9 @@ export default function HomeClient({
             gap: "6px",
             padding: "0 8px",
             background: "transparent",
+            border: "none",
+            outline: "none",
+            boxShadow: "none",
             boxSizing: "border-box",
             whiteSpace: "nowrap",
           }}
@@ -175,11 +178,12 @@ export default function HomeClient({
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-end",
-            gap: "16px",
+            gap: "14px",
             flex: "1 1 auto",
             minWidth: 0,
             marginLeft: "auto",
-            padding: 0,
+            padding: "7px 0 0",
+            transform: "translateY(3px)",
             background: "transparent",
             boxSizing: "border-box",
           }}
@@ -189,8 +193,8 @@ export default function HomeClient({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
-              width: "min(360px, 36vw)",
-              minWidth: "140px",
+              width: "min(200px, 25vw)",
+              minWidth: "120px",
               maxWidth: "100%",
               boxSizing: "border-box",
             }}
