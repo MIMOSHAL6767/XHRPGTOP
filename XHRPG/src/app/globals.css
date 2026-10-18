@@ -1,1740 +1,829 @@
-:root{
 
---bg:#10090b;
+:root {
+  --bg: #10090b;
+  --panel: #160c0f;
+  --line: #4a2028;
+  --main: #8b1e2d;
+  --text: #f8eeee;
+  --hover: #a52a3a;
 
---panel:#160c0f;
-
---line:#4a2028;
-
---main:#8b1e2d;
-
---text:#f8eeee;
-
---hover:#a52a3a;
-
+  /* 统一强调色 */
+  --accent: #8b1e2d;
+  --accent-hover: #a52a3a;
+  --accent-border: #4a2028;
 }
-
 
 *,
 *::before,
-*::after{
-
-box-sizing:border-box;
-
-border-radius:0 !important;
-
+*::after {
+  box-sizing: border-box;
+  border-radius: 0 !important;
 }
-
-
 
 html,
-body{
-
-margin:0;
-
-padding:0;
-
-background:var(--bg);
-
-color:var(--text);
-
-font-family:
-
-Arial,
-
-"Microsoft YaHei",
-
-sans-serif;
-
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, "Microsoft YaHei", sans-serif;
 }
-
-
 
 button,
 input,
-textarea{
-
-font-family:inherit;
-
-border-radius:0 !important;
-
+textarea,
+select {
+  font-family: inherit;
+  border-radius: 0 !important;
 }
 
-
-
-button{
-
-background:var(--main);
-
-color:white;
-
-border:1px solid var(--line);
-
-padding:12px 25px;
-
-cursor:pointer;
-
+button {
+  background: var(--main);
+  color: white;
+  border: 1px solid var(--line);
+  padding: 12px 25px;
+  cursor: pointer;
 }
 
-
-
-button:hover{
-
-background:var(--hover);
-
+button:hover {
+  background: var(--hover);
 }
 
-
-
-a{
-
-color:inherit;
-
-text-decoration:none;
-
+a {
+  color: inherit;
+  text-decoration: none;
 }
-
-
 
 /* =========================
    首页布局
 ========================= */
 
-
-.xhrpg-home{
-
-min-height:100vh;
-
-display:flex;
-
-background:var(--bg);
-
+.xhrpg-home {
+  min-height: 100vh;
+  display: flex;
+  background: var(--bg);
 }
-
-
 
 /* =========================
    左侧抽屉
 ========================= */
 
-
-.drawer-nav{
-
-position:fixed;
-
-left:0;
-
-top:0;
-
-height:100vh;
-
-width:97px;
-
-background:#8b1e2d;
-
-color:#8b1e2d;
-
-overflow:hidden;
-
-transition:.3s;
-
-z-index:20;
-
-border-right:1px solid var(--line);
-
+.drawer-nav {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 97px;
+  background: var(--main);
+  color: var(--main);
+  overflow: hidden;
+  transition: 0.3s;
+  z-index: 20;
+  border-right: 1px solid var(--line);
 }
 
-
-
-.drawer-nav.open{
-
-width:97px;
-
+.drawer-nav.open {
+  width: 97px;
 }
 
-
-
-.logo-box{
-
-padding:20px;
-
-background:#10090b;
-
-color:white;
-
-font-size:28px;
-
-border:1px solid #333;
-
-margin-bottom:20px;
-
-white-space:nowrap;
-
+.logo-box {
+  padding: 20px;
+  background: var(--bg);
+  color: white;
+  font-size: 28px;
+  border: 1px solid #333;
+  margin-bottom: 20px;
+  white-space: nowrap;
 }
 
-
-
-.logo-box span{
-
-display:block;
-
-color:#8b1e2d;
-
+.logo-box span {
+  display: block;
+  color: var(--main);
 }
 
-
-
-.nav-item{
-
-padding:15px;
-
-border-bottom:1px solid #ddd;
-
-white-space:nowrap;
-
+.nav-item {
+  padding: 15px;
+  border-bottom: 1px solid #ddd;
+  white-space: nowrap;
 }
 
-
-
-.nav-item:hover{
-
-background:#eee;
-
+.nav-item:hover {
+  background: #eee;
 }
-
-
 
 /* =========================
    首页主体
 ========================= */
 
-
-.content-area{
-
-flex:1;
-
-margin-left:90px;
-
-padding:30px;
-
+.content-area {
+  flex: 1;
+  margin-left: 90px;
+  padding: 30px;
 }
 
+/* 顶部搜索栏 */
 
-
-/* 顶部 */
-
-.top-bar{
-
-display:flex;
-
-justify-content:space-between;
-
-align-items:center;
-
-gap:20px;
-
-margin-bottom:25px;
-
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 25px;
 }
 
-
-
-.top-bar input{
-
-height:42px;
-
-flex:1;
-
-max-width:700px;
-
-background:var(--panel);
-
-border:1px solid var(--line);
-
-color:white;
-
-padding:0 15px;
-
+.top-bar input {
+  height: 42px;
+  flex: 1;
+  max-width: 700px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: white;
+  padding: 0 15px;
 }
-
-
 
 /* =========================
    最新游戏展示
 ========================= */
 
-
-.latest-box{
-
-height:420px;
-
-border:1px solid var(--line);
-
-background:var(--panel);
-
-display:flex;
-
-align-items:center;
-
-justify-content:center;
-
+.latest-box {
+  height: 420px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-
-
-.latest-inner{
-
-height:100%;
-
-display:flex;
-
-gap:40px;
-
-align-items:center;
-
+.latest-inner {
+  height: 100%;
+  display: flex;
+  gap: 40px;
+  align-items: center;
 }
 
-
-
-.latest-inner img{
-
-height:90%;
-
-aspect-ratio:1;
-
-object-fit:cover;
-
-border:1px solid var(--line);
-
+.latest-inner img {
+  height: 90%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border: 1px solid var(--line);
 }
 
-
-
-.latest-cover{
-
-width:320px;
-
-height:220px;
-
-background-size:cover;
-
-background-position:center;
-
-border:1px solid var(--line);
-
+.latest-cover {
+  width: 320px;
+  height: 220px;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--line);
 }
-
-
 
 /* =========================
    游戏库
 ========================= */
 
-
-.game-grid{
-
-display:grid;
-
-grid-template-columns:repeat(7,1fr);
-
-gap:12px;
-
-margin-top:30px;
-
+.game-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 12px;
+  margin-top: 30px;
 }
 
-
-
-.square-card{
-
-position:relative;
-
-aspect-ratio:1;
-
-overflow:hidden;
-
-display:block;
-
-background:var(--panel);
-
-border:1px solid var(--line);
-
+.square-card {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  display: block;
+  background: var(--panel);
+  border: 1px solid var(--line);
 }
 
-
-
-.square-card img{
-
-width:100%;
-
-height:100%;
-
-object-fit:cover;
-
-display:block;
-
+.square-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: 0.3s;
 }
 
-
-
-.square-card:hover img{
-
-transform:scale(1.05);
-
+.square-card:hover img {
+  transform: scale(1.05);
 }
 
-
-
-.square-card img{
-
-transition:.3s;
-
+.game-title {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+  color: white;
+  font-size: 16px;
 }
-
-
-
-.game-title{
-
-position:absolute;
-
-left:0;
-
-bottom:0;
-
-width:100%;
-
-padding:12px;
-
-background:linear-gradient(
-
-transparent,
-
-rgba(0,0,0,.9)
-
-);
-
-color:white;
-
-font-size:16px;
-
-}
-
-
 
 /* =========================
    用户区域
 ========================= */
 
-
-.user-area{
-
-display:flex;
-
-align-items:center;
-
-gap:12px;
-
+.user-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-
-
-.avatar{
-
-width:40px;
-
-height:40px;
-
-display:flex;
-
-align-items:center;
-
-justify-content:center;
-
-background:#222;
-
-border:1px solid var(--line);
-
-font-weight:bold;
-
+.avatar {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #222;
+  border: 1px solid var(--line);
+  font-weight: bold;
 }
 
-
-
-.username{
-
-font-weight:bold;
-
-}
-
-
-
-
-/* =========================
-   响应式
-========================= */
-
-
-@media(max-width:900px){
-
-
-.drawer-nav{
-
-width:80px;
-
-}
-
-
-.drawer-nav.open{
-
-width:200px;
-
-}
-
-
-
-.content-area{
-
-margin-left:70px;
-
-}
-
-
-
-.game-grid{
-
-grid-template-columns:repeat(2,1fr);
-
-}
-
-
+.username {
+  font-weight: bold;
 }
 
 /* =========================
-   游戏详情页
+   首页响应式
 ========================= */
 
+@media (max-width: 900px) {
+  .drawer-nav {
+    width: 80px;
+  }
 
-.detail-page{
+  .drawer-nav.open {
+    width: 200px;
+  }
 
-width:100%;
+  .content-area {
+    margin-left: 70px;
+  }
 
-min-height:100vh;
-
-position:relative;
-
-overflow:hidden;
-
-display:flex;
-
-justify-content:center;
-
-align-items:center;
-
-color:white;
-
-padding:60px 20px;
-
+  .game-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
-
-
-
-.detail-bg{
-
-position:absolute;
-
-inset:-50px;
-
-background-size:cover;
-
-background-position:center;
-
-filter:blur(25px);
-
-transform:scale(1.15);
-
-z-index:0;
-
-}
-
-
-
-
-.detail-mask{
-
-position:absolute;
-
-inset:0;
-
-background:rgba(0,0,0,.65);
-
-z-index:1;
-
-}
-
-
-
-
-.detail-container{
-
-position:relative;
-
-z-index:2;
-
-width:100%;
-
-max-width:1200px;
-
-margin:0 auto;
-
-display:flex;
-
-justify-content:center;
-
-}
-
-
-
-
-.detail-card{
-
-width:100%;
-
-max-width:800px;
-
-background:rgba(20,10,12,.92);
-
-border:1px solid var(--line);
-
-display:flex;
-
-flex-direction:column;
-
-align-items:center;
-
-overflow:hidden;
-
-}
-
-
-
-
-
-.detail-content{
-
-width:100%;
-
-display:flex;
-
-flex-direction:column;
-
-align-items:center;
-
-}
-
-
-
-
-
-/* 封面 */
-
-
-.detail-cover{
-
-width:544px;
-
-height:416px;
-
-flex-shrink:0;
-
-margin:40px;
-
-border:1px solid var(--line);
-
-overflow:hidden;
-
-background:#000;
-
-display:flex;
-
-align-items:center;
-
-justify-content:center;
-
-}
-
-
-
-
-
-.detail-cover img{
-
-width:100%;
-
-height:100%;
-
-object-fit:cover;
-
-}
-
-
-
-
-
-/* 信息 */
-
-
-.detail-info{
-
-flex:1;
-
-padding:40px;
-
-}
-
-
-
-
-.detail-info h1{
-
-font-size:42px;
-
-margin:0 0 25px;
-
-}
-
-
-
-
-
-.description{
-
-white-space:pre-line;
-
-line-height:2;
-
-font-size:18px;
-
-color:rgba(255,255,255,.85);
-
-}
-
-
-
-
-
-.game-meta{
-
-margin-top:30px;
-
-line-height:2;
-
-border-top:1px solid var(--line);
-
-padding-top:20px;
-
-}
-
-
-
-
 
 /* =========================
-   下载按钮
+   旧版详情页兼容样式
 ========================= */
 
-
-.download-box{
-
-display:flex;
-
-gap:20px;
-
-margin-top:40px;
-
+.detail-page {
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  padding: 60px 20px;
 }
 
-
-
-
-
-.download-btn{
-
-display:flex;
-
-align-items:center;
-
-justify-content:center;
-
-min-width:180px;
-
-height:50px;
-
-background:var(--main);
-
-border:1px solid #c44;
-
-color:white;
-
-font-weight:bold;
-
-transition:.2s;
-
+.detail-bg {
+  position: absolute;
+  inset: -50px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(25px);
+  transform: scale(1.15);
+  z-index: 0;
 }
 
-
-
-
-
-.download-btn:hover{
-
-background:#b52d3d;
-
+.detail-mask {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 1;
 }
 
-
-
-
-
-/* =========================
-   历史版本
-========================= */
-
-
-.history-box{
-
-margin-top:50px;
-
-border-top:1px solid var(--line);
-
-padding-top:30px;
-
+.detail-container {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
 }
 
-
-
-
-.history-box h2{
-
-font-size:28px;
-
-margin-bottom:25px;
-
+.detail-card {
+  width: 100%;
+  max-width: 800px;
+  background: rgba(20, 10, 12, 0.92);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
 }
 
-
-
-
-
-.history-item{
-
-display:flex;
-
-align-items:center;
-
-justify-content:space-between;
-
-padding:18px;
-
-margin-bottom:15px;
-
-background:#1c1013;
-
-border:1px solid var(--line);
-
+.detail-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-
-
-
-
-.history-info{
-
-display:flex;
-
-gap:25px;
-
+.detail-cover {
+  width: 544px;
+  height: 416px;
+  flex-shrink: 0;
+  margin: 40px;
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-
-
-
-
-.history-info span{
-
-opacity:.7;
-
+.detail-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-
-
-
-
-.history-btns{
-
-display:flex;
-
-gap:15px;
-
+.detail-info {
+  flex: 1;
+  padding: 40px;
 }
 
-
-
-
-
-.history-btns a{
-
-padding:8px 20px;
-
-background:var(--main);
-
-border:1px solid var(--line);
-
+.detail-info h1 {
+  font-size: 42px;
+  margin: 0 0 25px;
 }
 
-
-
-
-
-.history-btns a:hover{
-
-background:var(--hover);
-
+.description {
+  white-space: pre-line;
+  line-height: 2;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.85);
 }
 
-
-
-
-
-/* =========================
-   详情页适配
-========================= */
-
-
-@media(max-width:900px){
-
-
-.detail-content{
-
-flex-direction:column;
-
+.game-meta {
+  margin-top: 30px;
+  line-height: 2;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
 }
 
+/* 旧版下载按钮 */
 
-
-.detail-cover{
-
-width:100%;
-
-height:auto;
-
-aspect-ratio:544/416;
-
-margin:30px auto;
-
+.download-box {
+  display: flex;
+  gap: 20px;
+  margin-top: 40px;
 }
 
-
-
-.detail-info{
-
-padding:25px;
-
+.download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
+  height: 50px;
+  background: var(--main);
+  border: 1px solid var(--line);
+  color: white;
+  font-weight: bold;
+  transition: 0.2s;
 }
 
-
-
-.download-box{
-
-flex-direction:column;
-
+.download-btn:hover {
+  background: var(--hover);
 }
 
+/* 旧版历史版本 */
 
+.history-box {
+  margin-top: 50px;
+  border-top: 1px solid var(--line);
+  padding-top: 30px;
+}
+
+.history-box h2 {
+  font-size: 28px;
+  margin-bottom: 25px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 18px;
+  margin-bottom: 15px;
+  background: #1c1013;
+  border: 1px solid var(--line);
+}
+
+.history-info {
+  display: flex;
+  gap: 25px;
+}
+
+.history-info span {
+  opacity: 0.7;
+}
+
+.history-btns {
+  display: flex;
+  gap: 15px;
+}
+
+.history-btns a {
+  padding: 8px 20px;
+  background: var(--main);
+  border: 1px solid var(--line);
+}
+
+.history-btns a:hover {
+  background: var(--hover);
+}
+
+/* 旧版详情页适配 */
+
+@media (max-width: 900px) {
+  .detail-content {
+    flex-direction: column;
+  }
+
+  .detail-cover {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 544 / 416;
+    margin: 30px auto;
+  }
+
+  .detail-info {
+    padding: 25px;
+  }
+
+  .download-box {
+    flex-direction: column;
+  }
 }
 
 /* =========================
    登录 / 注册
 ========================= */
 
-
 .auth-page,
-.admin-page{
-
-width:100%;
-
-min-height:100vh;
-
-display:flex;
-
-justify-content:center;
-
-align-items:center;
-
-background:var(--bg);
-
-padding:40px;
-
+.admin-page {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--bg);
+  padding: 40px;
 }
-
-
-
-
 
 .auth-box,
-.admin-box{
-
-background:var(--panel);
-
-border:1px solid var(--line);
-
-padding:40px;
-
-color:white;
-
+.admin-box {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 40px;
+  color: white;
 }
 
-
-
-
-
-.auth-box{
-
-width:420px;
-
+.auth-box {
+  width: 420px;
 }
-
-
-
-
 
 .auth-box h1,
-.admin-box h1{
-
-text-align:center;
-
-margin-bottom:30px;
-
+.admin-box h1 {
+  text-align: center;
+  margin-bottom: 30px;
 }
 
-
-
-
-
-.auth-box input{
-
-width:100%;
-
-height:42px;
-
-margin-bottom:15px;
-
-padding:0 12px;
-
-background:#111;
-
-border:1px solid #555;
-
-color:white;
-
+.auth-box input {
+  width: 100%;
+  height: 42px;
+  margin-bottom: 15px;
+  padding: 0 12px;
+  background: #111;
+  border: 1px solid #555;
+  color: white;
 }
 
-
-
-
-
-.auth-message{
-
-text-align:center;
-
-color:#ff6666;
-
-margin-top:15px;
-
+.auth-message {
+  text-align: center;
+  color: var(--hover);
+  margin-top: 15px;
 }
-
-
-
-
 
 /* =========================
    后台首页
 ========================= */
 
-
-.admin-box{
-
-width:600px;
-
+.admin-box {
+  width: 600px;
 }
 
-
-
-
-
-.admin-actions{
-
-display:flex;
-
-gap:20px;
-
+.admin-actions {
+  display: flex;
+  gap: 20px;
 }
 
-
-
-
-
-.admin-actions button{
-
-flex:1;
-
-background:#222;
-
-border:1px solid var(--line);
-
+.admin-actions button {
+  flex: 1;
+  background: #222;
+  border: 1px solid var(--line);
 }
-
-
-
-
 
 /* =========================
    游戏管理
 ========================= */
 
-
-.games-admin{
-
-width:1400px;
-
-max-width:95vw;
-
+.games-admin {
+  width: 1400px;
+  max-width: 95vw;
 }
 
-
-
-
-
-.admin-top{
-
-display:flex;
-
-justify-content:space-between;
-
-align-items:center;
-
-margin-bottom:25px;
-
+.admin-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
 }
 
-
-
-
-
-.admin-main-btn{
-
-width:auto;
-
+.admin-main-btn {
+  width: auto;
 }
 
-
-
-
-
-.game-search{
-
-height:42px;
-
-width:350px;
-
-background:#111;
-
-border:1px solid #555;
-
-color:white;
-
-padding:0 15px;
-
+.game-search {
+  height: 42px;
+  width: 350px;
+  background: #111;
+  border: 1px solid #555;
+  color: white;
+  padding: 0 15px;
 }
 
-
-
-
-
-.game-table{
-
-width:100%;
-
-border-collapse:collapse;
-
+.game-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-
-
-
-
-.game-table th{
-
-height:45px;
-
-background:#211014;
-
-border:1px solid var(--line);
-
+.game-table th {
+  height: 45px;
+  background: #211014;
+  border: 1px solid var(--line);
 }
 
-
-
-
-
-.game-table td{
-
-height:60px;
-
-padding:10px;
-
-border:1px solid #333;
-
-text-align:center;
-
+.game-table td {
+  height: 60px;
+  padding: 10px;
+  border: 1px solid #333;
+  text-align: center;
 }
 
-
-
-
-
-.game-table tr:hover{
-
-background:#1d1013;
-
+.game-table tr:hover {
+  background: #1d1013;
 }
 
-
-
-
-
-.status{
-
-padding:5px 12px;
-
-border:1px solid #555;
-
+.status {
+  padding: 5px 12px;
+  border: 1px solid #555;
 }
 
-
-
-
-
-.status.hidden{
-
-color:#999;
-
-border-color:#555;
-
+.status.hidden {
+  color: #999;
+  border-color: #555;
 }
-
-
-
-
 
 .edit-btn,
-.delete-btn{
-
-padding:8px 18px;
-
-width:auto;
-
-margin:0 5px;
-
+.delete-btn {
+  padding: 8px 18px;
+  width: auto;
+  margin: 0 5px;
 }
 
+/* 删除按钮仍使用统一红色 */
 
-
-
-
-.delete-btn{
-
-background:#600;
-
-border-color:#900;
-
+.delete-btn {
+  background: var(--main);
+  border-color: var(--line);
 }
 
-
-
-
-
-.delete-btn:hover{
-
-background:#900;
-
+.delete-btn:hover {
+  background: var(--hover);
 }
-
-
-
-
 
 /* =========================
    后台封面预览
 ========================= */
 
-
-/*
- 游戏编辑页大图
- 固定544×416
-*/
-
-
-.edit-cover-preview{
-
-width:544px;
-
-height:416px;
-
-object-fit:cover;
-
-display:block;
-
-border:1px solid var(--line);
-
-margin-top:10px;
-
+.edit-cover-preview {
+  width: 544px;
+  height: 416px;
+  object-fit: cover;
+  display: block;
+  border: 1px solid var(--line);
+  margin-top: 10px;
 }
 
-
-
-
-
-/*
- 游戏列表缩略图
- 保持544:416比例
-*/
-
-
-.admin-cover-box{
-
-width:136px;
-
-height:104px;
-
-overflow:hidden;
-
-border:1px solid var(--line);
-
+.admin-cover-box {
+  width: 136px;
+  height: 104px;
+  overflow: hidden;
+  border: 1px solid var(--line);
 }
 
-
-
-
-
-.admin-cover{
-
-width:100%;
-
-height:100%;
-
-object-fit:cover;
-
+.admin-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
-
-
-
-
 
 /* =========================
    游戏发布 / 编辑
 ========================= */
 
-
-.game-form{
-
-width:1000px;
-
-max-width:95vw;
-
+.game-form {
+  width: 1000px;
+  max-width: 95vw;
 }
 
-
-
-
-
-.form-grid{
-
-display:grid;
-
-grid-template-columns:1fr 1fr;
-
-gap:20px;
-
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
 }
 
-
-
-
-
-.game-form label{
-
-display:flex;
-
-flex-direction:column;
-
-gap:8px;
-
+.game-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-
-
-
-
 
 .game-form input,
-.game-form textarea{
-
-
-width:100%;
-
-height:42px;
-
-background:#111;
-
-border:1px solid #555;
-
-color:white;
-
-padding:0 12px;
-
+.game-form textarea {
+  width: 100%;
+  height: 42px;
+  background: #111;
+  border: 1px solid #555;
+  color: white;
+  padding: 0 12px;
 }
 
-
-
-
-
-.game-form textarea{
-
-height:160px;
-
-padding:15px;
-
-resize:none;
-
+.game-form textarea {
+  height: 160px;
+  padding: 15px;
+  resize: none;
 }
 
-
-
-
-
-.form-buttons{
-
-display:flex;
-
-gap:20px;
-
-margin-top:30px;
-
+.form-buttons {
+  display: flex;
+  gap: 20px;
+  margin-top: 30px;
 }
 
-
-
-
-
-.form-buttons button{
-
-flex:1;
-
+.form-buttons button {
+  flex: 1;
 }
-
-
-
-
 
 /* =========================
    历史版本编辑器
 ========================= */
 
-
-.history-editor{
-
-margin-top:40px;
-
-border-top:1px solid var(--line);
-
-padding-top:20px;
-
+.history-editor {
+  margin-top: 40px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
 }
 
-
-
-
-
-.history-item{
-
-display:flex;
-
-gap:10px;
-
-align-items:center;
-
-background:#1a0d10;
-
-border:1px solid var(--line);
-
-padding:15px;
-
-margin-bottom:15px;
-
+.history-editor .history-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: #1a0d10;
+  border: 1px solid var(--line);
+  padding: 15px;
+  margin-bottom: 15px;
 }
 
-
-
-
-
-.history-item input{
-
-flex:1;
-
+.history-item input {
+  flex: 1;
 }
 
-
-
-
-
-.history-item button{
-
-width:auto;
-
-background:#600;
-
+.history-editor .history-item button {
+  width: auto;
+  background: var(--main);
 }
 
-
-
-
+.history-editor .history-item button:hover {
+  background: var(--hover);
+}
 
 /* =========================
-   返回按钮
+   通用边框与输入焦点
 ========================= */
 
-
-.back-btn{
-
-position:fixed;
-
-top:20px;
-
-left:20px;
-
-width:auto;
-
-height:40px;
-
-background:#222;
-
-border:1px solid var(--line);
-
-z-index:50;
-
+.back-btn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: auto;
+  height: 40px;
+  background: #222;
+  border: 1px solid var(--line);
+  z-index: 50;
 }
 
-
-
-
-
-.back-btn:hover{
-
-background:#444;
-
+.back-btn:hover {
+  background: var(--hover);
 }
-
-
-
-
-
-/* =========================
-   通用边框统一
-========================= */
-
 
 input:focus,
-textarea:focus{
-
-outline:none;
-
-border-color:#8b1e2d;
-
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--main);
 }
 
-
-
-
-
-::-webkit-scrollbar{
-
-width:8px;
-
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-
-
-::-webkit-scrollbar-track{
-
-background:#10090b;
-
+::-webkit-scrollbar-track {
+  background: var(--bg);
 }
 
-
-
-::-webkit-scrollbar-thumb{
-
-background:#4a2028;
-
+::-webkit-scrollbar-thumb {
+  background: var(--line);
 }
 
-
-
-
-
-
+::-webkit-scrollbar-thumb:hover {
+  background: var(--main);
+}
 
 /* =========================
-   小屏适配
+   旧版详情页返回按钮
 ========================= */
 
-
-@media(max-width:900px){
-
-
-.form-grid{
-
-grid-template-columns:1fr;
-
+.detail-back {
+  position: fixed;
+  top: 25px;
+  left: 25px;
+  z-index: 10;
+  width: auto;
+  height: 45px;
+  padding: 0 25px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
 }
 
-
-
-.game-form{
-
-width:100%;
-
+.detail-back:hover {
+  background: var(--main);
 }
 
+/* =========================
+   首页 Banner
+========================= */
 
-
-.games-admin{
-
-width:100%;
-
-overflow-x:auto;
-
+.banner {
+  height: 420px;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
 }
 
-
-
-.game-table{
-
-min-width:900px;
-
+.banner-cover {
+  position: absolute;
+  transform: translate(-50%, -50%);
 }
-
-
-}
-
-.detail-back{
-
-position:fixed;
-
-top:25px;
-
-left:25px;
-
-z-index:10;
-
-width:auto;
-
-height:45px;
-
-padding:0 25px;
-
-background:#160c0f;
-
-border:1px solid #4a2028;
-
-color:white;
-
-font-size:16px;
-
-cursor:pointer;
-
-}
-
-
-.detail-back:hover{
-
-background:#8b1e2d;
-
-}
-
-.banner{
-
-height:420px;
-
-position:relative;
-
-background-size:cover;
-
-background-position:center;
-
-overflow:hidden;
-
-}
-
-
-.banner-cover{
-
-
-position:absolute;
-
-
-transform:
-translate(-50%,-50%);
-
-
-}
-
-
-
 
 .banner h1,
-.banner p{
-
-position:absolute;
-
-transform:translate(-50%,-50%);
-
-margin:0;
-
+.banner p {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  margin: 0;
 }
 
-
-.banner p{
-
-max-width:500px;
-
-line-height:2;
-
+.banner p {
+  max-width: 500px;
+  line-height: 2;
 }
-
-
 
 /* =========================================
    XHRPG Steam 风格游戏详情页
-   左上返回按钮，Logo 位于按钮下方并靠左
-   截图与游戏信息位于 Logo 下方
-   ========================================= */
+   红黑主题，矩形布局
+========================================= */
 
 .steam-detail-page {
-  --steam-panel: rgba(22, 12, 15, 0.94);
-  --steam-line: #4a2028;
-  --steam-red: #8b1e2d;
-  --steam-red-hover: #a52a3a;
-  --steam-text: #f8eeee;
+  --steam-panel: rgba(22, 12, 15, 0.96);
+  --steam-line: var(--line);
+  --steam-red: var(--main);
+  --steam-red-hover: var(--hover);
+  --steam-text: var(--text);
   --steam-muted: #c4adb2;
 
   position: relative;
@@ -1742,11 +831,12 @@ line-height:2;
   min-height: 100vh;
   padding: 0 5vw 72px;
   overflow: hidden;
-  background: #10090b;
+  background: var(--bg);
   color: var(--steam-text);
 }
 
 /* 背景图 */
+
 .steam-detail-background {
   position: absolute;
   z-index: -2;
@@ -1756,7 +846,6 @@ line-height:2;
   pointer-events: none;
 }
 
-/* 详情页背景遮罩：完全取消黑色渐变 */
 .steam-detail-overlay {
   position: absolute;
   z-index: -1;
@@ -1765,41 +854,39 @@ line-height:2;
   pointer-events: none;
 }
 
-/* 顶部区域：所有内容纵向排列并靠左 */
+/* 顶部区域 */
+
 .steam-detail-topbar {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: flex-start !important;
-  justify-content: flex-start !important;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 10px;
 
   width: 100%;
   max-width: 1500px;
   min-height: 0;
-
   margin: 0 auto 28px;
   padding: 10px 0;
-
 }
 
-/* 返回游戏库按钮 */
+/* 返回游戏库 */
+
 .steam-back {
   position: relative;
   z-index: 2;
-
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  align-self: flex-start !important;
+  align-self: flex-start;
 
   min-height: 42px;
   padding: 0 16px;
 
   color: var(--steam-text);
-  background: rgba(16, 9, 11, 0.78);
+  background: rgba(16, 9, 11, 0.88);
   border: 1px solid var(--steam-line);
-
   text-decoration: none;
   transition: background 0.2s ease;
 }
@@ -1808,7 +895,8 @@ line-height:2;
   background: var(--steam-red);
 }
 
-/* Logo / 游戏标题：位于返回按钮下方并靠左 */
+/* 游戏 Logo / 标题 */
+
 .steam-brand {
   position: static !important;
   inset: auto !important;
@@ -1824,76 +912,55 @@ line-height:2;
   min-width: 0;
   min-height: 0;
 
-  margin: 12px 0 0 0 !important;
+  margin: 12px 0 0 !important;
   padding: 0 !important;
 
   color: var(--steam-text);
   font-size: 24px;
   font-weight: 800;
-  letter-spacing: 1.0px;
+  letter-spacing: 1px;
   line-height: 1;
   text-align: left !important;
   overflow-wrap: anywhere;
 }
 
-
-/* 游戏标题 PNG：放大显示，保持原始比例 */
 .steam-brand img {
   display: block;
-
   width: auto;
   height: auto;
-
-  /* 允许标题使用更大的显示区域 */
   max-width: min(90vw, 900px);
   max-height: 240px;
-
   margin: 0 !important;
   padding: 0;
-
   object-fit: contain;
   object-position: left center;
-
   flex-shrink: 0;
 }
 
-/* 平板 */
-@media (max-width: 1000px) {
-  .steam-brand img {
-    max-width: 90vw;
-    max-height: 180px;
-  }
-}
+/* =========================
+   详情页上方双栏
+========================= */
 
-/* 手机 */
-@media (max-width: 600px) {
-  .steam-brand img {
-    max-width: 90vw;
-    max-height: 120px;
-  }
-}
-
-
-/* Logo 下方的游戏内容区域 */
 .steam-detail-layout {
   position: relative;
-
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.9fr);
-  align-items: start;
+  align-items: stretch;
   gap: 28px;
 
   width: 100%;
   max-width: 1500px;
-
   margin: 0 auto;
 }
 
 .steam-gallery {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
 /* 主预览图 */
+
 .steam-main-image {
   display: flex;
   align-items: center;
@@ -1902,62 +969,67 @@ line-height:2;
   width: 100%;
   min-height: 260px;
   aspect-ratio: 16 / 9;
-
   overflow: hidden;
+
   background: #080607;
   border: 1px solid var(--steam-line);
 }
 
 .steam-main-image img {
   display: block;
-
   width: 100%;
   height: 100%;
   max-height: 720px;
-
   object-fit: contain;
 }
 
-/* 截图缩略图 */
+.steam-no-preview {
+  color: var(--steam-muted);
+  font-size: 14px;
+}
+
+/* 预览图缩略图 */
+
 .steam-thumbnails {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
-
   margin-top: 10px;
 }
 
 .steam-thumbnail {
   display: block;
-
   min-width: 0;
   aspect-ratio: 16 / 9;
   padding: 0;
-
   overflow: hidden;
   cursor: pointer;
 
-  background: #160c0f;
+  background: var(--panel);
   border: 2px solid transparent;
 }
 
 .steam-thumbnail:hover,
 .steam-thumbnail.active {
-  border-color: #a52a3a;
+  border-color: var(--steam-red);
 }
 
 .steam-thumbnail img {
   display: block;
-
   width: 100%;
   height: 100%;
-
   object-fit: cover;
 }
 
-/* 游戏信息卡片 */
+/* =========================
+   右侧游戏介绍
+========================= */
+
 .steam-game-info {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  height: 100%;
   padding: 26px;
 
   background: var(--steam-panel);
@@ -1967,31 +1039,26 @@ line-height:2;
 
 .steam-game-info h1 {
   margin: 0 0 18px;
-
   font-size: clamp(25px, 2.4vw, 38px);
   line-height: 1.25;
-
   overflow-wrap: anywhere;
 }
 
 .steam-description {
   margin: 0 0 26px;
-
   color: #e1cdd1;
   font-size: 14px;
   line-height: 1.9;
-
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-/* 作者、类型、版本等信息 */
+/* 作者、类型、版本 */
+
 .steam-meta {
   display: grid;
   gap: 0;
-
-  margin: 0 0 26px;
-
+  margin: auto 0 0;
   border-top: 1px solid var(--steam-line);
 }
 
@@ -1999,9 +1066,7 @@ line-height:2;
   display: grid;
   grid-template-columns: 78px minmax(0, 1fr);
   gap: 12px;
-
   padding: 12px 0;
-
   border-bottom: 1px solid rgba(74, 32, 40, 0.7);
 }
 
@@ -2014,81 +1079,108 @@ line-height:2;
   overflow-wrap: anywhere;
 }
 
-/* 下载区域 */
-.steam-download-panel {
-  padding: 18px;
+/* =========================
+   底部下载区域
+   与上方双栏左右对齐
+========================= */
 
-  background: rgba(8, 6, 7, 0.6);
+.steam-download-panel {
+  width: 100%;
+  max-width: 1500px;
+  margin: 28px auto 0;
+  padding: 22px;
+
+  background: rgba(8, 6, 7, 0.88);
   border: 1px solid var(--steam-line);
 }
 
+/* 下载标题 */
+
 .steam-download-heading {
   display: flex;
-  flex-direction: column;
-  gap: 18px;
-
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 20px;
   margin-bottom: 18px;
 }
 
-.steam-download-heading > div:first-child {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
 .steam-download-heading strong {
-  font-size: 19px;
+  font-size: 21px;
 }
 
-.steam-download-heading span {
+.steam-download-heading > span {
   color: var(--steam-muted);
   font-size: 13px;
 }
 
-/* 历史版本选择 */
+/* 版本选择框与下载按钮横向排列 */
+
+.steam-download-controls {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* 版本选择 */
+
 .steam-version-select {
   display: flex;
+  flex: 0 0 250px;
   flex-direction: column;
-  gap: 8px;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+
+  color: var(--steam-muted);
+  font-size: 13px;
 }
 
 .steam-version-select select {
   width: 100%;
-  min-height: 44px;
+  min-height: 50px;
   padding: 0 12px;
 
   color: var(--steam-text);
-  background: #160c0f;
+  background: var(--panel);
   border: 1px solid var(--steam-line);
-
   font: inherit;
 }
 
+.steam-version-select select:focus {
+  outline: none;
+  border-color: var(--steam-red);
+}
+
 /* 下载按钮 */
+
 .steam-download-buttons {
-  display: grid;
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: stretch;
   gap: 10px;
+  min-width: 0;
 }
 
 .steam-download-button {
   display: flex;
+  flex: 1 1 180px;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 
+  min-width: 0;
   min-height: 50px;
   padding: 0 18px;
 
   color: #fff;
   background: var(--steam-red);
-  border: 1px solid var(--steam-red);
-
+  border: 1px solid var(--steam-line);
   font-weight: 700;
   text-decoration: none;
 
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .steam-download-button:hover {
@@ -2096,31 +1188,53 @@ line-height:2;
   border-color: var(--steam-red-hover);
 }
 
+/* 兼容旧版 secondary 类，保持同一红色主题 */
+
 .steam-download-button.secondary {
-  background: #271117;
-  border-color: #71303c;
+  background: var(--steam-red);
+  border-color: var(--steam-line);
 }
 
 .steam-download-button.secondary:hover {
-  background: var(--steam-red);
+  background: var(--steam-red-hover);
 }
 
 .steam-no-download {
   margin: 0;
-
   color: var(--steam-muted);
   font-size: 13px;
   line-height: 1.7;
 }
 
-/* 平板：截图与信息上下排列 */
+/* =========================
+   详情页平板适配
+========================= */
+
 @media (max-width: 1000px) {
+  .steam-brand img {
+    max-width: 90vw;
+    max-height: 180px;
+  }
+
   .steam-detail-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .steam-game-info {
+    height: auto;
     padding: 22px;
+  }
+
+  .steam-meta {
+    margin-top: 0;
+  }
+
+  .steam-download-controls {
+    flex-wrap: wrap;
+  }
+
+  .steam-version-select {
+    flex: 1 1 220px;
   }
 
   .steam-brand {
@@ -2128,16 +1242,19 @@ line-height:2;
   }
 }
 
-/* 手机适配 */
+/* =========================
+   详情页手机适配
+========================= */
+
 @media (max-width: 600px) {
   .steam-detail-page {
     padding: 0 14px 40px;
   }
 
   .steam-detail-topbar {
-    gap: 16px;
+    gap: 10px;
     margin-bottom: 18px;
-    padding: 18px 0;
+    padding: 10px 0;
   }
 
   .steam-back {
@@ -2148,9 +1265,11 @@ line-height:2;
 
   .steam-brand {
     font-size: 16px;
+    margin-top: 6px !important;
   }
 
   .steam-brand img {
+    max-width: 90vw;
     max-height: 90px;
   }
 
@@ -2171,6 +1290,48 @@ line-height:2;
   }
 
   .steam-download-panel {
+    margin-top: 18px;
     padding: 14px;
+  }
+
+  .steam-download-controls {
+    flex-direction: column;
+  }
+
+  .steam-version-select {
+    flex: auto;
+    width: 100%;
+  }
+
+  .steam-download-buttons {
+    flex-direction: column;
+  }
+
+  .steam-download-button {
+    flex: auto;
+    width: 100%;
+  }
+}
+
+/* =========================
+   小屏后台适配
+========================= */
+
+@media (max-width: 900px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .game-form {
+    width: 100%;
+  }
+
+  .games-admin {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .game-table {
+    min-width: 900px;
   }
 }
