@@ -192,22 +192,23 @@ export default function GameDetailClient({
 
       {/* 下方：独立下载区域 */}
       <section className="steam-download-panel">
-        {/* 标题与当前版本信息 */}
+        {/* 标题独立显示，当前版本信息移至下方控件行 */}
         <div className="steam-download-heading">
           <strong>
             {selectedHistory ? "其他版本下载" : "下载游戏"}
           </strong>
+        </div>
 
-          <span>
+        {/* 当前版本、版本选择栏与下载按钮统一排列 */}
+        <div className="steam-download-controls">
+          {/* 当前版本信息 */}
+          <span className="steam-download-current">
             {selectedHistory
               ? `当前选择：${selectedHistory.version || "其他版本"}`
               : `当前版本：${version || "最新版"}`}
           </span>
-        </div>
 
-        {/* 版本选择栏与下载按钮的统一布局容器 */}
-        <div className="steam-download-controls">
-          {/* 左侧：版本选择 */}
+          {/* 版本选择 */}
           {history.length > 0 && (
             <label className="steam-version-select">
               <span>选择版本</span>
@@ -232,7 +233,7 @@ export default function GameDetailClient({
             </label>
           )}
 
-          {/* 右侧：下载按钮 */}
+          {/* 下载按钮 */}
           <div className="steam-download-buttons">
             {activeLanzou && (
               <a
