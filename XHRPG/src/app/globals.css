@@ -1763,8 +1763,9 @@ line-height:2;
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(16, 9, 11, 0.52) 0%,
-    rgba(16, 9, 11, 0.76) 42%,
+    rgba(16, 9, 11, 0.18) 0%,
+    rgba(16, 9, 11, 0.38) 45%,
+    rgba(16, 9, 11, 0.85) 78%,
     #10090b 100%
   );
   pointer-events: none;
@@ -1814,7 +1815,7 @@ line-height:2;
   background: var(--steam-red);
 }
 
-/* Logo / 游戏标题：强制位于返回按钮下方并靠左 */
+/* Logo / 游戏标题：位于返回按钮下方并靠左 */
 .steam-brand {
   position: static !important;
   inset: auto !important;
@@ -1830,14 +1831,14 @@ line-height:2;
   min-width: 0;
   min-height: 0;
 
-  margin: 0 !important;
+  margin: 2px 0 0 0 !important;
   padding: 0 !important;
 
   color: var(--steam-text);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
-  letter-spacing: 1px;
-  line-height: 1.4;
+  letter-spacing: 1.0px;
+  line-height: 1.0;
   text-align: left !important;
   overflow-wrap: anywhere;
 }
