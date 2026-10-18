@@ -175,7 +175,7 @@ export default function GameDetailClient({
           <dl className="steam-meta">
             <div>
               <dt>作者</dt>
-              <dd>{author || "未填写"}</dd>
+              <dd>{author || "未详"}</dd>
             </div>
 
             <div>
@@ -185,7 +185,7 @@ export default function GameDetailClient({
 
             <div>
               <dt>版本</dt>
-              <dd>{displayVersion || "未填写"}</dd>
+              <dd>{displayVersion || "最新版"}</dd>
             </div>
           </dl>
 
@@ -194,13 +194,13 @@ export default function GameDetailClient({
             <div className="steam-download-heading">
               <div>
                 <strong>
-                  {selectedHistory ? "历史版本下载" : "下载游戏"}
+                  {selectedHistory ? "其他版本下载" : "下载游戏"}
                 </strong>
 
                 <span>
                   {selectedHistory
-                    ? `版本：${selectedHistory.version || "历史版本"}`
-                    : `当前版本：${version || "未填写"}`}
+                    ? `版本：${selectedHistory.version || "其他版本"}`
+                    : `当前版本：${version || "最新版"}`}
                 </span>
               </div>
 
@@ -221,7 +221,7 @@ export default function GameDetailClient({
 
                     {history.map((item, index) => (
                       <option key={index} value={String(index)}>
-                        {item.version || `历史版本 ${index + 1}`}
+                        {item.version || `其他版本 ${index + 1}`}
                         {item.date ? ` · ${item.date}` : ""}
                       </option>
                     ))}
@@ -246,7 +246,7 @@ export default function GameDetailClient({
 
               {activePan123 && (
                 <a
-                  className="steam-download-button secondary"
+                  className="steam-download-button"
                   href={activePan123}
                   target="_blank"
                   rel="noopener noreferrer"
