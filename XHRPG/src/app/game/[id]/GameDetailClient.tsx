@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -45,9 +46,6 @@ export default function GameDetailClient({
   detailBackgroundFit,
   screenshots,
 }: Props) {
-  // 过滤空图片和重复图片。
-  // 有独立预览图时不自动加入封面；
-  // 没有预览图时才使用首页游戏卡片的封面。
   const previewImages = Array.from(
     new Set(
       screenshots.filter(
@@ -98,7 +96,6 @@ export default function GameDetailClient({
 
   return (
     <main className="steam-detail-page">
-      {/* 详情页背景 */}
       <div
         className="steam-detail-background"
         style={{
@@ -112,7 +109,7 @@ export default function GameDetailClient({
 
       <div className="steam-detail-overlay" />
 
-      {/* 顶部导航与游戏标题 */}
+      {/* 顶部区域 */}
       <header className="steam-detail-topbar">
         <Link href="/" className="steam-back">
           ← 返回游戏库
@@ -127,8 +124,9 @@ export default function GameDetailClient({
         </div>
       </header>
 
+      {/* 上方双栏布局 */}
       <div className="steam-detail-layout">
-        {/* 图片预览区域 */}
+        {/* 左侧：预览图与缩略图 */}
         <section className="steam-gallery">
           <div className="steam-main-image">
             {activeImage ? (
@@ -143,7 +141,6 @@ export default function GameDetailClient({
             )}
           </div>
 
-          {/* 多张图片时显示缩略图 */}
           {gallery.length > 1 && (
             <div className="steam-thumbnails">
               {gallery.map((image, index) => (
@@ -166,11 +163,13 @@ export default function GameDetailClient({
           )}
         </section>
 
-        {/* 游戏信息区域 */}
+        {/* 右侧：游戏介绍 */}
         <aside className="steam-game-info">
           <h1>{name}</h1>
 
-          <p className="steam-description">{description}</p>
+          <p className="steam-description">
+            {description}
+          </p>
 
           <dl className="steam-meta">
             <div>
@@ -188,83 +187,83 @@ export default function GameDetailClient({
               <dd>{displayVersion || "最新版"}</dd>
             </div>
           </dl>
-
-          {/* 下载面板 */}
-          <section className="steam-download-panel">
-            <div className="steam-download-heading">
-              <div>
-                <strong>
-                  {selectedHistory ? "其他版本下载" : "下载游戏"}
-                </strong>
-
-                <span>
-                  {selectedHistory
-                    ? `版本：${selectedHistory.version || "其他版本"}`
-                    : `当前版本：${version || "最新版"}`}
-                </span>
-              </div>
-
-              {/* 版本选择 */}
-              {history.length > 0 && (
-                <label className="steam-version-select">
-                  <span>选择版本</span>
-
-                  <select
-                    value={selectedVersion}
-                    onChange={(event) =>
-                      setSelectedVersion(event.target.value)
-                    }
-                  >
-                    <option value="-1">
-                      当前版本（{version || "最新版"}）
-                    </option>
-
-                    {history.map((item, index) => (
-                      <option key={index} value={String(index)}>
-                        {item.version || `其他版本 ${index + 1}`}
-                        {item.date ? ` · ${item.date}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-            </div>
-
-            {/* 下载按钮 */}
-            <div className="steam-download-buttons">
-              {activeLanzou && (
-                <a
-                  className="steam-download-button"
-                  href={activeLanzou}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <span>蓝奏云下载</span>
-                  <span aria-hidden="true">↗</span>
-                </a>
-              )}
-
-              {activePan123 && (
-                <a
-                  className="steam-download-button"
-                  href={activePan123}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <span>123 云盘下载</span>
-                  <span aria-hidden="true">↗</span>
-                </a>
-              )}
-
-              {!activeLanzou && !activePan123 && (
-                <p className="steam-no-download">
-                  当前选择的版本暂未提供下载链接。
-                </p>
-              )}
-            </div>
-          </section>
         </aside>
       </div>
+
+      {/* 下方：独立下载区域，与上方整体左右对齐 */}
+      <section className="steam-download-panel">
+        <div className="steam-download-heading">
+          <strong>
+            {selectedHistory ? "其他版本下载" : "下载游戏"}
+          </strong>
+
+          <span>
+            {selectedHistory
+              ? `当前选择：${selectedHistory.version || "其他版本"}`
+              : `当前版本：${version || "最新版"}`}
+          </span>
+        </div>
+
+        <div className="steam-download-controls">
+          {/* 版本选择放在下载按钮左侧 */}
+          {history.length > 0 && (
+            <label className="steam-version-select">
+              <span>选择版本</span>
+
+              <select
+                value={selectedVersion}
+                onChange={(event) =>
+                  setSelectedVersion(event.target.value)
+                }
+              >
+                <option value="-1">
+                  当前版本（{version || "最新版"}）
+                </option>
+
+                {history.map((item, index) => (
+                  <option key={index} value={String(index)}>
+                    {item.version || `其他版本 ${index + 1}`}
+                    {item.date ? ` · ${item.date}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {/* 下载按钮 */}
+          <div className="steam-download-buttons">
+            {activeLanzou && (
+              <a
+                className="steam-download-button"
+                href={activeLanzou}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span>蓝奏云下载</span>
+                <span aria-hidden="true">↗</span>
+              </a>
+            )}
+
+            {activePan123 && (
+              <a
+                className="steam-download-button"
+                href={activePan123}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span>123 云盘下载</span>
+                <span aria-hidden="true">↗</span>
+              </a>
+            )}
+
+            {!activeLanzou && !activePan123 && (
+              <p className="steam-no-download">
+                当前选择的版本暂未提供下载链接。
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
