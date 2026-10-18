@@ -1335,3 +1335,96 @@ select:focus {
     min-width: 900px;
   }
 }
+
+/* =========================================
+   仅调整下载按钮
+========================================= */
+
+/* 下载按钮区域不超过父容器 */
+.steam-download-buttons {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* 两个按钮自动平分宽度，高度与版本选择框一致 */
+.steam-download-button {
+  flex: 1 1 0;
+  width: 0;
+  max-width: 100%;
+  min-width: 0;
+  height: 50px;
+  min-height: 50px;
+  max-height: 50px;
+  padding: 0 14px;
+  box-sizing: border-box;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  overflow: hidden;
+  white-space: nowrap;
+  background: var(--main);
+  border: 1px solid var(--line);
+  color: #fff;
+}
+
+/* 按钮文字过长时截断，不能撑大按钮 */
+.steam-download-button > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.steam-download-button > span:last-child {
+  flex: 0 0 auto;
+}
+
+/* 悬停颜色 */
+.steam-download-button:hover {
+  background: var(--hover);
+  border-color: var(--hover);
+}
+
+/* 兼容次要按钮样式 */
+.steam-download-button.secondary {
+  background: var(--main);
+  border-color: var(--line);
+}
+
+.steam-download-button.secondary:hover {
+  background: var(--hover);
+  border-color: var(--hover);
+}
+
+/* 手机端也保持两个按钮并排 */
+@media (max-width: 600px) {
+  .steam-download-buttons {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .steam-download-button {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    max-width: 100%;
+    height: 50px;
+    min-height: 50px;
+    max-height: 50px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+}
