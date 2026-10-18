@@ -167,8 +167,8 @@ export default function HomeClient({
             whiteSpace: "nowrap",
           }}
         >
-          <b style={{ fontSize: "24px", lineHeight: 1, color: "#111111" }}>喜灰</b>
-          <span style={{ fontSize: "24px", lineHeight: 1, color: "#FFFFFF" }}>RPG</span>
+          <b style={{ fontSize: "36px", lineHeight: 1, color: "#111111" }}>喜灰</b>
+          <span style={{ fontSize: "36px", lineHeight: 1, color: "#FFFFFF" }}>RPG</span>
         </div>
 
         {/* 搜索栏和用户信息放入顶部红色导航栏 */}
@@ -183,7 +183,7 @@ export default function HomeClient({
             minWidth: 0,
             marginLeft: "auto",
             padding: "7px 0 0",
-            transform: "translateY(3px)",
+            transform: "translateY(6px)",
             background: "transparent",
             boxSizing: "border-box",
           }}
