@@ -1,3 +1,4 @@
+
 :root {
   --bg: #10090b;
   --panel: #160c0f;
@@ -6,18 +7,10 @@
   --text: #f8eeee;
   --hover: #a52a3a;
 
-  /* 全站统一强调色 */
-  --accent: var(--main);
-  --accent-hover: var(--hover);
-  --accent-border: var(--line);
-
-  /* Steam 详情页兼容变量 */
-  --steam-red: var(--accent);
-  --steam-red-hover: var(--accent-hover);
-  --steam-line: var(--accent-border);
-  --steam-text: var(--text);
-  --steam-muted: #c4adb2;
-  --steam-panel: rgba(22, 12, 15, 0.96);
+  /* 统一强调色 */
+  --accent: #8b1e2d;
+  --accent-hover: #a52a3a;
+  --accent-border: #4a2028;
 }
 
 *,
@@ -45,15 +38,15 @@ select {
 }
 
 button {
-  background: var(--accent);
-  color: #fff;
-  border: 1px solid var(--accent-border);
+  background: var(--main);
+  color: white;
+  border: 1px solid var(--line);
   padding: 12px 25px;
   cursor: pointer;
 }
 
 button:hover {
-  background: var(--accent-hover);
+  background: var(--hover);
 }
 
 a {
@@ -71,7 +64,9 @@ a {
   background: var(--bg);
 }
 
-/* 左侧抽屉 */
+/* =========================
+   左侧抽屉
+========================= */
 
 .drawer-nav {
   position: fixed;
@@ -79,12 +74,12 @@ a {
   top: 0;
   height: 100vh;
   width: 97px;
-  background: var(--accent);
-  color: #fff;
+  background: var(--main);
+  color: var(--main);
   overflow: hidden;
-  transition: width 0.3s ease;
+  transition: 0.3s;
   z-index: 20;
-  border-right: 1px solid var(--accent-border);
+  border-right: 1px solid var(--line);
 }
 
 .drawer-nav.open {
@@ -94,34 +89,34 @@ a {
 .logo-box {
   padding: 20px;
   background: var(--bg);
-  color: #fff;
+  color: white;
   font-size: 28px;
-  border: 1px solid var(--accent-border);
+  border: 1px solid #333;
   margin-bottom: 20px;
   white-space: nowrap;
 }
 
 .logo-box span {
   display: block;
-  color: var(--accent);
+  color: var(--main);
 }
 
 .nav-item {
   padding: 15px;
-  border-bottom: 1px solid rgba(248, 238, 238, 0.25);
+  border-bottom: 1px solid #ddd;
   white-space: nowrap;
-  color: #fff;
 }
 
 .nav-item:hover {
-  background: var(--accent-hover);
+  background: #eee;
 }
 
-/* 首页主体 */
+/* =========================
+   首页主体
+========================= */
 
 .content-area {
   flex: 1;
-  min-width: 0;
   margin-left: 90px;
   padding: 30px;
 }
@@ -141,16 +136,18 @@ a {
   flex: 1;
   max-width: 700px;
   background: var(--panel);
-  border: 1px solid var(--accent-border);
-  color: var(--text);
+  border: 1px solid var(--line);
+  color: white;
   padding: 0 15px;
 }
 
-/* 最新游戏展示 */
+/* =========================
+   最新游戏展示
+========================= */
 
 .latest-box {
   height: 420px;
-  border: 1px solid var(--accent-border);
+  border: 1px solid var(--line);
   background: var(--panel);
   display: flex;
   align-items: center;
@@ -168,7 +165,7 @@ a {
   height: 90%;
   aspect-ratio: 1;
   object-fit: cover;
-  border: 1px solid var(--accent-border);
+  border: 1px solid var(--line);
 }
 
 .latest-cover {
@@ -176,14 +173,16 @@ a {
   height: 220px;
   background-size: cover;
   background-position: center;
-  border: 1px solid var(--accent-border);
+  border: 1px solid var(--line);
 }
 
-/* 游戏库 */
+/* =========================
+   游戏库
+========================= */
 
 .game-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(7, 1fr);
   gap: 12px;
   margin-top: 30px;
 }
@@ -194,7 +193,7 @@ a {
   overflow: hidden;
   display: block;
   background: var(--panel);
-  border: 1px solid var(--accent-border);
+  border: 1px solid var(--line);
 }
 
 .square-card img {
@@ -202,7 +201,7 @@ a {
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.3s ease;
+  transition: 0.3s;
 }
 
 .square-card:hover img {
@@ -216,11 +215,13 @@ a {
   width: 100%;
   padding: 12px;
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
-  color: #fff;
+  color: white;
   font-size: 16px;
 }
 
-/* 用户区域 */
+/* =========================
+   用户区域
+========================= */
 
 .user-area {
   display: flex;
@@ -234,8 +235,8 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--panel);
-  border: 1px solid var(--accent-border);
+  background: #222;
+  border: 1px solid var(--line);
   font-weight: bold;
 }
 
@@ -243,7 +244,9 @@ a {
   font-weight: bold;
 }
 
-/* 首页响应式 */
+/* =========================
+   首页响应式
+========================= */
 
 @media (max-width: 900px) {
   .drawer-nav {
@@ -259,7 +262,7 @@ a {
   }
 
   .game-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -275,7 +278,7 @@ a {
   display: flex;
   justify-content: center;
   align-items: center;
-  color: #fff;
+  color: white;
   padding: 60px 20px;
 }
 
@@ -310,7 +313,7 @@ a {
   width: 100%;
   max-width: 800px;
   background: rgba(20, 10, 12, 0.92);
-  border: 1px solid var(--accent-border);
+  border: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -329,7 +332,7 @@ a {
   height: 416px;
   flex-shrink: 0;
   margin: 40px;
-  border: 1px solid var(--accent-border);
+  border: 1px solid var(--line);
   overflow: hidden;
   background: #000;
   display: flex;
@@ -363,7 +366,7 @@ a {
 .game-meta {
   margin-top: 30px;
   line-height: 2;
-  border-top: 1px solid var(--accent-border);
+  border-top: 1px solid var(--line);
   padding-top: 20px;
 }
 
@@ -371,7 +374,6 @@ a {
 
 .download-box {
   display: flex;
-  flex-wrap: wrap;
   gap: 20px;
   margin-top: 40px;
 }
@@ -382,22 +384,22 @@ a {
   justify-content: center;
   min-width: 180px;
   height: 50px;
-  background: var(--accent);
-  border: 1px solid var(--accent-border);
-  color: #fff;
+  background: var(--main);
+  border: 1px solid var(--line);
+  color: white;
   font-weight: bold;
-  transition: background 0.2s ease;
+  transition: 0.2s;
 }
 
 .download-btn:hover {
-  background: var(--accent-hover);
+  background: var(--hover);
 }
 
 /* 旧版历史版本 */
 
 .history-box {
   margin-top: 50px;
-  border-top: 1px solid var(--accent-border);
+  border-top: 1px solid var(--line);
   padding-top: 30px;
 }
 
@@ -413,8 +415,8 @@ a {
   gap: 10px;
   padding: 18px;
   margin-bottom: 15px;
-  background: var(--panel);
-  border: 1px solid var(--accent-border);
+  background: #1c1013;
+  border: 1px solid var(--line);
 }
 
 .history-info {
@@ -428,18 +430,17 @@ a {
 
 .history-btns {
   display: flex;
-  flex-wrap: wrap;
   gap: 15px;
 }
 
 .history-btns a {
   padding: 8px 20px;
-  background: var(--accent);
-  border: 1px solid var(--accent-border);
+  background: var(--main);
+  border: 1px solid var(--line);
 }
 
 .history-btns a:hover {
-  background: var(--accent-hover);
+  background: var(--hover);
 }
 
 /* 旧版详情页适配 */
@@ -450,7 +451,7 @@ a {
   }
 
   .detail-cover {
-    width: calc(100% - 40px);
+    width: 100%;
     height: auto;
     aspect-ratio: 544 / 416;
     margin: 30px auto;
@@ -466,7 +467,7 @@ a {
 }
 
 /* =========================
-   登录 / 注册 / 后台
+   登录 / 注册
 ========================= */
 
 .auth-page,
@@ -483,14 +484,13 @@ a {
 .auth-box,
 .admin-box {
   background: var(--panel);
-  border: 1px solid var(--accent-border);
+  border: 1px solid var(--line);
   padding: 40px;
-  color: #fff;
+  color: white;
 }
 
 .auth-box {
   width: 420px;
-  max-width: 100%;
 }
 
 .auth-box h1,
@@ -504,22 +504,23 @@ a {
   height: 42px;
   margin-bottom: 15px;
   padding: 0 12px;
-  background: var(--bg);
+  background: #111;
   border: 1px solid #555;
-  color: var(--text);
+  color: white;
 }
 
 .auth-message {
   text-align: center;
-  color: var(--accent-hover);
+  color: var(--hover);
   margin-top: 15px;
 }
 
-/* 后台首页 */
+/* =========================
+   后台首页
+========================= */
 
 .admin-box {
   width: 600px;
-  max-width: 100%;
 }
 
 .admin-actions {
@@ -529,15 +530,13 @@ a {
 
 .admin-actions button {
   flex: 1;
-  background: var(--panel);
-  border: 1px solid var(--accent-border);
+  background: #222;
+  border: 1px solid var(--line);
 }
 
-.admin-actions button:hover {
-  background: var(--accent-hover);
-}
-
-/* 游戏管理 */
+/* =========================
+   游戏管理
+========================= */
 
 .games-admin {
   width: 1400px;
@@ -548,7 +547,6 @@ a {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 15px;
   margin-bottom: 25px;
 }
 
@@ -559,10 +557,9 @@ a {
 .game-search {
   height: 42px;
   width: 350px;
-  max-width: 100%;
-  background: var(--bg);
+  background: #111;
   border: 1px solid #555;
-  color: var(--text);
+  color: white;
   padding: 0 15px;
 }
 
@@ -573,8 +570,8 @@ a {
 
 .game-table th {
   height: 45px;
-  background: var(--panel);
-  border: 1px solid var(--accent-border);
+  background: #211014;
+  border: 1px solid var(--line);
 }
 
 .game-table td {
@@ -585,7 +582,7 @@ a {
 }
 
 .game-table tr:hover {
-  background: var(--panel);
+  background: #1d1013;
 }
 
 .status {
@@ -605,26 +602,27 @@ a {
   margin: 0 5px;
 }
 
-/* 删除按钮统一红色 */
+/* 删除按钮仍使用统一红色 */
 
 .delete-btn {
-  background: var(--accent);
-  border-color: var(--accent-border);
+  background: var(--main);
+  border-color: var(--line);
 }
 
 .delete-btn:hover {
-  background: var(--accent-hover);
+  background: var(--hover);
 }
 
-/* 后台封面预览 */
+/* =========================
+   后台封面预览
+========================= */
 
 .edit-cover-preview {
   width: 544px;
-  max-width: 100%;
   height: 416px;
   object-fit: cover;
   display: block;
-  border: 1px solid var(--accent-border);
+  border: 1px solid var(--line);
   margin-top: 10px;
 }
 
@@ -632,7 +630,7 @@ a {
   width: 136px;
   height: 104px;
   overflow: hidden;
-  border: 1px solid var(--accent-border);
+  border: 1px solid var(--line);
 }
 
 .admin-cover {
@@ -641,7 +639,9 @@ a {
   object-fit: cover;
 }
 
-/* 游戏发布 / 编辑 */
+/* =========================
+   游戏发布 / 编辑
+========================= */
 
 .game-form {
   width: 1000px;
@@ -664,16 +664,16 @@ a {
 .game-form textarea {
   width: 100%;
   height: 42px;
-  background: var(--bg);
+  background: #111;
   border: 1px solid #555;
-  color: var(--text);
+  color: white;
   padding: 0 12px;
 }
 
 .game-form textarea {
   height: 160px;
   padding: 15px;
-  resize: vertical;
+  resize: none;
 }
 
 .form-buttons {
@@ -686,11 +686,13 @@ a {
   flex: 1;
 }
 
-/* 历史版本编辑器 */
+/* =========================
+   历史版本编辑器
+========================= */
 
 .history-editor {
   margin-top: 40px;
-  border-top: 1px solid var(--accent-border);
+  border-top: 1px solid var(--line);
   padding-top: 20px;
 }
 
@@ -698,27 +700,28 @@ a {
   display: flex;
   gap: 10px;
   align-items: center;
-  background: var(--panel);
-  border: 1px solid var(--accent-border);
+  background: #1a0d10;
+  border: 1px solid var(--line);
   padding: 15px;
   margin-bottom: 15px;
 }
 
 .history-item input {
   flex: 1;
-  min-width: 0;
 }
 
 .history-editor .history-item button {
   width: auto;
-  background: var(--accent);
+  background: var(--main);
 }
 
 .history-editor .history-item button:hover {
-  background: var(--accent-hover);
+  background: var(--hover);
 }
 
-/* 通用边框与输入焦点 */
+/* =========================
+   通用边框与输入焦点
+========================= */
 
 .back-btn {
   position: fixed;
@@ -726,20 +729,20 @@ a {
   left: 20px;
   width: auto;
   height: 40px;
-  background: var(--panel);
-  border: 1px solid var(--accent-border);
+  background: #222;
+  border: 1px solid var(--line);
   z-index: 50;
 }
 
 .back-btn:hover {
-  background: var(--accent-hover);
+  background: var(--hover);
 }
 
 input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--main);
 }
 
 ::-webkit-scrollbar {
@@ -751,14 +754,16 @@ select:focus {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--accent-border);
+  background: var(--line);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
+  background: var(--main);
 }
 
-/* 旧版详情页返回按钮 */
+/* =========================
+   旧版详情页返回按钮
+========================= */
 
 .detail-back {
   position: fixed;
@@ -769,17 +774,19 @@ select:focus {
   height: 45px;
   padding: 0 25px;
   background: var(--panel);
-  border: 1px solid var(--accent-border);
-  color: #fff;
+  border: 1px solid var(--line);
+  color: white;
   font-size: 16px;
   cursor: pointer;
 }
 
 .detail-back:hover {
-  background: var(--accent);
+  background: var(--main);
 }
 
-/* 首页 Banner */
+/* =========================
+   首页 Banner
+========================= */
 
 .banner {
   height: 420px;
@@ -808,9 +815,17 @@ select:focus {
 
 /* =========================================
    XHRPG Steam 风格游戏详情页
+   红黑主题，矩形布局
 ========================================= */
 
 .steam-detail-page {
+  --steam-panel: rgba(22, 12, 15, 0.96);
+  --steam-line: var(--line);
+  --steam-red: var(--main);
+  --steam-red-hover: var(--hover);
+  --steam-text: var(--text);
+  --steam-muted: #c4adb2;
+
   position: relative;
   isolation: isolate;
   min-height: 100vh;
@@ -848,6 +863,7 @@ select:focus {
   align-items: flex-start;
   justify-content: flex-start;
   gap: 10px;
+
   width: 100%;
   max-width: 1500px;
   min-height: 0;
@@ -864,8 +880,10 @@ select:focus {
   align-items: center;
   justify-content: center;
   align-self: flex-start;
+
   min-height: 42px;
   padding: 0 16px;
+
   color: var(--steam-text);
   background: rgba(16, 9, 11, 0.88);
   border: 1px solid var(--steam-line);
@@ -883,21 +901,25 @@ select:focus {
   position: static !important;
   inset: auto !important;
   transform: none !important;
+
   display: flex !important;
   align-items: center;
   justify-content: flex-start !important;
   align-self: flex-start !important;
+
   width: auto !important;
   max-width: 100%;
   min-width: 0;
   min-height: 0;
+
   margin: 12px 0 0 !important;
   padding: 0 !important;
+
   color: var(--steam-text);
   font-size: 24px;
   font-weight: 800;
   letter-spacing: 1px;
-  line-height: 1.2;
+  line-height: 1;
   text-align: left !important;
   overflow-wrap: anywhere;
 }
@@ -915,7 +937,9 @@ select:focus {
   flex-shrink: 0;
 }
 
-/* 详情页上方双栏 */
+/* =========================
+   详情页上方双栏
+========================= */
 
 .steam-detail-layout {
   position: relative;
@@ -923,6 +947,7 @@ select:focus {
   grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.9fr);
   align-items: stretch;
   gap: 28px;
+
   width: 100%;
   max-width: 1500px;
   margin: 0 auto;
@@ -940,10 +965,12 @@ select:focus {
   display: flex;
   align-items: center;
   justify-content: center;
+
   width: 100%;
   min-height: 260px;
   aspect-ratio: 16 / 9;
   overflow: hidden;
+
   background: #080607;
   border: 1px solid var(--steam-line);
 }
@@ -977,6 +1004,7 @@ select:focus {
   padding: 0;
   overflow: hidden;
   cursor: pointer;
+
   background: var(--panel);
   border: 2px solid transparent;
 }
@@ -993,7 +1021,9 @@ select:focus {
   object-fit: cover;
 }
 
-/* 右侧游戏介绍 */
+/* =========================
+   右侧游戏介绍
+========================= */
 
 .steam-game-info {
   display: flex;
@@ -1001,6 +1031,7 @@ select:focus {
   min-width: 0;
   height: 100%;
   padding: 26px;
+
   background: var(--steam-panel);
   border: 1px solid var(--steam-line);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2);
@@ -1050,154 +1081,133 @@ select:focus {
 
 /* =========================
    底部下载区域
-   与上方整体左右对齐
+   与上方双栏左右对齐
 ========================= */
 
 .steam-download-panel {
   width: 100%;
   max-width: 1500px;
-  min-width: 0;
   margin: 28px auto 0;
   padding: 22px;
-  box-sizing: border-box;
+
   background: rgba(8, 6, 7, 0.88);
   border: 1px solid var(--steam-line);
 }
 
-/* 下载标题与版本选择 */
+/* 下载标题 */
 
 .steam-download-heading {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin-bottom: 18px;
+}
+
+.steam-download-heading strong {
+  font-size: 21px;
+}
+
+.steam-download-heading > span {
+  color: var(--steam-muted);
+  font-size: 13px;
+}
+
+/* 版本选择框与下载按钮横向排列 */
+
+.steam-download-controls {
+  display: flex;
+  align-items: stretch;
   gap: 12px;
   min-width: 0;
-  margin-bottom: 14px;
 }
 
-.steam-download-heading > div:first-child {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.steam-download-heading > div:first-child strong {
-  color: var(--steam-text);
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.steam-download-heading > div:first-child span {
-  color: var(--steam-muted);
-  font-size: 12px;
-}
+/* 版本选择 */
 
 .steam-version-select {
   display: flex;
-  align-items: center;
-  flex: 0 1 320px;
+  flex: 0 0 250px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
   min-width: 0;
-  gap: 8px;
-}
 
-.steam-version-select > span {
-  flex-shrink: 0;
   color: var(--steam-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .steam-version-select select {
-  box-sizing: border-box;
   width: 100%;
-  min-width: 0;
-  height: 38px;
-  padding: 0 10px;
+  min-height: 50px;
+  padding: 0 12px;
+
   color: var(--steam-text);
   background: var(--panel);
   border: 1px solid var(--steam-line);
-  outline: none;
+  font: inherit;
 }
 
 .steam-version-select select:focus {
+  outline: none;
   border-color: var(--steam-red);
 }
 
-/* 下载按钮：靠右，不超过面板宽度 */
+/* 下载按钮 */
 
 .steam-download-buttons {
   display: flex;
-  justify-content: flex-end;
-  align-items: stretch;
+  flex: 1;
   flex-wrap: wrap;
-  gap: 8px;
-  width: 100%;
-  max-width: 100%;
+  align-items: stretch;
+  gap: 10px;
   min-width: 0;
-  box-sizing: border-box;
 }
 
 .steam-download-button {
   display: flex;
+  flex: 1 1 180px;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  flex: 0 1 190px;
-  width: auto;
-  max-width: 100%;
+  gap: 16px;
+
   min-width: 0;
-  height: 38px;
-  box-sizing: border-box;
-  padding: 0 12px;
+  min-height: 50px;
+  padding: 0 18px;
+
   color: #fff;
   background: var(--steam-red);
-  border: 1px solid var(--steam-red);
-  font-size: 13px;
-  line-height: 1;
+  border: 1px solid var(--steam-line);
+  font-weight: 700;
   text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-}
 
-.steam-download-button > span:first-child {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.steam-download-button > span:last-child {
-  flex-shrink: 0;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .steam-download-button:hover {
-  color: #fff;
   background: var(--steam-red-hover);
   border-color: var(--steam-red-hover);
 }
 
-/* 兼容 secondary 类 */
+/* 兼容旧版 secondary 类，保持同一红色主题 */
 
 .steam-download-button.secondary {
   background: var(--steam-red);
-  border-color: var(--steam-red);
+  border-color: var(--steam-line);
 }
 
 .steam-download-button.secondary:hover {
   background: var(--steam-red-hover);
-  border-color: var(--steam-red-hover);
 }
 
 .steam-no-download {
-  width: 100%;
   margin: 0;
   color: var(--steam-muted);
   font-size: 13px;
   line-height: 1.7;
-  text-align: right;
 }
 
 /* =========================
-   平板适配
+   详情页平板适配
 ========================= */
 
 @media (max-width: 1000px) {
@@ -1219,6 +1229,10 @@ select:focus {
     margin-top: 0;
   }
 
+  .steam-download-controls {
+    flex-wrap: wrap;
+  }
+
   .steam-version-select {
     flex: 1 1 220px;
   }
@@ -1229,7 +1243,7 @@ select:focus {
 }
 
 /* =========================
-   手机适配
+   详情页手机适配
 ========================= */
 
 @media (max-width: 600px) {
@@ -1280,27 +1294,22 @@ select:focus {
     padding: 14px;
   }
 
-  .steam-download-heading {
-    align-items: flex-start;
+  .steam-download-controls {
     flex-direction: column;
   }
 
   .steam-version-select {
-    flex: 1 1 auto;
+    flex: auto;
     width: 100%;
   }
 
   .steam-download-buttons {
-    justify-content: flex-end;
-    flex-direction: row;
+    flex-direction: column;
   }
 
   .steam-download-button {
-    flex: 1 1 0;
-    width: auto;
-    max-width: calc(50% - 4px);
-    padding: 0 8px;
-    font-size: 12px;
+    flex: auto;
+    width: 100%;
   }
 }
 
@@ -1310,7 +1319,7 @@ select:focus {
 
 @media (max-width: 900px) {
   .form-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: 1fr;
   }
 
   .game-form {
@@ -1324,215 +1333,5 @@ select:focus {
 
   .game-table {
     min-width: 900px;
-  }
-
-  .history-item,
-  .history-editor .history-item {
-    flex-wrap: wrap;
-  }
-
-  .history-info {
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-}
-
-/* =========================================
-   下载区域布局修复
-   放在 globals.css 最末尾
-========================================= */
-
-/* 下载面板统一宽度与边框计算 */
-.steam-download-panel {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  margin: 28px 0 0;
-  padding: 22px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-/* 标题、版本选择和下载按钮在同一行 */
-.steam-download-heading {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  width: 100%;
-  min-width: 0;
-  margin-bottom: 16px;
-}
-
-/* 标题不挤压版本选择 */
-.steam-download-heading > div:first-child {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-/* 版本选择不再填满整行 */
-.steam-version-select {
-  display: flex;
-  flex: 0 1 260px;
-  align-items: center;
-  gap: 8px;
-  width: auto;
-  max-width: 260px;
-  min-width: 190px;
-}
-
-.steam-version-select > span {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  font-size: 12px;
-  color: var(--steam-muted);
-}
-
-.steam-version-select select {
-  flex: 1 1 auto;
-  width: auto;
-  min-width: 0;
-  max-width: 100%;
-  height: 38px;
-  padding: 0 10px;
-  box-sizing: border-box;
-  background: var(--panel);
-  color: var(--steam-text);
-  border: 1px solid var(--steam-line);
-}
-
-/* 下载按钮占满下载区域的可用宽度 */
-.steam-download-buttons {
-  display: flex;
-  flex-direction: row;
-  justify-content: stretch;
-  align-items: stretch;
-  flex-wrap: nowrap;
-  gap: 12px;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  margin: 0;
-  box-sizing: border-box;
-}
-
-/* 两个按钮等宽，宽度与介绍栏右边缘对齐 */
-.steam-download-button {
-  display: flex;
-  flex: 1 1 0;
-  width: 0;
-  max-width: none;
-  min-width: 0;
-  height: 46px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 18px;
-  box-sizing: border-box;
-
-  color: #fff;
-  background: var(--accent);
-  border: 1px solid var(--accent);
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-decoration: none;
-}
-
-.steam-download-button > span:first-child {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.steam-download-button > span:last-child {
-  flex: 0 0 auto;
-}
-
-.steam-download-button:hover {
-  color: #fff;
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
-}
-
-/* 没有下载链接时的提示 */
-.steam-no-download {
-  width: 100%;
-  margin: 0;
-  color: var(--steam-muted);
-  font-size: 13px;
-  line-height: 1.7;
-  text-align: left;
-}
-
-/* 平板：允许标题和版本选择换行，但按钮仍保持并排 */
-@media (max-width: 1000px) {
-  .steam-download-heading {
-    flex-wrap: wrap;
-  }
-
-  .steam-version-select {
-    flex: 0 1 260px;
-    width: auto;
-    max-width: 260px;
-    min-width: 190px;
-  }
-
-  .steam-download-buttons {
-    flex-wrap: nowrap;
-  }
-
-  .steam-download-button {
-    flex: 1 1 0;
-    width: 0;
-    max-width: none;
-  }
-}
-
-/* 手机：版本选择独占一行，两个下载按钮保持并排 */
-@media (max-width: 600px) {
-  .steam-download-panel {
-    margin-top: 18px;
-    padding: 14px;
-  }
-
-  .steam-download-heading {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-  }
-
-  .steam-version-select {
-    flex: 0 1 auto;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-  }
-
-  .steam-version-select select {
-    flex: 1 1 auto;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .steam-download-buttons {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 8px;
-  }
-
-  .steam-download-button {
-    flex: 1 1 0;
-    width: 0;
-    max-width: none;
-    min-width: 0;
-    height: 42px;
-    padding: 0 8px;
-    font-size: 12px;
   }
 }
