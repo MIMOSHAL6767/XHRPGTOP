@@ -133,8 +133,8 @@ export default function HomeClient({
           minWidth: 0,
           maxWidth: "none",
           height: "64px",
-          minHeight: "78px",
-          flex: "0 0 78px",
+          minHeight: "64px",
+          flex: "0 0 64px",
           display: "flex",
           flexDirection: "row",
           alignItems: "center",
@@ -168,7 +168,7 @@ export default function HomeClient({
           }}
         >
           <b style={{ fontSize: "24px", lineHeight: 1, color: "#111111" }}>喜灰</b>
-          <span style={{ fontSize: "24px", lineHeight: 1 }}>RPG</span>
+          <span style={{ fontSize: "24px", lineHeight: 1, color: "#FFFFFF" }}>RPG</span>
         </div>
 
         {/* 搜索栏和用户信息放入顶部红色导航栏 */}
@@ -189,7 +189,7 @@ export default function HomeClient({
           }}
         >
           <input
-            placeholder="搜索 RPG 游戏..."
+            placeholder="搜索游戏..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
