@@ -1611,3 +1611,38 @@ select:focus {
     font-size: 12px;
   }
 }
+
+
+/* ===== 当前选择版本信息与控件同一行 ===== */
+.steam-download-controls {
+  align-items: flex-end;
+}
+
+/* 将当前选择信息移到控件行左侧
+   需要 JSX 中将该 span 放入 steam-download-controls */
+.steam-download-current {
+  flex: 0 0 auto;
+  align-self: center;
+  color: #ffffff;
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* 下载按钮宽度缩小 10px，按钮间隔保持不变 */
+.steam-download-buttons > .steam-download-button {
+  flex: 0 1 calc(50% - 5px);
+  width: calc(50% - 5px);
+  min-width: 0;
+  max-width: calc(100% - 10px);
+  box-sizing: border-box;
+}
+
+/* 只有一个下载按钮时也缩小 10px */
+.steam-download-buttons > .steam-download-button:only-child {
+  flex: 0 0 calc(100% - 10px);
+  width: calc(100% - 10px);
+  max-width: calc(100% - 10px);
+}
+
