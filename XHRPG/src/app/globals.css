@@ -1756,18 +1756,12 @@ line-height:2;
   pointer-events: none;
 }
 
-/* 背景遮罩 */
+/* 详情页背景遮罩：完全取消黑色渐变 */
 .steam-detail-overlay {
   position: absolute;
   z-index: -1;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(16, 9, 11, 0.18) 0%,
-    rgba(16, 9, 11, 0.38) 45%,
-    rgba(16, 9, 11, 0.85) 78%,
-    #10090b 100%
-  );
+  background: transparent !important;
   pointer-events: none;
 }
 
