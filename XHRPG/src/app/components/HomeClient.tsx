@@ -165,7 +165,7 @@ export default function HomeClient({
             boxShadow: "none",
             boxSizing: "border-box",
             whiteSpace: "nowrap",
-            transform: "translateY(8px)",
+            transform: "translateY(10px)",
           }}
         >
           <b style={{ fontSize: "36px", lineHeight: 1, color: "#111111" }}>喜灰</b>
