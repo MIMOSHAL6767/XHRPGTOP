@@ -1651,14 +1651,14 @@ select:focus {
 
 /* 两个下载按钮各自缩小 10px */
 .steam-download-buttons > .steam-download-button:not(:only-child) {
-  width: calc(50% - 10px);
-  flex: 0 1 calc(50% - 10px);
+  width: calc(50% - 20px);
+  flex: 0 1 calc(50% - 20px);
 }
 
 /* 只有一个下载按钮时，也缩小 10px */
 .steam-download-buttons > .steam-download-button:only-child {
-  width: calc(100% - 10px);
-  flex: 0 1 calc(100% - 10px);
+  width: calc(100% - 20px);
+  flex: 0 1 calc(100% - 20px);
 }
 
 /* 手机端保持原有自适应布局 */
