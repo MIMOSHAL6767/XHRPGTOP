@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -29,6 +28,39 @@ const PANEL = "#160c0f";
 const LINE = "#4a2028";
 const TEXT = "#f8eeee";
 
+/**
+ * 统一处理标签。
+ * 去除无效内容、首尾空格和重复标签。
+ */
+function normalizeTags(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .filter((tag): tag is string => typeof tag === "string")
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+/**
+ * 统一处理显示用的点击量。
+ * 兼容异常或缺失的数据。
+ */
+function normalizeDownloads(value: unknown): number {
+  const numberValue = Number(value);
+
+  if (!Number.isFinite(numberValue) || numberValue < 0) {
+    return 0;
+  }
+
+  return Math.floor(numberValue);
+}
+
 export default function GamesClient({
   games,
   headerImage = null,
@@ -39,59 +71,96 @@ export default function GamesClient({
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [sortOrder, setSortOrder] = useState("default");
 
-  // 自动读取已发布游戏的作者，去重后生成按钮
+  /**
+   * 规范化游戏数据。
+   * 所有筛选、搜索、排序和卡片展示统一使用这份数据。
+   */
+  const normalizedGames = useMemo(
+    () =>
+      games.map((game) => ({
+        ...game,
+        tags: normalizeTags(game.tags),
+        downloads: normalizeDownloads(game.downloads),
+        author:
+          typeof game.author === "string" ? game.author.trim() : "",
+        category:
+          typeof game.category === "string"
+            ? game.category.trim()
+            : "",
+      })),
+    [games]
+  );
+
+  /**
+   * 作者完全由当前已发布游戏的数据生成。
+   */
   const authors = useMemo(
     () =>
       Array.from(
         new Set(
-          games
-            .map((game) => game.author?.trim())
-            .filter((author): author is string => Boolean(author))
+          normalizedGames
+            .map((game) => game.author)
+            .filter(Boolean)
         )
       ).sort((a, b) => a.localeCompare(b, "zh-CN")),
-    [games]
+    [normalizedGames]
   );
 
-  // 自动读取数据库中实际存在的标签，不预填任何标签
+  /**
+   * 标签完全由当前已发布游戏的数据生成。
+   * 不设置任何预填标签。
+   *
+   * 当某个标签不再被任何已发布游戏使用时，
+   * 它就会从筛选按钮中消失。
+   */
   const allTags = useMemo(
     () =>
       Array.from(
         new Set(
-          games.flatMap((game) =>
-            Array.isArray(game.tags)
-              ? game.tags
-                  .filter(
-                    (tag) =>
-                      typeof tag === "string" &&
-                      tag.trim().length > 0
-                  )
-                  .map((tag) => tag.trim())
-              : []
-          )
+          normalizedGames.flatMap((game) => game.tags)
         )
       ).sort((a, b) => a.localeCompare(b, "zh-CN")),
-    [games]
+    [normalizedGames]
   );
 
-  // 分类完全来自数据库，不预填分类
+  /**
+   * 分类完全由当前已发布游戏的数据生成。
+   */
   const categories = useMemo(
     () =>
       Array.from(
         new Set(
-          games
-            .map((game) => game.category?.trim())
-            .filter((category): category is string => Boolean(category))
+          normalizedGames
+            .map((game) => game.category)
+            .filter(Boolean)
         )
       ).sort((a, b) => a.localeCompare(b, "zh-CN")),
-    [games]
+    [normalizedGames]
   );
 
+  /**
+   * 清理已经不存在的筛选条件。
+   * 例如，标签被删除后，不会继续保留在已选筛选项中。
+   */
+  const validSelectedTags = useMemo(
+    () => selectedTags.filter((tag) => allTags.includes(tag)),
+    [selectedTags, allTags]
+  );
+
+  const validSelectedAuthors = useMemo(
+    () =>
+      selectedAuthors.filter((author) => authors.includes(author)),
+    [selectedAuthors, authors]
+  );
+
+  /**
+   * 搜索、作者、标签、分类之间采用 AND。
+   * 同一组内多个作者或多个标签之间采用 OR。
+   */
   const filteredGames = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
-    const result = games.filter((game) => {
-      const gameTags = Array.isArray(game.tags) ? game.tags : [];
-
+    const result = normalizedGames.filter((game) => {
       const matchesSearch =
         !keyword ||
         [
@@ -100,27 +169,24 @@ export default function GamesClient({
           game.author,
           game.category,
           game.version,
-          ...gameTags,
+          ...game.tags,
         ]
           .join(" ")
           .toLowerCase()
           .includes(keyword);
 
-      // 多个作者之间采用 OR
       const matchesAuthor =
-        selectedAuthors.length === 0 ||
-        selectedAuthors.includes(game.author?.trim() ?? "");
+        validSelectedAuthors.length === 0 ||
+        validSelectedAuthors.includes(game.author);
 
-      // 多个标签之间采用 OR
       const matchesTags =
-        selectedTags.length === 0 ||
-        selectedTags.some((tag) => gameTags.includes(tag));
+        validSelectedTags.length === 0 ||
+        validSelectedTags.some((tag) => game.tags.includes(tag));
 
       const matchesCategory =
         selectedCategory === "全部" ||
         game.category === selectedCategory;
 
-      // 搜索、作者、标签、分类之间采用 AND
       return (
         matchesSearch &&
         matchesAuthor &&
@@ -137,7 +203,8 @@ export default function GamesClient({
           b.id - a.id
       );
     } else if (sortOrder === "downloads") {
-      // 暂时沿用 downloads 字段，后续再接入真正的点击统计
+      // 当前按数据库 downloads 字段排序。
+      // 后续接入真实点击统计后，继续使用统计结果排序。
       result.sort(
         (a, b) => b.downloads - a.downloads || a.id - b.id
       );
@@ -147,10 +214,10 @@ export default function GamesClient({
 
     return result;
   }, [
-    games,
+    normalizedGames,
     search,
-    selectedAuthors,
-    selectedTags,
+    validSelectedAuthors,
+    validSelectedTags,
     selectedCategory,
     sortOrder,
   ]);
@@ -345,7 +412,7 @@ export default function GamesClient({
           {allTags.length > 0 ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {allTags.map((tag) => {
-                const active = selectedTags.includes(tag);
+                const active = validSelectedTags.includes(tag);
 
                 return (
                   <button
@@ -353,7 +420,11 @@ export default function GamesClient({
                     type="button"
                     aria-pressed={active}
                     onClick={() =>
-                      toggleValue(tag, selectedTags, setSelectedTags)
+                      toggleValue(
+                        tag,
+                        validSelectedTags,
+                        setSelectedTags
+                      )
                     }
                     style={filterButtonStyle(active)}
                   >
@@ -398,7 +469,7 @@ export default function GamesClient({
           {authors.length > 0 ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {authors.map((author) => {
-                const active = selectedAuthors.includes(author);
+                const active = validSelectedAuthors.includes(author);
 
                 return (
                   <button
@@ -408,7 +479,7 @@ export default function GamesClient({
                     onClick={() =>
                       toggleValue(
                         author,
-                        selectedAuthors,
+                        validSelectedAuthors,
                         setSelectedAuthors
                       )
                     }
@@ -486,109 +557,114 @@ export default function GamesClient({
               gap: 16,
             }}
           >
-            {filteredGames.map((game) => (
-              <Link
-                key={game.id}
-                href={`/game/${game.id}`}
-                style={{
-                  display: "block",
-                  minWidth: 0,
-                  textDecoration: "none",
-                  color: TEXT,
-                  background: PANEL,
-                  border: `1px solid ${LINE}`,
-                  borderRadius: 0,
-                  overflow: "hidden",
-                }}
-              >
-                <div
+            {filteredGames.map((game) => {
+              const coverSrc =
+                game.cover || `/assets/games/games${game.id}.png`;
+
+              return (
+                <Link
+                  key={game.id}
+                  href={`/game/${game.id}`}
                   style={{
-                    width: "100%",
-                    aspectRatio: "4 / 3",
-                    background: "#090507",
+                    display: "block",
+                    minWidth: 0,
+                    textDecoration: "none",
+                    color: TEXT,
+                    background: PANEL,
+                    border: `1px solid ${LINE}`,
+                    borderRadius: 0,
                     overflow: "hidden",
                   }}
                 >
-                  <img
-                    src={game.cover || `/assets/games/games${game.id}.png`}
-                    alt={game.name}
-                    loading="lazy"
-                    onError={(event) => {
-                      const img = event.currentTarget;
-                      const stage = img.dataset.fallbackStage ?? "0";
-
-                      if (stage === "0") {
-                        img.dataset.fallbackStage = "1";
-                        img.src = `/assets/games/games${game.id}.png`;
-                      } else if (stage === "1") {
-                        img.dataset.fallbackStage = "2";
-                        img.src = `/assets/games/games${game.id}.jpg`;
-                      } else {
-                        img.style.visibility = "hidden";
-                      }
-                    }}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                    }}
-                  />
-                </div>
-
-                <div style={{ padding: 13 }}>
-                  <h2
-                    style={{
-                      margin: "0 0 10px",
-                      fontSize: 16,
-                      lineHeight: 1.5,
-                      overflowWrap: "anywhere",
-                    }}
-                  >
-                    {game.name}
-                  </h2>
-
                   <div
                     style={{
-                      color: "#d5b9bd",
-                      fontSize: 12,
-                      lineHeight: 1.9,
+                      width: "100%",
+                      aspectRatio: "4 / 3",
+                      background: "#090507",
+                      overflow: "hidden",
                     }}
                   >
-                    <div>作者：{game.author || "未知"}</div>
-                    <div>分类：{game.category || "未分类"}</div>
-                    <div>版本：{game.version || "未填写"}</div>
-                    <div>点击量：{game.downloads}</div>
+                    <img
+                      src={coverSrc}
+                      alt={game.name}
+                      loading="lazy"
+                      onError={(event) => {
+                        const img = event.currentTarget;
+                        const stage = img.dataset.fallbackStage ?? "0";
+
+                        if (stage === "0") {
+                          img.dataset.fallbackStage = "1";
+                          img.src = `/assets/games/games${game.id}.png`;
+                        } else if (stage === "1") {
+                          img.dataset.fallbackStage = "2";
+                          img.src = `/assets/games/games${game.id}.jpg`;
+                        } else {
+                          img.style.visibility = "hidden";
+                        }
+                      }}
+                      style={{
+                        display: "block",
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                      }}
+                    />
                   </div>
 
-                  {game.tags.length > 0 && (
-                    <div
+                  <div style={{ padding: 13 }}>
+                    <h2
                       style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 5,
-                        marginTop: 10,
+                        margin: "0 0 10px",
+                        fontSize: 16,
+                        lineHeight: 1.5,
+                        overflowWrap: "anywhere",
                       }}
                     >
-                      {game.tags.slice(0, 4).map((tag) => (
-                        <span
-                          key={tag}
-                          style={{
-                            border: `1px solid ${LINE}`,
-                            color: "#efb5bf",
-                            padding: "3px 6px",
-                            fontSize: 11,
-                            borderRadius: 0,
-                          }}
-                        >
-                          {tag}
-                        </span>
-                      ))}
+                      {game.name}
+                    </h2>
+
+                    <div
+                      style={{
+                        color: "#d5b9bd",
+                        fontSize: 12,
+                        lineHeight: 1.9,
+                      }}
+                    >
+                      <div>作者：{game.author || "未知"}</div>
+                      <div>分类：{game.category || "未分类"}</div>
+                      <div>版本：{game.version || "未填写"}</div>
+                      <div>点击量：{game.downloads}</div>
                     </div>
-                  )}
-                </div>
-              </Link>
-            ))}
+
+                    {game.tags.length > 0 && (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 5,
+                          marginTop: 10,
+                        }}
+                      >
+                        {game.tags.slice(0, 4).map((tag) => (
+                          <span
+                            key={tag}
+                            style={{
+                              border: `1px solid ${LINE}`,
+                              color: "#efb5bf",
+                              padding: "3px 6px",
+                              fontSize: 11,
+                              borderRadius: 0,
+                            }}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         ) : (
           <div
