@@ -46,6 +46,30 @@ function parseScreenshots(value: unknown): ScreenshotItem[] {
     .filter((item): item is ScreenshotItem => item !== null);
 }
 
+// 兼容数据库中的 JSON 数组及旧数据
+function parseTags(value: unknown): string[] {
+  let raw: unknown = value;
+
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      raw = raw.trim() ? [raw.trim()] : [];
+    }
+  }
+
+  if (!Array.isArray(raw)) return [];
+
+  return Array.from(
+    new Set(
+      raw
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
 function validateImage(file: File): boolean {
   if (!ALLOWED_TYPES.includes(file.type)) {
     alert("只支持 PNG、JPG、WebP 图片");
@@ -60,11 +84,7 @@ function validateImage(file: File): boolean {
   return true;
 }
 
-export default function EditGameClient({
-  id,
-}: {
-  id: string;
-}) {
+export default function EditGameClient({ id }: { id: string }) {
   const router = useRouter();
 
   const [loading, setLoading] = useState(false);
@@ -81,6 +101,10 @@ export default function EditGameClient({
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [screenshots, setScreenshots] = useState<ScreenshotItem[]>([]);
+
+  // 标签单独维护，避免输入过程中影响其他游戏信息
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
 
   // 加载游戏信息和详情页设置
   useEffect(() => {
@@ -119,10 +143,10 @@ export default function EditGameClient({
             game.detailBackgroundFit === "contain" ? "contain" : "cover",
         });
 
-        setHistory(
-          Array.isArray(game.history) ? game.history : []
-        );
+        setTags(parseTags(game.tags));
+        setTagInput("");
 
+        setHistory(Array.isArray(game.history) ? game.history : []);
         setCoverPreview(game.cover || "");
         setBackgroundPreview(game.detailBackground || "");
         setLogoPreview(game.titleLogo || "");
@@ -155,6 +179,28 @@ export default function EditGameClient({
       ...current,
       [name]: value,
     }));
+  }
+
+  // 添加自定义标签，不使用预设标签
+  function addTag() {
+    const value = tagInput.trim();
+
+    if (!value) {
+      alert("请输入标签名称");
+      return;
+    }
+
+    if (tags.includes(value)) {
+      alert("这个标签已经存在");
+      return;
+    }
+
+    setTags((current) => [...current, value]);
+    setTagInput("");
+  }
+
+  function removeTag(index: number) {
+    setTags((current) => current.filter((_, i) => i !== index));
   }
 
   function selectCover(e: React.ChangeEvent<HTMLInputElement>) {
@@ -217,12 +263,7 @@ export default function EditGameClient({
   function addHistory() {
     setHistory((current) => [
       ...current,
-      {
-        version: "",
-        date: "",
-        lanzou: "",
-        pan123: "",
-      },
+      { version: "", date: "", lanzou: "", pan123: "" },
     ]);
   }
 
@@ -375,11 +416,14 @@ export default function EditGameClient({
         }
       }
 
-      // 5. 将游戏信息及详情页设置一起保存
+      // 5. 保存游戏信息、标签和详情页设置
       const payload = {
         ...form,
         name: String(form.name).trim(),
         cover,
+        tags: Array.from(
+          new Set(tags.map((tag) => tag.trim()).filter(Boolean))
+        ),
         history,
         titleMode: form.titleMode === "image" ? "image" : "text",
         titleLogo: titleLogo || null,
@@ -407,7 +451,7 @@ export default function EditGameClient({
         throw new Error(data?.message || "保存游戏失败");
       }
 
-      alert("游戏信息及详情页设置保存成功");
+      alert("游戏信息、标签及详情页设置保存成功");
       router.push("/admin/games");
       router.refresh();
     } catch (error) {
@@ -437,9 +481,7 @@ export default function EditGameClient({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          status: newStatus,
-        }),
+        body: JSON.stringify({ status: newStatus }),
       });
 
       const data = await res.json().catch(() => null);
@@ -511,6 +553,7 @@ export default function EditGameClient({
     border: "1px solid #4a2028",
     padding: "18px",
     marginTop: "24px",
+    borderRadius: 0,
   };
 
   const imageStyle: React.CSSProperties = {
@@ -520,12 +563,20 @@ export default function EditGameClient({
     objectFit: "contain",
     marginTop: "10px",
     border: "1px solid #4a2028",
+    borderRadius: 0,
   };
 
   const fieldStyle: React.CSSProperties = {
     display: "block",
     width: "100%",
     marginTop: "8px",
+    boxSizing: "border-box",
+    borderRadius: 0,
+  };
+
+  const buttonStyle: React.CSSProperties = {
+    borderRadius: 0,
+    cursor: loading ? "not-allowed" : "pointer",
   };
 
   return (
@@ -618,6 +669,122 @@ export default function EditGameClient({
             />
           </label>
         </div>
+
+        {/* 游戏标签管理 */}
+        <section style={sectionStyle}>
+          <h2>游戏标签</h2>
+
+          <p style={{ color: "#c9aeb2", fontSize: 13 }}>
+            自由添加任意标签。删除标签后，点击保存修改才会写入数据库。
+            这里不会自动添加任何预设标签。
+          </p>
+
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "stretch",
+              flexWrap: "wrap",
+              marginTop: 14,
+            }}
+          >
+            <input
+              value={tagInput}
+              onChange={(event) => setTagInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addTag();
+                }
+              }}
+              placeholder="输入自定义标签，例如：像素、恐怖、解谜"
+              aria-label="输入新标签"
+              disabled={loading}
+              style={{
+                flex: "1 1 240px",
+                minWidth: 0,
+                padding: "10px 12px",
+                border: "1px solid #4a2028",
+                background: "#10090b",
+                color: "#f8eeee",
+                borderRadius: 0,
+                boxSizing: "border-box",
+              }}
+            />
+
+            <button
+              type="button"
+              disabled={loading}
+              onClick={addTag}
+              style={{
+                ...buttonStyle,
+                padding: "10px 16px",
+                border: "1px solid #e73550",
+                background: "#e73550",
+                color: "#ffffff",
+              }}
+            >
+              ＋ 添加标签
+            </button>
+          </div>
+
+          {tags.length > 0 ? (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: 16,
+              }}
+            >
+              {tags.map((tag, index) => (
+                <span
+                  key={`${tag}-${index}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "6px 8px",
+                    border: "1px solid #4a2028",
+                    background: "#160c0f",
+                    color: "#f8eeee",
+                    borderRadius: 0,
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  <span>{tag}</span>
+
+                  <button
+                    type="button"
+                    aria-label={`删除标签 ${tag}`}
+                    title={`删除标签 ${tag}`}
+                    disabled={loading}
+                    onClick={() => removeTag(index)}
+                    style={{
+                      ...buttonStyle,
+                      border: "none",
+                      background: "transparent",
+                      color: "#ff8194",
+                      padding: "0 2px",
+                      fontSize: 16,
+                      lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p style={{ marginTop: 16, color: "#bca0a5", fontSize: 13 }}>
+              当前没有标签。你可以在上方输入并添加标签。
+            </p>
+          )}
+
+          <p style={{ marginTop: 12, fontSize: 12, color: "#bca0a5" }}>
+            当前共 {tags.length} 个标签。
+          </p>
+        </section>
 
         <label style={{ display: "block", marginTop: "18px" }}>
           游戏简介
