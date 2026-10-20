@@ -5,22 +5,49 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import SiteHeader from "@/app/components/SiteHeader";
 
+type ActivityItem = {
+  id: number;
+  title: string;
+  cover?: string | null;
+  background?: string | null;
+  backgroundFit?: string | null;
+  backgroundOpacity?: number | null;
+  titleColor?: string | null;
+  titleSize?: number | null;
+  content?: string | null;
+  showOnHome?: boolean;
+  enabled?: boolean;
+  sort?: number;
+};
+
 export default function HomeClient({
   games,
   banners = [],
   headerImage = null,
+  activities = [],
 }: {
   games: any[];
   banners: any[];
   headerImage?: string | null;
+  activities?: ActivityItem[];
 }) {
   const [bannerIndex, setBannerIndex] = useState(0);
   const [search, setSearch] = useState("");
-  const [sortOrder, setSortOrder] = useState<"default" | "latest">("default");
+  const [sortOrder, setSortOrder] = useState<"default" | "latest">(
+    "default"
+  );
 
   const banner = banners.length
     ? banners[bannerIndex % banners.length]
     : null;
+
+  // 只展示已上架且开启首页展示的活动
+  const homeActivities = activities
+    .filter(
+      (activity) =>
+        activity.enabled === true && activity.showOnHome === true
+    )
+    .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 
   // 自动轮播
   useEffect(() => {
@@ -284,6 +311,181 @@ export default function HomeClient({
                 ›
               </button>
             )}
+          </section>
+        )}
+
+        {/* 首页活动 */}
+        {homeActivities.length > 0 && (
+          <section
+            className="home-activities"
+            style={{
+              width: "100%",
+              marginTop: "32px",
+              marginBottom: "36px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "12px",
+                flexWrap: "wrap",
+                marginBottom: "16px",
+              }}
+            >
+              <h2 style={{ margin: 0 }}>活动专区</h2>
+
+              <Link
+                href="/activities"
+                style={{
+                  color: "#e5484d",
+                  textDecoration: "none",
+                  fontSize: "14px",
+                }}
+              >
+                查看全部活动 →
+              </Link>
+            </div>
+
+            <div
+              className="home-activity-grid"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: "16px",
+                width: "100%",
+              }}
+            >
+              {homeActivities.map((activity) => (
+                <Link
+                  key={activity.id}
+                  href={`/activities/${activity.id}`}
+                  className="home-activity-card"
+                  style={{
+                    position: "relative",
+                    display: "block",
+                    minWidth: 0,
+                    overflow: "hidden",
+                    aspectRatio: "16 / 7",
+                    backgroundColor: "#160c0f",
+                    border: "1px solid #4a2028",
+                    borderRadius: 0,
+                    color: "#ffffff",
+                    textDecoration: "none",
+                  }}
+                >
+                  {activity.background ? (
+                    <img
+                      src={activity.background}
+                      alt=""
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: activity.backgroundFit || "cover",
+                        objectPosition: "center",
+                      }}
+                    />
+                  ) : activity.cover ? (
+                    <img
+                      src={activity.cover}
+                      alt=""
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                      }}
+                    />
+                  ) : null}
+
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: `rgba(0,0,0,${Math.min(
+                        100,
+                        Math.max(0, activity.backgroundOpacity ?? 35)
+                      ) / 100})`,
+                    }}
+                  />
+
+                  {activity.cover && activity.background && (
+                    <img
+                      src={activity.cover}
+                      alt=""
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        right: "5%",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        height: "76%",
+                        width: "30%",
+                        objectFit: "contain",
+                        objectPosition: "center",
+                      }}
+                    />
+                  )}
+
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      alignItems: "flex-start",
+                      padding: "clamp(12px, 3%, 28px)",
+                      boxSizing: "border-box",
+                      maxWidth:
+                        activity.cover && activity.background
+                          ? "72%"
+                          : "100%",
+                    }}
+                  >
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: `clamp(16px, ${Math.max(
+                          16,
+                          Math.min(36, activity.titleSize ?? 24)
+                        ) / 16}vw, ${Math.min(
+                          36,
+                          activity.titleSize ?? 24
+                        )}px)`,
+                        color: activity.titleColor || "#ffffff",
+                        overflowWrap: "anywhere",
+                        textShadow: "0 2px 8px rgba(0,0,0,0.75)",
+                      }}
+                    >
+                      {activity.title}
+                    </h3>
+
+                    <span
+                      style={{
+                        display: "inline-block",
+                        marginTop: "12px",
+                        padding: "6px 12px",
+                        border: "1px solid rgba(255,255,255,0.65)",
+                        background: "rgba(0,0,0,0.3)",
+                        fontSize: "13px",
+                        color: "#ffffff",
+                      }}
+                    >
+                      查看活动 →
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </section>
         )}
 
