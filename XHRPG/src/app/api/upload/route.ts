@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -6,13 +7,9 @@ import { isSiteOwner } from "@/lib/admin-auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
-
-const MIME_EXTENSIONS: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/webp": "webp",
-};
+const IMAGE_MAX_SIZE = 5 * 1024 * 1024;
+const GIF_MAX_SIZE = 5 * 1024 * 1024;
+const MUSIC_MAX_SIZE = 10 * 1024 * 1024;
 
 type UploadKind =
   | "cover"
@@ -20,7 +17,26 @@ type UploadKind =
   | "logo"
   | "screenshot"
   | "homeHeader"
-  | "siteBackground";
+  | "siteBackground"
+  | "floatingGif"
+  | "music";
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+};
+
+const MUSIC_EXTENSIONS: Record<string, string> = {
+  "audio/mpeg": "mp3",
+  "audio/mp3": "mp3",
+  "audio/ogg": "ogg",
+  "application/ogg": "ogg",
+  "audio/wav": "wav",
+  "audio/x-wav": "wav",
+  "audio/wave": "wav",
+  "audio/vnd.wave": "wav",
+};
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json(
@@ -29,9 +45,75 @@ function errorResponse(message: string, status: number) {
   );
 }
 
+function validImage(bytes: Buffer, ext: string): boolean {
+  const png =
+    bytes.length >= 8 &&
+    bytes.subarray(0, 8).equals(
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+    );
+
+  const jpeg =
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff;
+
+  const webp =
+    bytes.length >= 12 &&
+    bytes.toString("ascii", 0, 4) === "RIFF" &&
+    bytes.toString("ascii", 8, 12) === "WEBP";
+
+  return (
+    (ext === "png" && png) ||
+    (ext === "jpg" && jpeg) ||
+    (ext === "webp" && webp)
+  );
+}
+
+function validGif(bytes: Buffer): boolean {
+  if (bytes.length < 13) return false;
+
+  const signature = bytes.toString("ascii", 0, 6);
+
+  return signature === "GIF87a" || signature === "GIF89a";
+}
+
+function validMusic(bytes: Buffer, ext: string): boolean {
+  if (ext === "mp3") {
+    // ID3 标签，或 MPEG 音频帧同步头
+    const hasId3 =
+      bytes.length >= 3 &&
+      bytes.toString("ascii", 0, 3) === "ID3";
+
+    const hasFrameSync =
+      bytes.length >= 2 &&
+      bytes[0] === 0xff &&
+      (bytes[1] & 0xe0) === 0xe0;
+
+    return hasId3 || hasFrameSync;
+  }
+
+  if (ext === "ogg") {
+    return (
+      bytes.length >= 4 &&
+      bytes.toString("ascii", 0, 4) === "OggS"
+    );
+  }
+
+  if (ext === "wav") {
+    return (
+      bytes.length >= 12 &&
+      bytes.toString("ascii", 0, 4) === "RIFF" &&
+      bytes.toString("ascii", 8, 12) === "WAVE"
+    );
+  }
+
+  return false;
+}
+
 export async function POST(req: Request) {
   if (!(await isSiteOwner())) {
-    return errorResponse("无权上传图片，请使用站长账号登录", 401);
+    return errorResponse("无权上传文件，请使用站长账号登录", 401);
   }
 
   try {
@@ -50,7 +132,7 @@ export async function POST(req: Request) {
       "main";
 
     if (!token || !owner || !repo) {
-      return errorResponse("GitHub 图片存储服务未配置", 500);
+      return errorResponse("GitHub 文件存储服务未配置", 500);
     }
 
     const formData = await req.formData();
@@ -65,6 +147,8 @@ export async function POST(req: Request) {
       "screenshot",
       "homeHeader",
       "siteBackground",
+      "floatingGif",
+      "music",
     ];
 
     let kind: UploadKind;
@@ -77,27 +161,64 @@ export async function POST(req: Request) {
     ) {
       kind = rawKind as UploadKind;
     } else {
-      return errorResponse("不支持的图片用途", 400);
+      return errorResponse("不支持的文件用途", 400);
     }
 
     if (!(file instanceof File)) {
-      return errorResponse("缺少图片文件", 400);
+      return errorResponse("缺少上传文件", 400);
     }
 
-    if (file.size === 0 || file.size > MAX_FILE_SIZE) {
-      return errorResponse("图片不能为空，且不能超过 5 MB", 400);
+    const isGif = kind === "floatingGif";
+    const isMusic = kind === "music";
+    const isImage = !isGif && !isMusic;
+
+    const maxSize = isMusic
+      ? MUSIC_MAX_SIZE
+      : isGif
+        ? GIF_MAX_SIZE
+        : IMAGE_MAX_SIZE;
+
+    if (file.size === 0 || file.size > maxSize) {
+      const limit = isMusic ? "10 MB" : "5 MB";
+
+      return errorResponse(
+        `文件不能为空，且不能超过 ${limit}`,
+        400
+      );
     }
 
-    const ext = MIME_EXTENSIONS[file.type];
+    let ext: string | undefined;
+
+    if (isMusic) {
+      ext = MUSIC_EXTENSIONS[file.type];
+    } else if (isGif) {
+      if (file.type === "image/gif") ext = "gif";
+    } else {
+      ext = IMAGE_EXTENSIONS[file.type];
+    }
 
     if (!ext) {
-      return errorResponse("只支持 PNG、JPG、WebP 图片", 415);
+      return errorResponse(
+        isMusic
+          ? "音乐只支持 MP3、OGG、WAV"
+          : isGif
+            ? "悬浮动画只支持 GIF 格式"
+            : "图片只支持 PNG、JPG、WebP",
+        415
+      );
     }
 
-    // 只有首页头图和全站背景不需要游戏 ID
+    // 普通游戏图片仍然校验游戏 ID；
+    // 首页头图、网站背景、悬浮 GIF 和音乐不需要游戏 ID。
+    const needsGameId =
+      kind !== "homeHeader" &&
+      kind !== "siteBackground" &&
+      kind !== "floatingGif" &&
+      kind !== "music";
+
     let gameId: number | null = null;
 
-    if (kind !== "homeHeader" && kind !== "siteBackground") {
+    if (needsGameId) {
       if (
         typeof id !== "string" ||
         !/^[1-9]\d*$/.test(id)
@@ -121,36 +242,22 @@ export async function POST(req: Request) {
       }
     }
 
-    // 验证图片真实格式
     const bytes = Buffer.from(await file.arrayBuffer());
 
-    const isPng =
-      bytes.length >= 8 &&
-      bytes.subarray(0, 8).equals(
-        Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
-      );
-
-    const isJpeg =
-      bytes.length >= 3 &&
-      bytes[0] === 0xff &&
-      bytes[1] === 0xd8 &&
-      bytes[2] === 0xff;
-
-    const isWebp =
-      bytes.length >= 12 &&
-      bytes.toString("ascii", 0, 4) === "RIFF" &&
-      bytes.toString("ascii", 8, 12) === "WEBP";
-
-    const valid =
-      (ext === "png" && isPng) ||
-      (ext === "jpg" && isJpeg) ||
-      (ext === "webp" && isWebp);
+    const valid = isMusic
+      ? validMusic(bytes, ext)
+      : isGif
+        ? validGif(bytes)
+        : validImage(bytes, ext);
 
     if (!valid) {
-      return errorResponse("文件内容与图片格式不匹配", 400);
+      return errorResponse(
+        "文件内容与所选文件格式不匹配",
+        400
+      );
     }
 
-    // 预览图序号校验
+    // 预览图编号校验
     const rawSlot = formData.get("slot");
     let slot = 0;
 
@@ -175,7 +282,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // 根据用途选择仓库目录和文件名
     let directory: string;
     let filename: string;
 
@@ -209,6 +315,16 @@ export async function POST(req: Request) {
         directory = "backgrounds";
         filename = `site-background-${randomUUID()}.${ext}`;
         break;
+
+      case "floatingGif":
+        directory = "floating";
+        filename = `floating-${randomUUID()}.gif`;
+        break;
+
+      case "music":
+        directory = "music";
+        filename = `track-${randomUUID()}.${ext}`;
+        break;
     }
 
     const repoPath = `${directory}/${filename}`;
@@ -228,7 +344,10 @@ export async function POST(req: Request) {
       "X-GitHub-Api-Version": "2022-11-28",
     };
 
-    // 查询文件是否已存在，以便覆盖时提供 SHA
+    // 随机文件名避免覆盖已有 GIF、音乐或背景文件。
+    // 原有固定名称的游戏图片继续支持覆盖。
+    let sha: string | undefined;
+
     const existingResponse = await fetch(
       `${apiUrl}?ref=${encodeURIComponent(branch)}`,
       {
@@ -236,8 +355,6 @@ export async function POST(req: Request) {
         cache: "no-store",
       }
     );
-
-    let sha: string | undefined;
 
     if (existingResponse.ok) {
       const existing = await existingResponse.json();
@@ -265,9 +382,7 @@ export async function POST(req: Request) {
       branch,
     };
 
-    if (sha) {
-      payload.sha = sha;
-    }
+    if (sha) payload.sha = sha;
 
     const uploadResponse = await fetch(apiUrl, {
       method: "PUT",
@@ -285,7 +400,7 @@ export async function POST(req: Request) {
 
     if (!uploadResponse.ok) {
       console.error(
-        "GitHub 图片上传失败:",
+        "GitHub 文件上传失败:",
         uploadResponse.status,
         uploadResult?.message
       );
@@ -299,7 +414,7 @@ export async function POST(req: Request) {
             : uploadResponse.status === 409 ||
                 uploadResponse.status === 422
               ? "GitHub 文件更新冲突，请重试"
-              : "GitHub 图片上传失败",
+              : "GitHub 文件上传失败",
         502
       );
     }
@@ -309,7 +424,7 @@ export async function POST(req: Request) {
       !uploadResult?.content?.sha
     ) {
       return errorResponse(
-        "GitHub 未确认图片文件已保存",
+        "GitHub 未确认文件已保存",
         502
       );
     }
@@ -336,10 +451,10 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error(
-      "图片上传异常:",
+      "文件上传异常:",
       error instanceof Error ? error.message : "未知错误"
     );
 
-    return errorResponse("图片上传失败，请检查服务日志", 500);
+    return errorResponse("文件上传失败，请检查服务日志", 500);
   }
 }
