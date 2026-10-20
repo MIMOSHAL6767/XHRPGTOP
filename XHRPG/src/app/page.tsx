@@ -6,6 +6,7 @@ export const revalidate = 0;
 
 export default async function Home() {
   const [games, banners, header, activities] = await Promise.all([
+    // 已发布游戏
     prisma.game.findMany({
       where: {
         status: "已发布",
@@ -15,6 +16,7 @@ export default async function Home() {
       },
     }),
 
+    // 已启用轮播图
     prisma.banner.findMany({
       where: {
         enabled: true,
@@ -24,12 +26,14 @@ export default async function Home() {
       },
     }),
 
+    // 首页头图
     prisma.homeHeader.findUnique({
       where: {
         id: 1,
       },
     }),
 
+    // 已启用且允许在首页展示的活动
     prisma.activity.findMany({
       where: {
         enabled: true,
@@ -47,6 +51,15 @@ export default async function Home() {
         id: true,
         title: true,
         cover: true,
+        background: true,
+        backgroundFit: true,
+        backgroundOpacity: true,
+        titleColor: true,
+        titleSize: true,
+        content: true,
+        showOnHome: true,
+        enabled: true,
+        sort: true,
       },
     }),
   ]);
