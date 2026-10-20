@@ -1,4 +1,3 @@
-
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { Prisma } from "@prisma/client";
@@ -6,7 +5,11 @@ import GameDetailClient, {
   type DetailHistoryItem,
 } from "./GameDetailClient";
 
-function parseHistory(value: Prisma.JsonValue): DetailHistoryItem[] {
+export const dynamic = "force-dynamic";
+
+function parseHistory(
+  value: Prisma.JsonValue
+): DetailHistoryItem[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -30,7 +33,9 @@ function parseHistory(value: Prisma.JsonValue): DetailHistoryItem[] {
     }));
 }
 
-function parseScreenshots(value: Prisma.JsonValue): string[] {
+function parseScreenshots(
+  value: Prisma.JsonValue
+): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -53,8 +58,11 @@ export default async function GamePage({
     notFound();
   }
 
-  const game = await prisma.game.findUnique({
-    where: { id: gameId },
+  const game = await prisma.game.findFirst({
+    where: {
+      id: gameId,
+      status: "已发布",
+    },
   });
 
   if (!game) {
@@ -70,6 +78,7 @@ export default async function GamePage({
 
   return (
     <GameDetailClient
+      gameId={game.id}
       name={game.name}
       author={game.author}
       category={game.category}
