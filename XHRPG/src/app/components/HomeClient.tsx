@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -19,6 +18,27 @@ type ActivityItem = {
   enabled?: boolean;
   sort?: number;
 };
+
+type ImageFit =
+  | "contain"
+  | "cover"
+  | "fill"
+  | "none"
+  | "scale-down";
+
+function getImageFit(value: unknown, fallback: ImageFit = "cover"): ImageFit {
+  if (
+    value === "contain" ||
+    value === "cover" ||
+    value === "fill" ||
+    value === "none" ||
+    value === "scale-down"
+  ) {
+    return value;
+  }
+
+  return fallback;
+}
 
 export default function HomeClient({
   games,
@@ -41,7 +61,7 @@ export default function HomeClient({
     ? banners[bannerIndex % banners.length]
     : null;
 
-  // 只展示已上架且开启首页展示的活动
+  // 只展示已启用且允许在首页展示的活动
   const homeActivities = activities
     .filter(
       (activity) =>
@@ -82,7 +102,7 @@ export default function HomeClient({
     });
 
   // 兼容数字、"40" 和 "40px"
-  function cssSize(value: unknown, fallback: string) {
+  function cssSize(value: unknown, fallback: string): string {
     if (value === null || value === undefined || value === "") {
       return fallback;
     }
@@ -91,7 +111,7 @@ export default function HomeClient({
     return /^\d+(\.\d+)?$/.test(str) ? `${str}px` : str;
   }
 
-  function percent(value: unknown, fallback: number) {
+  function percent(value: unknown, fallback: number): number {
     const num = Number(value);
     return Number.isFinite(num) ? num : fallback;
   }
@@ -147,6 +167,7 @@ export default function HomeClient({
               backgroundColor: "#171717",
             }}
           >
+            {/* 轮播背景图 */}
             {banner.background && (
               <img
                 key={banner.background}
@@ -165,6 +186,7 @@ export default function HomeClient({
               />
             )}
 
+            {/* 背景渐变遮罩 */}
             <div
               aria-hidden="true"
               style={{
@@ -185,6 +207,7 @@ export default function HomeClient({
                 zIndex: 2,
               }}
             >
+              {/* 轮播封面 */}
               {banner.cover && (
                 <img
                   key={banner.cover}
@@ -203,7 +226,7 @@ export default function HomeClient({
                     left: `${percent(banner.coverX, 50)}%`,
                     top: `${percent(banner.coverY, 50)}%`,
                     transform: "translate(-50%, -50%)",
-                    objectFit: banner.coverFit || "contain",
+                    objectFit: getImageFit(banner.coverFit, "contain"),
                     objectPosition: "center",
                     zIndex: 3,
                     border: "none",
@@ -314,7 +337,7 @@ export default function HomeClient({
           </section>
         )}
 
-        {/* 首页活动 */}
+        {/* 首页活动专区 */}
         {homeActivities.length > 0 && (
           <section
             className="home-activities"
@@ -375,6 +398,7 @@ export default function HomeClient({
                     textDecoration: "none",
                   }}
                 >
+                  {/* 活动背景图；无背景时使用封面铺满 */}
                   {activity.background ? (
                     <img
                       src={activity.background}
@@ -385,7 +409,10 @@ export default function HomeClient({
                         inset: 0,
                         width: "100%",
                         height: "100%",
-                        objectFit: activity.backgroundFit || "cover",
+                        objectFit: getImageFit(
+                          activity.backgroundFit,
+                          "cover"
+                        ),
                         objectPosition: "center",
                       }}
                     />
@@ -405,6 +432,7 @@ export default function HomeClient({
                     />
                   ) : null}
 
+                  {/* 活动背景遮罩 */}
                   <div
                     aria-hidden="true"
                     style={{
@@ -417,6 +445,7 @@ export default function HomeClient({
                     }}
                   />
 
+                  {/* 同时存在背景和封面时，将封面放在右侧 */}
                   {activity.cover && activity.background && (
                     <img
                       src={activity.cover}
@@ -435,6 +464,7 @@ export default function HomeClient({
                     />
                   )}
 
+                  {/* 活动标题与入口 */}
                   <div
                     style={{
                       position: "absolute",
@@ -497,97 +527,4 @@ export default function HomeClient({
             alignItems: "center",
             justifyContent: "space-between",
             gap: "12px",
-            flexWrap: "wrap",
-            marginBottom: "16px",
-          }}
-        >
-          <h2 style={{ margin: 0 }}>游戏库</h2>
-
-          <div
-            role="group"
-            aria-label="游戏排序方式"
-            style={{
-              display: "flex",
-              gap: "8px",
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              type="button"
-              aria-pressed={sortOrder === "default"}
-              onClick={() => setSortOrder("default")}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 0,
-                border:
-                  sortOrder === "default"
-                    ? "1px solid #e5484d"
-                    : "1px solid #444",
-                background:
-                  sortOrder === "default" ? "#e5484d" : "transparent",
-                color: "#fff",
-                cursor: "pointer",
-                transition: "background 0.2s, border-color 0.2s",
-              }}
-            >
-              默认排序
-            </button>
-
-            <button
-              type="button"
-              aria-pressed={sortOrder === "latest"}
-              onClick={() => setSortOrder("latest")}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 0,
-                border:
-                  sortOrder === "latest"
-                    ? "1px solid #e5484d"
-                    : "1px solid #444",
-                background:
-                  sortOrder === "latest" ? "#e5484d" : "transparent",
-                color: "#fff",
-                cursor: "pointer",
-                transition: "background 0.2s, border-color 0.2s",
-              }}
-            >
-              最新上传
-            </button>
-          </div>
-        </div>
-
-        {/* 首页游戏卡片 */}
-        <div
-          className="game-grid"
-          style={{
-            width: "100%",
-            maxWidth: "100%",
-            marginLeft: "auto",
-            marginRight: "auto",
-            boxSizing: "border-box",
-          }}
-        >
-          {filteredGames.map((game) => (
-            <Link
-              key={game.id}
-              className="square-card"
-              href={`/game/${game.id}`}
-            >
-              <div className="cover-box">
-                <img
-                  className="cover-img"
-                  src={game.cover || `/assets/games/games${game.id}.png`}
-                  alt={game.name}
-                />
-              </div>
-
-              <div className="game-title">{game.name}</div>
-            </Link>
-          ))}
-
-          {filteredGames.length === 0 && <div>没有找到相关游戏</div>}
-        </div>
-      </section>
-    </main>
-  );
-}
+            flex
