@@ -155,7 +155,7 @@ export default function SiteHeader({
             boxSizing: "border-box",
           }}
         >
-          {/* Logo：垂直居中 */}
+          {/* Logo：整体向下微调 6px */}
           <Link
             href="/"
             aria-label="XHRPG 首页"
@@ -179,6 +179,7 @@ export default function SiteHeader({
               boxSizing: "border-box",
               whiteSpace: "nowrap",
               textDecoration: "none",
+              transform: "translateY(6px)",
             }}
           >
             <b
@@ -208,7 +209,7 @@ export default function SiteHeader({
             </span>
           </Link>
 
-          {/* 主导航 */}
+          {/* 主导航：保持原位置 */}
           <nav
             aria-label="主导航"
             style={{
@@ -272,7 +273,7 @@ export default function SiteHeader({
             </button>
           </nav>
 
-          {/* 搜索与用户信息：垂直居中 */}
+          {/* 搜索框与用户信息：整体向下微调 6px */}
           <header
             className="top-bar"
             style={{
@@ -287,6 +288,7 @@ export default function SiteHeader({
               background: "transparent",
               boxSizing: "border-box",
               height: "100%",
+              transform: "translateY(6px)",
             }}
           >
             <input
