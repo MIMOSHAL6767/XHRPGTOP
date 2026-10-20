@@ -1682,3 +1682,167 @@ select:focus {
     max-width: 100%;
   }
 }
+
+
+/* =========================================
+   全站背景切换
+========================================= */
+
+html,
+body {
+  min-height: 100%;
+  background: var(--bg);
+}
+
+.site-content-layer {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+/* 固定背景图片层 */
+.site-background-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--bg);
+}
+
+.site-background-image {
+  position: absolute;
+  inset: -24px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  transform: scale(1.03);
+  will-change: filter;
+}
+
+.site-background-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+/* 允许首页和登录、后台外层透出背景 */
+.xhrpg-home,
+.auth-page,
+.admin-page {
+  background-color: transparent;
+}
+
+/* 右下角控制区域 */
+.site-background-controls {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
+}
+
+.site-background-toggle {
+  min-height: 42px;
+  padding: 0 18px;
+  color: var(--text);
+  background: var(--main);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.site-background-toggle:hover {
+  background: var(--hover);
+}
+
+.site-background-panel {
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  padding: 18px;
+  color: var(--text);
+  background: rgba(22, 12, 15, 0.98);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+}
+
+.site-background-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.site-background-panel-heading strong {
+  font-size: 16px;
+}
+
+.site-background-close {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.site-background-label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-bottom: 18px;
+  font-size: 13px;
+}
+
+.site-background-label select {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  color: var(--text);
+  background: #10090b;
+  border: 1px solid var(--line);
+}
+
+.site-background-label input[type="range"] {
+  width: 100%;
+  accent-color: var(--main);
+  cursor: pointer;
+}
+
+.site-background-preview {
+  width: 100%;
+  height: 130px;
+  margin: -4px 0 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.site-background-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.site-background-reset {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
+@media (max-width: 600px) {
+  .site-background-controls {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .site-background-panel {
+    width: min(300px, calc(100vw - 24px));
+  }
+}
