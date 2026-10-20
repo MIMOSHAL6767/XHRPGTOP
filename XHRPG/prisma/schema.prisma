@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -103,7 +104,6 @@ model UserTitleGrant {
 // 游戏
 // =====================
 
-
 model Game {
   id Int @id @default(autoincrement())
 
@@ -159,7 +159,6 @@ model Game {
   // 详情页预览图 URL 数组，按数组顺序显示
   screenshots Json?
 }
-
 
 // =====================
 // Banner
@@ -231,6 +230,10 @@ model VerifyQuestion {
   createdAt DateTime @default(now())
 }
 
+// =====================
+// 首页头图
+// =====================
+
 model HomeHeader {
   id        Int      @id @default(1)
   imageUrl  String?
@@ -244,27 +247,39 @@ model HomeHeader {
 model Timeline {
   id        Int      @id @default(1)
   content   String   @default("") @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+// =====================
+// 活动
+// =====================
 
 model Activity {
   id                Int      @id @default(autoincrement())
 
   title             String
+
   cover             String?
+
   background        String?
+
   backgroundFit     String   @default("cover")
+
   backgroundOpacity Int      @default(35)
 
   titleColor        String   @default("#ffffff")
+
   titleSize         Int      @default(36)
 
   content           String   @default("") @db.Text
 
   showOnHome        Boolean  @default(false)
+
   enabled           Boolean  @default(true)
+
   sort              Int      @default(0)
 
   createdAt         DateTime @default(now())
+
   updatedAt         DateTime @updatedAt
-}
-  updatedAt DateTime @updatedAt
 }
