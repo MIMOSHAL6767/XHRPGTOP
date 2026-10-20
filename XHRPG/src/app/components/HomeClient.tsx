@@ -1,8 +1,10 @@
+
 "use client";
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import SiteHeader from "@/app/components/SiteHeader";
+import FloatingWidget from "@/app/components/FloatingWidget";
 
 type ActivityItem = {
   id: number;
@@ -568,6 +570,9 @@ export default function HomeClient({
           )}
         </div>
       </section>
+
+      {/* 全站首页悬浮 GIF／音乐组件 */}
+      <FloatingWidget />
     </main>
   );
 }
