@@ -1,3 +1,4 @@
+
 import { prisma } from "@/lib/prisma";
 import SiteHeader from "@/app/components/SiteHeader";
 
@@ -32,12 +33,9 @@ export default async function ActivitiesPage() {
         margin: 0,
       }}
     >
-      {/* 复用首页的公共头图、导航栏和搜索栏 */}
-      <SiteHeader
-        headerImage={header?.imageUrl ?? null}
-        searchValue=""
-        onSearchChange={() => {}}
-      />
+      {/* 复用首页的公共头图和导航栏。
+          不传递事件处理函数，避免 Server/Client Component 边界错误。 */}
+      <SiteHeader headerImage={header?.imageUrl ?? null} />
 
       <section
         style={{
