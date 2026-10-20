@@ -34,8 +34,7 @@ export default async function ActivitiesPage() {
         margin: 0,
       }}
     >
-      {/* 公共头图和导航栏。
-          注意：Server Component 不传递事件处理函数。 */}
+      {/* 公共头图和导航栏：不传递事件处理函数 */}
       <SiteHeader headerImage={header?.imageUrl ?? null} />
 
       <section
@@ -46,7 +45,6 @@ export default async function ActivitiesPage() {
           boxSizing: "border-box",
         }}
       >
-        {/* 页面标题 */}
         <div style={{ marginBottom: 28 }}>
           <h1
             style={{
@@ -71,7 +69,6 @@ export default async function ActivitiesPage() {
           </p>
         </div>
 
-        {/* 活动列表 */}
         {activities.length === 0 ? (
           <div
             style={{
@@ -96,7 +93,7 @@ export default async function ActivitiesPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={activity.cover}
-                      alt={activity.title ?? "活动封面"}
+                      alt={activity.title || "活动封面"}
                       loading="lazy"
                     />
                   ) : (
@@ -116,7 +113,8 @@ export default async function ActivitiesPage() {
         )}
       </section>
 
-      <style jsx global>{`
+      {/* 普通 style 标签，不使用 styled-jsx */}
+      <style>{`
         .activity-list-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
