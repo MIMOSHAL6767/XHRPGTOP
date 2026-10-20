@@ -1,3 +1,4 @@
+```tsx
 "use client";
 
 import Link from "next/link";
@@ -141,7 +142,7 @@ export default function SiteHeader({
           gap: 0,
         }}
       >
-        {/* 导航内容容器：与首页轮播图使用相同的宽度基准 */}
+        {/* 导航内容容器 */}
         <div
           style={{
             display: "flex",
@@ -155,7 +156,7 @@ export default function SiteHeader({
             boxSizing: "border-box",
           }}
         >
-          {/* Logo */}
+          {/* Logo：垂直居中 */}
           <Link
             href="/"
             aria-label="XHRPG 首页"
@@ -179,14 +180,16 @@ export default function SiteHeader({
               boxSizing: "border-box",
               whiteSpace: "nowrap",
               textDecoration: "none",
-              transform: "translateY(5px)",
             }}
           >
             <b
               style={{
+                display: "block",
                 fontSize: "32px",
                 lineHeight: 1,
                 color: "#111111",
+                margin: 0,
+                padding: 0,
               }}
             >
               喜灰
@@ -194,16 +197,19 @@ export default function SiteHeader({
 
             <span
               style={{
+                display: "block",
                 fontSize: "32px",
                 lineHeight: 1,
                 color: "#ffffff",
+                margin: 0,
+                padding: 0,
               }}
             >
               RPG
             </span>
           </Link>
 
-          {/* 主导航：与 Logo 拉开距离，靠左排列 */}
+          {/* 主导航 */}
           <nav
             aria-label="主导航"
             style={{
@@ -218,21 +224,38 @@ export default function SiteHeader({
               overflowY: "hidden",
               scrollbarWidth: "none",
               whiteSpace: "nowrap",
+              height: "100%",
             }}
           >
-            <Link href="/" aria-current={isActive("/") ? "page" : undefined} style={getNavStyle("/")}>
+            <Link
+              href="/"
+              aria-current={isActive("/") ? "page" : undefined}
+              style={getNavStyle("/")}
+            >
               首页
             </Link>
 
-            <Link href="/games" aria-current={isActive("/games") ? "page" : undefined} style={getNavStyle("/games")}>
+            <Link
+              href="/games"
+              aria-current={isActive("/games") ? "page" : undefined}
+              style={getNavStyle("/games")}
+            >
               游戏库
             </Link>
 
-            <Link href="/activities" aria-current={isActive("/activities") ? "page" : undefined} style={getNavStyle("/activities")}>
+            <Link
+              href="/activities"
+              aria-current={isActive("/activities") ? "page" : undefined}
+              style={getNavStyle("/activities")}
+            >
               活动
             </Link>
 
-            <Link href="/timeline" aria-current={isActive("/timeline") ? "page" : undefined} style={getNavStyle("/timeline")}>
+            <Link
+              href="/timeline"
+              aria-current={isActive("/timeline") ? "page" : undefined}
+              style={getNavStyle("/timeline")}
+            >
               大事记
             </Link>
 
@@ -250,7 +273,7 @@ export default function SiteHeader({
             </button>
           </nav>
 
-          {/* 搜索与用户信息 */}
+          {/* 搜索与用户信息：垂直居中 */}
           <header
             className="top-bar"
             style={{
@@ -262,9 +285,9 @@ export default function SiteHeader({
               minWidth: 0,
               marginLeft: "auto",
               padding: 0,
-              transform: "translateY(4px)",
               background: "transparent",
               boxSizing: "border-box",
+              height: "100%",
             }}
           >
             <input
@@ -276,10 +299,12 @@ export default function SiteHeader({
               }}
               style={{
                 width: "160px",
+                height: "36px",
                 minWidth: "80px",
                 maxWidth: "160px",
                 flex: "0 1 160px",
                 boxSizing: "border-box",
+                margin: 0,
               }}
             />
 
@@ -291,6 +316,7 @@ export default function SiteHeader({
                 justifyContent: "flex-end",
                 gap: "12px",
                 flexShrink: 0,
+                height: "100%",
               }}
             >
               {user && (
@@ -336,3 +362,4 @@ export default function SiteHeader({
     </>
   );
 }
+```
