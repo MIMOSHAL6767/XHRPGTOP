@@ -1,7 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import SiteHeader from "@/app/components/SiteHeader";
 
 type GameItem = {
@@ -28,10 +29,6 @@ const PANEL = "#160c0f";
 const LINE = "#4a2028";
 const TEXT = "#f8eeee";
 
-/**
- * 统一处理标签。
- * 去除无效内容、首尾空格和重复标签。
- */
 function normalizeTags(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
@@ -47,10 +44,6 @@ function normalizeTags(value: unknown): string[] {
   );
 }
 
-/**
- * 统一处理显示用的点击量。
- * 兼容异常或缺失的数据。
- */
 function normalizeDownloads(value: unknown): number {
   const numberValue = Number(value);
 
@@ -71,10 +64,9 @@ export default function GamesClient({
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [sortOrder, setSortOrder] = useState("default");
 
-  /**
-   * 规范化游戏数据。
-   * 所有筛选、搜索、排序和卡片展示统一使用这份数据。
-   */
+  // 防止首次渲染时空的筛选状态覆盖 URL 中的标签。
+  const [urlInitialized, setUrlInitialized] = useState(false);
+
   const normalizedGames = useMemo(
     () =>
       games.map((game) => ({
@@ -91,9 +83,6 @@ export default function GamesClient({
     [games]
   );
 
-  /**
-   * 作者完全由当前已发布游戏的数据生成。
-   */
   const authors = useMemo(
     () =>
       Array.from(
@@ -106,26 +95,14 @@ export default function GamesClient({
     [normalizedGames]
   );
 
-  /**
-   * 标签完全由当前已发布游戏的数据生成。
-   * 不设置任何预填标签。
-   *
-   * 当某个标签不再被任何已发布游戏使用时，
-   * 它就会从筛选按钮中消失。
-   */
   const allTags = useMemo(
     () =>
       Array.from(
-        new Set(
-          normalizedGames.flatMap((game) => game.tags)
-        )
+        new Set(normalizedGames.flatMap((game) => game.tags))
       ).sort((a, b) => a.localeCompare(b, "zh-CN")),
     [normalizedGames]
   );
 
-  /**
-   * 分类完全由当前已发布游戏的数据生成。
-   */
   const categories = useMemo(
     () =>
       Array.from(
@@ -138,20 +115,101 @@ export default function GamesClient({
     [normalizedGames]
   );
 
-  /**
-   * 清理已经不存在的筛选条件。
-   * 例如，标签被删除后，不会继续保留在已选筛选项中。
-   */
   const validSelectedTags = useMemo(
     () => selectedTags.filter((tag) => allTags.includes(tag)),
     [selectedTags, allTags]
   );
 
   const validSelectedAuthors = useMemo(
-    () =>
-      selectedAuthors.filter((author) => authors.includes(author)),
+    () => selectedAuthors.filter((author) => authors.includes(author)),
     [selectedAuthors, authors]
   );
+
+  /**
+   * 首次进入游戏库时读取 URL 标签。
+   *
+   * 例如：
+   * /games?tag=恐怖悬疑
+   *
+   * 也支持多个标签参数：
+   * /games?tag=恐怖悬疑&tag=解谜
+   */
+  useEffect(() => {
+    if (urlInitialized) {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const urlTags = params.getAll("tag");
+
+    const matchedTags = Array.from(
+      new Set(
+        urlTags
+          .map((tag) => tag.trim())
+          .filter((tag) => allTags.includes(tag))
+      )
+    );
+
+    setSelectedTags(matchedTags);
+    setUrlInitialized(true);
+  }, [allTags, urlInitialized]);
+
+  /**
+   * 监听浏览器前进、后退。
+   * 当 URL 中的标签发生变化时，同步更新筛选状态。
+   */
+  useEffect(() => {
+    if (!urlInitialized) {
+      return;
+    }
+
+    function handlePopState() {
+      const params = new URLSearchParams(window.location.search);
+      const urlTags = params.getAll("tag");
+
+      const matchedTags = Array.from(
+        new Set(
+          urlTags
+            .map((tag) => tag.trim())
+            .filter((tag) => allTags.includes(tag))
+        )
+      );
+
+      setSelectedTags(matchedTags);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [allTags, urlInitialized]);
+
+  /**
+   * 将已选标签同步到 URL。
+   * 保留其他查询参数，并支持多个标签。
+   */
+  useEffect(() => {
+    if (!urlInitialized) {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+
+    url.searchParams.delete("tag");
+
+    validSelectedTags.forEach((tag) => {
+      url.searchParams.append("tag", tag);
+    });
+
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    const currentUrl =
+      `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState(null, "", nextUrl);
+    }
+  }, [validSelectedTags, urlInitialized]);
 
   /**
    * 搜索、作者、标签、分类之间采用 AND。
@@ -203,8 +261,6 @@ export default function GamesClient({
           b.id - a.id
       );
     } else if (sortOrder === "downloads") {
-      // 当前按数据库 downloads 字段排序。
-      // 后续接入真实点击统计后，继续使用统计结果排序。
       result.sort(
         (a, b) => b.downloads - a.downloads || a.id - b.id
       );
@@ -222,17 +278,20 @@ export default function GamesClient({
     sortOrder,
   ]);
 
-  function toggleValue(
-    value: string,
-    selected: string[],
-    setSelected: (values: string[]) => void
-  ) {
-    setSelected(
-      selected.includes(value)
-        ? selected.filter((item) => item !== value)
-        : [...selected, value]
-    );
-  }
+  const toggleValue = useCallback(
+    (
+      value: string,
+      selected: string[],
+      setSelected: (values: string[]) => void
+    ) => {
+      setSelected(
+        selected.includes(value)
+          ? selected.filter((item) => item !== value)
+          : [...selected, value]
+      );
+    },
+    []
+  );
 
   function clearFilters() {
     setSearch("");
@@ -330,7 +389,7 @@ export default function GamesClient({
           </div>
         </div>
 
-        {/* 搜索：与顶部公共搜索框使用同一个状态 */}
+        {/* 搜索 */}
         <div style={sectionStyle}>
           <label
             htmlFor="games-search"
@@ -438,6 +497,50 @@ export default function GamesClient({
             <p style={{ color: "#bca0a5", fontSize: 13, margin: 0 }}>
               当前已发布游戏还没有可用标签。
             </p>
+          )}
+
+          {validSelectedTags.length > 0 && (
+            <div
+              style={{
+                marginTop: 12,
+                display: "flex",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 8,
+                fontSize: 12,
+                color: "#d5b9bd",
+              }}
+            >
+              <span>当前选中：</span>
+
+              {validSelectedTags.map((tag) => (
+                <span
+                  key={tag}
+                  style={{
+                    padding: "3px 7px",
+                    border: `1px solid ${RED}`,
+                    color: TEXT,
+                    background: "rgba(231,53,80,0.12)",
+                  }}
+                >
+                  {tag}
+                </span>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setSelectedTags([])}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  color: RED,
+                  cursor: "pointer",
+                  padding: "3px 0",
+                }}
+              >
+                清除标签
+              </button>
+            </div>
           )}
         </div>
 
