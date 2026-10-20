@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -29,9 +30,7 @@ const LINE = "#4a2028";
 const TEXT = "#f8eeee";
 
 function normalizeTags(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
+  if (!Array.isArray(value)) return [];
 
   return Array.from(
     new Set(
@@ -70,12 +69,9 @@ export default function GamesClient({
         ...game,
         tags: normalizeTags(game.tags),
         downloads: normalizeDownloads(game.downloads),
-        author:
-          typeof game.author === "string" ? game.author.trim() : "",
+        author: typeof game.author === "string" ? game.author.trim() : "",
         category:
-          typeof game.category === "string"
-            ? game.category.trim()
-            : "",
+          typeof game.category === "string" ? game.category.trim() : "",
       })),
     [games]
   );
@@ -83,11 +79,7 @@ export default function GamesClient({
   const authors = useMemo(
     () =>
       Array.from(
-        new Set(
-          normalizedGames
-            .map((game) => game.author)
-            .filter(Boolean)
-        )
+        new Set(normalizedGames.map((game) => game.author).filter(Boolean))
       ).sort((a, b) => a.localeCompare(b, "zh-CN")),
     [normalizedGames]
   );
@@ -104,9 +96,7 @@ export default function GamesClient({
     () =>
       Array.from(
         new Set(
-          normalizedGames
-            .map((game) => game.category)
-            .filter(Boolean)
+          normalizedGames.map((game) => game.category).filter(Boolean)
         )
       ).sort((a, b) => a.localeCompare(b, "zh-CN")),
     [normalizedGames]
@@ -122,19 +112,9 @@ export default function GamesClient({
     [selectedAuthors, authors]
   );
 
-  /**
-   * 首次进入游戏库时读取 URL 中的标签和分类。
-   *
-   * 支持：
-   * /games?tag=恐怖悬疑
-   * /games?tag=恐怖悬疑&tag=解谜
-   * /games?category=角色扮演
-   * /games?category=角色扮演&tag=恐怖悬疑
-   */
+  // 首次进入游戏库时读取 URL 中的标签和分类
   useEffect(() => {
-    if (urlInitialized) {
-      return;
-    }
+    if (urlInitialized) return;
 
     const params = new URLSearchParams(window.location.search);
     const urlTags = params.getAll("tag");
@@ -159,14 +139,9 @@ export default function GamesClient({
     setUrlInitialized(true);
   }, [allTags, categories, urlInitialized]);
 
-  /**
-   * 监听浏览器前进、后退。
-   * URL 中的标签和分类发生变化时，同步筛选状态。
-   */
+  // 监听浏览器前进、后退
   useEffect(() => {
-    if (!urlInitialized) {
-      return;
-    }
+    if (!urlInitialized) return;
 
     function handlePopState() {
       const params = new URLSearchParams(window.location.search);
@@ -197,14 +172,9 @@ export default function GamesClient({
     };
   }, [allTags, categories, urlInitialized]);
 
-  /**
-   * 将选中的标签和分类同步到 URL。
-   * 保留其他查询参数，并支持多个标签。
-   */
+  // 将标签和分类筛选同步到 URL
   useEffect(() => {
-    if (!urlInitialized) {
-      return;
-    }
+    if (!urlInitialized) return;
 
     const url = new URL(window.location.href);
 
@@ -236,10 +206,7 @@ export default function GamesClient({
     urlInitialized,
   ]);
 
-  /**
-   * 搜索、作者、标签、分类之间采用 AND。
-   * 同一组内多个作者或多个标签之间采用 OR。
-   */
+  // 搜索、作者、标签、分类之间采用 AND；同组多个选项采用 OR
   const filteredGames = useMemo(() => {
     const keyword = search.trim().toLowerCase();
 
@@ -358,13 +325,15 @@ export default function GamesClient({
     <main
       style={{
         minHeight: "100vh",
-        background: BG,
+
+        // 修改：使用透明背景，让全站背景图能够透出
+        background: "transparent",
+
         color: TEXT,
         padding: "0 0 60px",
         boxSizing: "border-box",
       }}
     >
-      {/* 公共头图、导航栏、搜索和用户信息 */}
       <SiteHeader
         headerImage={headerImage}
         searchValue={search}
@@ -379,7 +348,6 @@ export default function GamesClient({
           boxSizing: "border-box",
         }}
       >
-        {/* 标题区域 */}
         <div
           style={{
             display: "flex",
@@ -506,11 +474,7 @@ export default function GamesClient({
                     type="button"
                     aria-pressed={active}
                     onClick={() =>
-                      toggleValue(
-                        tag,
-                        validSelectedTags,
-                        setSelectedTags
-                      )
+                      toggleValue(tag, validSelectedTags, setSelectedTags)
                     }
                     style={filterButtonStyle(active)}
                   >
