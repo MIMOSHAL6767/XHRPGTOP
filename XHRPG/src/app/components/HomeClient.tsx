@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -15,7 +16,6 @@ export default function HomeClient({
 }) {
   const router = useRouter();
 
-  const [open, setOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [search, setSearch] = useState("");
@@ -25,25 +25,7 @@ export default function HomeClient({
     ? banners[bannerIndex % banners.length]
     : null;
 
-  async function openMySpace() {
-    try {
-      const res = await fetch("/api/auth/me", {
-        credentials: "include",
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        router.push(`/uid/${data.user.id}`);
-      } else {
-        router.push("/login");
-      }
-    } catch {
-      router.push("/login");
-    }
-  }
-
-  // 自动轮播：保留原有轮播功能
+  // 自动轮播
   useEffect(() => {
     if (banners.length <= 1) return;
 
@@ -74,6 +56,7 @@ export default function HomeClient({
     router.refresh();
   }
 
+  // 搜索和排序
   const filteredGames = games
     .filter((game) => {
       const key = search.trim().toLowerCase();
@@ -90,10 +73,11 @@ export default function HomeClient({
     .sort((a, b) => {
       const idA = Number(a.id) || 0;
       const idB = Number(b.id) || 0;
+
       return sortOrder === "default" ? idA - idB : idB - idA;
     });
 
-  // 兼容数据库里可能保存的数字、"40" 或 "40px"
+  // 兼容数字、"40" 和 "40px"
   function cssSize(value: unknown, fallback: string) {
     if (value === null || value === undefined || value === "") {
       return fallback;
@@ -107,6 +91,25 @@ export default function HomeClient({
     const num = Number(value);
     return Number.isFinite(num) ? num : fallback;
   }
+
+  const navLinkStyle: React.CSSProperties = {
+    display: "inline-flex",
+    flex: "0 0 auto",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "40px",
+    padding: "0 14px",
+    color: "#ffffff",
+    textDecoration: "none",
+    fontSize: "15px",
+    fontWeight: 600,
+    whiteSpace: "nowrap",
+    border: "none",
+    borderRadius: 0,
+    background: "transparent",
+    boxSizing: "border-box",
+    cursor: "pointer",
+  };
 
   return (
     <main
@@ -156,16 +159,12 @@ export default function HomeClient({
         </Link>
       )}
 
-      {/* 顶部导航：保留原有红色导航栏 */}
+      {/* 顶部红色导航栏 */}
       <aside
         className="drawer-nav"
         style={{
           position: "relative",
           inset: "auto",
-          top: "auto",
-          left: "auto",
-          right: "auto",
-          bottom: "auto",
           width: "100%",
           minWidth: 0,
           maxWidth: "none",
@@ -180,16 +179,20 @@ export default function HomeClient({
           zIndex: 20,
           background: "#e73550",
           boxSizing: "border-box",
-          padding: "0 clamp(20px, 3vw, 40px)",
+          padding: "0 clamp(12px, 2vw, 32px)",
+          gap: "8px",
         }}
       >
-        <div
+        {/* 网站 Logo */}
+        <Link
+          href="/"
+          aria-label="XHRPG 首页"
           className="logo-box"
           style={{
             position: "static",
             width: "auto",
             height: "100%",
-            minWidth: "unset",
+            minWidth: "max-content",
             display: "flex",
             flexDirection: "row",
             alignItems: "center",
@@ -202,16 +205,65 @@ export default function HomeClient({
             boxShadow: "none",
             boxSizing: "border-box",
             whiteSpace: "nowrap",
-            transform: "translateY(10px)",
+            textDecoration: "none",
+            transform: "translateY(5px)",
           }}
         >
-          <b style={{ fontSize: "36px", lineHeight: 1, color: "#111111" }}>
+          <b style={{ fontSize: "32px", lineHeight: 1, color: "#111111" }}>
             喜灰
           </b>
-          <span style={{ fontSize: "36px", lineHeight: 1, color: "#FFFFFF" }}>
+          <span style={{ fontSize: "32px", lineHeight: 1, color: "#FFFFFF" }}>
             RPG
           </span>
-        </div>
+        </Link>
+
+        {/* 主导航按钮 */}
+        <nav
+          aria-label="主导航"
+          style={{
+            display: "flex",
+            flex: "1 1 auto",
+            alignItems: "center",
+            justifyContent: "flex-start",
+            gap: "2px",
+            minWidth: 0,
+            marginLeft: "clamp(4px, 1.5vw, 24px)",
+            overflowX: "auto",
+            overflowY: "hidden",
+            scrollbarWidth: "none",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <Link href="/" style={navLinkStyle}>
+            首页
+          </Link>
+
+          <Link href="/games" style={navLinkStyle}>
+            游戏库
+          </Link>
+
+          <Link href="/activities" style={navLinkStyle}>
+            活动
+          </Link>
+
+          <Link href="/timeline" style={navLinkStyle}>
+            大事记
+          </Link>
+
+          {/* 上传功能最后开发，目前只预留入口 */}
+          <button
+            type="button"
+            disabled
+            title="上传功能暂未开放"
+            style={{
+              ...navLinkStyle,
+              opacity: 0.55,
+              cursor: "not-allowed",
+            }}
+          >
+            上传
+          </button>
+        </nav>
 
         {/* 搜索栏和用户信息 */}
         <header
@@ -220,27 +272,26 @@ export default function HomeClient({
             display: "flex",
             alignItems: "center",
             justifyContent: "flex-end",
-            gap: "14px",
+            gap: "12px",
             flex: "0 1 auto",
             minWidth: 0,
             marginLeft: "auto",
-            padding: "7px 0 0",
-            transform: "translateY(8px)",
+            padding: "0",
+            transform: "translateY(4px)",
             background: "transparent",
             boxSizing: "border-box",
           }}
         >
           <input
+            aria-label="搜索游戏"
             placeholder="搜索游戏..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             style={{
               width: "160px",
-              minWidth: "160px",
+              minWidth: "100px",
               maxWidth: "160px",
-              flex: "0 0 160px",
-              flexGrow: 0,
-              flexShrink: 0,
+              flex: "0 1 160px",
               boxSizing: "border-box",
             }}
           />
@@ -266,19 +317,24 @@ export default function HomeClient({
                 </span>
 
                 {user.role === "owner" && (
-                  <button onClick={() => router.push("/admin")}>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/admin")}
+                  >
                     后台管理
                   </button>
                 )}
 
-                <button onClick={logout}>退出</button>
+                <button type="button" onClick={logout}>
+                  退出
+                </button>
               </>
             )}
           </div>
         </header>
       </aside>
 
-      {/* 首页主体：轮播和游戏卡片保持原有逻辑 */}
+      {/* 首页主体 */}
       <section
         className="content-area"
         style={{
@@ -306,7 +362,7 @@ export default function HomeClient({
               minHeight: "320px",
               overflow: "hidden",
               isolation: "isolate",
-              borderRadius: "12px",
+              borderRadius: 0,
               backgroundColor: "#171717",
             }}
           >
@@ -447,6 +503,7 @@ export default function HomeClient({
                   top: "50%",
                   transform: "translateY(-50%)",
                   zIndex: 5,
+                  borderRadius: 0,
                 }}
               >
                 ‹
@@ -467,6 +524,7 @@ export default function HomeClient({
                   top: "50%",
                   transform: "translateY(-50%)",
                   zIndex: 5,
+                  borderRadius: 0,
                 }}
               >
                 ›
@@ -475,7 +533,7 @@ export default function HomeClient({
           </section>
         )}
 
-        {/* 游戏库标题和排序按钮 */}
+        {/* 首页游戏库标题和排序 */}
         <div
           className="game-library-heading"
           style={{
@@ -492,7 +550,11 @@ export default function HomeClient({
           <div
             role="group"
             aria-label="游戏排序方式"
-            style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}
+            style={{
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap",
+            }}
           >
             <button
               type="button"
@@ -500,12 +562,13 @@ export default function HomeClient({
               onClick={() => setSortOrder("default")}
               style={{
                 padding: "8px 14px",
-                borderRadius: "8px",
+                borderRadius: 0,
                 border:
                   sortOrder === "default"
                     ? "1px solid #e5484d"
                     : "1px solid #444",
-                background: sortOrder === "default" ? "#e5484d" : "transparent",
+                background:
+                  sortOrder === "default" ? "#e5484d" : "transparent",
                 color: "#fff",
                 cursor: "pointer",
                 transition: "background 0.2s, border-color 0.2s",
@@ -520,12 +583,13 @@ export default function HomeClient({
               onClick={() => setSortOrder("latest")}
               style={{
                 padding: "8px 14px",
-                borderRadius: "8px",
+                borderRadius: 0,
                 border:
                   sortOrder === "latest"
                     ? "1px solid #e5484d"
                     : "1px solid #444",
-                background: sortOrder === "latest" ? "#e5484d" : "transparent",
+                background:
+                  sortOrder === "latest" ? "#e5484d" : "transparent",
                 color: "#fff",
                 cursor: "pointer",
                 transition: "background 0.2s, border-color 0.2s",
@@ -565,7 +629,9 @@ export default function HomeClient({
             </Link>
           ))}
 
-          {filteredGames.length === 0 && <div>没有找到相关游戏</div>}
+          {filteredGames.length === 0 && (
+            <div>没有找到相关游戏</div>
+          )}
         </div>
       </section>
     </main>
