@@ -1,3 +1,4 @@
+```tsx
 "use client";
 
 import Link from "next/link";
@@ -8,12 +9,16 @@ type SiteHeaderProps = {
   headerImage?: string | null;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
+
+  // 新增：是否隐藏搜索框
+  hideSearch?: boolean;
 };
 
 export default function SiteHeader({
   headerImage = null,
   searchValue = "",
   onSearchChange,
+  hideSearch = false,
 }: SiteHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -30,6 +35,7 @@ export default function SiteHeader({
     }
   }, []);
 
+  // 退出登录
   function logout() {
     localStorage.removeItem("user");
     setUser(null);
@@ -155,7 +161,7 @@ export default function SiteHeader({
             boxSizing: "border-box",
           }}
         >
-          {/* Logo：整体向下微调 6px */}
+          {/* Logo */}
           <Link
             href="/"
             aria-label="XHRPG 首页"
@@ -179,7 +185,7 @@ export default function SiteHeader({
               boxSizing: "border-box",
               whiteSpace: "nowrap",
               textDecoration: "none",
-              transform: "translateY(12px)",
+              transform: "translateY(16px)",
             }}
           >
             <b
@@ -209,7 +215,7 @@ export default function SiteHeader({
             </span>
           </Link>
 
-          {/* 主导航：保持原位置 */}
+          {/* 主导航 */}
           <nav
             aria-label="主导航"
             style={{
@@ -273,7 +279,7 @@ export default function SiteHeader({
             </button>
           </nav>
 
-          {/* 搜索框与用户信息：整体向下微调 6px */}
+          {/* 搜索框与用户信息 */}
           <header
             className="top-bar"
             style={{
@@ -288,27 +294,31 @@ export default function SiteHeader({
               background: "transparent",
               boxSizing: "border-box",
               height: "100%",
-              transform: "translateY(12px)",
+              transform: "translateY(16px)",
             }}
           >
-            <input
-              aria-label="搜索游戏"
-              placeholder="搜索游戏..."
-              value={searchValue}
-              onChange={(event) => {
-                onSearchChange?.(event.target.value);
-              }}
-              style={{
-                width: "160px",
-                height: "36px",
-                minWidth: "80px",
-                maxWidth: "160px",
-                flex: "0 1 160px",
-                boxSizing: "border-box",
-                margin: 0,
-              }}
-            />
+            {/* 新增：hideSearch 为 true 时不显示搜索框 */}
+            {!hideSearch && (
+              <input
+                aria-label="搜索游戏"
+                placeholder="搜索游戏..."
+                value={searchValue}
+                onChange={(event) => {
+                  onSearchChange?.(event.target.value);
+                }}
+                style={{
+                  width: "160px",
+                  height: "36px",
+                  minWidth: "80px",
+                  maxWidth: "160px",
+                  flex: "0 1 160px",
+                  boxSizing: "border-box",
+                  margin: 0,
+                }}
+              />
+            )}
 
+            {/* 用户信息 */}
             <div
               className="user-area"
               style={{
@@ -363,3 +373,4 @@ export default function SiteHeader({
     </>
   );
 }
+```
