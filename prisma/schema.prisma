@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================
+// 用户
+// =====================
+
+model User {
+  id Int @id @default(autoincrement())
+
+  username String @unique
+
+  nickname String @unique
+
+  password String
+
+  role String @default("user")
+
+  avatar String @default("/avatar/default.png")
+
+  background String @default("/background/default.jpg")
+
+  bio String? @db.Text
+
+  tags Json?
+
+  title String?
+
+  titleStyle Json?
+
+  showTitle Boolean @default(false)
+
+  userTitles UserTitleGrant[]
+
+  banUntil DateTime?
+
+  muteUntil DateTime?
+
+  hidden Boolean @default(false)
+
+  registerIp String?
+
+  lastIp String?
+
+  adminNote String? @db.Text
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+// =====================
+// 称号模板
+// =====================
+
+model UserTitle {
+  id Int @id @default(autoincrement())
+
+  name String @unique
+
+  color String @default("#ffffff")
+
+  background String @default("#333333")
+
+  border String @default("none")
+
+  shadow String?
+
+  size Int @default(14)
+
+  createdAt DateTime @default(now())
+
+  users UserTitleGrant[]
+}
+
+// =====================
+// 用户称号关系
+// =====================
+
+model UserTitleGrant {
+  id Int @id @default(autoincrement())
+
+  userId Int
+
+  titleId Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title UserTitle @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, titleId])
+}
+
+// =====================
+// 游戏
+// =====================
+
+
+model Game {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  en String?
+
+  author String
+
+  category String
+
+  version String
+
+  description String
+
+  cover String
+
+  lanzou String
+
+  pan123 String
+
+  downloads Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  updateDate String
+
+  date String
+
+  history Json?
+
+  status String
+
+  symbol String
+
+  tags Json?
+
+  // 详情页标题设置：text 或 image
+  titleMode String @default("text")
+
+  // 标题透明 PNG 图片地址
+  titleLogo String?
+
+  // 详情页背景图片地址
+  detailBackground String?
+
+  // 背景透明度，0-100
+  detailBackgroundOpacity Int @default(35)
+
+  // cover 或 contain
+  detailBackgroundFit String @default("cover")
+
+  // 详情页预览图 URL 数组，按数组顺序显示
+  screenshots Json?
+}
+
+
+// =====================
+// Banner
+// =====================
+
+model Banner {
+  id Int @id @default(autoincrement())
+
+  name String
+
+  background String
+
+  cover String?
+
+  title String
+
+  description String @db.Text
+
+  buttonText String @default("查看游戏")
+
+  buttonUrl String?
+
+  titleSize Int @default(48)
+
+  titleColor String @default("#ffffff")
+
+  titleX Int @default(50)
+
+  titleY Int @default(30)
+
+  descSize Int @default(18)
+
+  descColor String @default("#ffffff")
+
+  descX Int @default(50)
+
+  descY Int @default(65)
+
+  coverWidth Int @default(300)
+
+  coverHeight Int @default(300)
+
+  coverX Int @default(50)
+
+  coverY Int @default(50)
+
+  coverFit String @default("contain")
+
+  sort Int @default(0)
+
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+}
+
+// =====================
+// 验证问题
+// =====================
+
+model VerifyQuestion {
+  id Int @id @default(autoincrement())
+
+  question String
+
+  answer String
+
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+}
+
+model HomeHeader {
+  id        Int      @id @default(1)
+  imageUrl  String?
+  updatedAt DateTime @updatedAt
+}
