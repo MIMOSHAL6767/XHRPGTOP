@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
@@ -32,19 +31,30 @@ async function isAdmin(): Promise<boolean> {
     }
 
     const payload = decoded as jwt.JwtPayload & {
+      id?: string | number;
       userId?: string | number;
       user?: { id?: string | number };
     };
 
-    const rawId =
-      payload.id ?? payload.userId ?? payload.user?.id;
+    const rawId = payload.id ?? payload.userId ?? payload.user?.id;
 
-    if (rawId === undefined || rawId === null || String(rawId) === "") {
+    if (
+      rawId === undefined ||
+      rawId === null ||
+      String(rawId).trim() === ""
+    ) {
+      return false;
+    }
+
+    // Prisma User.id 是 number 类型，查询前转换为数字
+    const userId = Number(rawId);
+
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
       return false;
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: String(rawId) },
+      where: { id: userId },
       select: {
         role: true,
         hidden: true,
@@ -62,7 +72,8 @@ async function isAdmin(): Promise<boolean> {
     }
 
     return user.role === "owner" || user.role === "admin";
-  } catch {
+  } catch (error) {
+    console.error("验证大事记图片上传权限失败：", error);
     return false;
   }
 }
@@ -77,13 +88,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. 检查图床环境变量
+    // 2. 检查 GitHub 图床环境变量
     const token =
       process.env.GITHUB_IMAGE_TOKEN || process.env.GITHUB_TOKEN;
+
     const owner =
       process.env.GITHUB_IMAGE_OWNER || process.env.GITHUB_OWNER;
+
     const repo =
       process.env.GITHUB_IMAGE_REPO || process.env.GITHUB_REPO;
+
     const branch =
       process.env.GITHUB_IMAGE_BRANCH ||
       process.env.GITHUB_BRANCH ||
@@ -110,6 +124,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 4. 校验图片格式
     const extension = ALLOWED_TYPES[file.type];
 
     if (!extension) {
@@ -119,6 +134,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 5. 校验图片大小
     if (file.size <= 0 || file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         { error: "图片大小必须大于 0 且不能超过 5 MB" },
@@ -126,18 +142,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. 转换为 Base64，准备上传 GitHub
+    // 6. 转换为 Base64
     const bytes = Buffer.from(await file.arrayBuffer());
     const base64 = bytes.toString("base64");
 
     const path = `timeline/${Date.now()}-${randomUUID()}.${extension}`;
-    const apiUrl =
-      `https://api.github.com/repos/${owner}/${repo}/contents/${path
-        .split("/")
-        .map(encodeURIComponent)
-        .join("/")}`;
 
-    // 5. 上传到 GitHub Contents API
+    const apiUrl =
+      `https://api.github.com/repos/${owner}/${repo}/contents/` +
+      path.split("/").map(encodeURIComponent).join("/");
+
+    // 7. 上传到 GitHub Contents API
     const githubResponse = await fetch(apiUrl, {
       method: "PUT",
       headers: {
@@ -170,7 +185,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. 返回图片地址
+    // 8. 返回图片地址
     const imageUrl =
       `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
 
@@ -184,7 +199,7 @@ export async function POST(request: NextRequest) {
     console.error("大事记图片上传失败：", error);
 
     return NextResponse.json(
-      { error: "图片上传失败，请查看服务器终端日志" },
+      { error: "图片上传失败，请查看服务器日志" },
       { status: 500 },
     );
   }
