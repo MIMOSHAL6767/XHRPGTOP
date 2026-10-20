@@ -12,7 +12,7 @@ type HistoryItem = {
 };
 
 type ScreenshotItem = {
-  file: File;
+  file: File | null;
   preview: string;
   url: string;
 };
@@ -48,6 +48,16 @@ function getToday() {
   return `${year}-${month}-${day}`;
 }
 
+function normalizeTags(tags: string[]) {
+  return Array.from(
+    new Set(
+      tags
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
 function validateImage(file: File) {
   if (!IMAGE_TYPES.includes(file.type)) {
     throw new Error("只支持 PNG、JPG、WebP 图片");
@@ -77,6 +87,7 @@ export default function NewGame() {
   const [progress, setProgress] = useState("");
 
   const [form, setForm] = useState(INITIAL_FORM);
+  const [tagInput, setTagInput] = useState("");
 
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
@@ -123,6 +134,51 @@ export default function NewGame() {
     }));
   }
 
+  // 添加标签：过滤空白，避免重复。
+  function addTag() {
+    const newTag = tagInput.trim();
+
+    if (!newTag) {
+      return;
+    }
+
+    setForm((prev) => {
+      const currentTags = normalizeTags(prev.tags);
+
+      if (currentTags.includes(newTag)) {
+        return {
+          ...prev,
+          tags: currentTags,
+        };
+      }
+
+      return {
+        ...prev,
+        tags: [...currentTags, newTag],
+      };
+    });
+
+    setTagInput("");
+  }
+
+  // 按 Enter 添加标签。
+  function handleTagKeyDown(
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTag();
+    }
+  }
+
+  // 删除指定标签。
+  function removeTag(index: number) {
+    setForm((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((_, i) => i !== index),
+    }));
+  }
+
   function selectImage(
     e: React.ChangeEvent<HTMLInputElement>,
     setter: (file: File | null) => void,
@@ -152,6 +208,16 @@ export default function NewGame() {
   }
 
   function selectLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    if (file.type !== "image/png") {
+      alert("标题图片必须使用 PNG 格式，以便保留透明背景");
+      e.target.value = "";
+      return;
+    }
+
     selectImage(e, setLogoFile, setLogoPreview);
   }
 
@@ -167,7 +233,7 @@ export default function NewGame() {
 
       files.forEach(validateImage);
 
-      const added = files.map((file) => ({
+      const added: ScreenshotItem[] = files.map((file) => ({
         file,
         preview: URL.createObjectURL(file),
         url: "",
@@ -252,7 +318,7 @@ export default function NewGame() {
     }
 
     if (kind === "screenshot") {
-      if (!slot || slot < 1 || slot > 100) {
+      if (slot === undefined || slot < 1 || slot > 100) {
         throw new Error("预览图序号无效");
       }
 
@@ -311,8 +377,9 @@ export default function NewGame() {
 
     try {
       const today = getToday();
+      const tags = normalizeTags(form.tags);
 
-      // 第一步：创建游戏基础记录。
+      // 第一步：创建游戏基础记录，包含标签数组。
       const createResponse = await fetch("/api/admin/games", {
         method: "POST",
         headers: {
@@ -324,6 +391,7 @@ export default function NewGame() {
           author: form.author.trim(),
           category: form.category.trim(),
           version: form.version.trim(),
+          tags,
           cover: "",
           history,
           date: today,
@@ -386,7 +454,7 @@ export default function NewGame() {
         }
       }
 
-      // 第三步：一次 PUT 保存封面 URL 和全部详情设置。
+      // 第三步：保存封面 URL 和全部详情设置。
       setProgress("正在保存游戏详情设置……");
 
       const updateResponse = await fetch(`/api/admin/games/${id}`, {
@@ -449,6 +517,16 @@ export default function NewGame() {
     maxHeight: 220,
     objectFit: "contain",
     marginTop: 12,
+  };
+
+  const tagStyle: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    padding: "7px 10px",
+    border: "1px solid var(--line, #4a2028)",
+    background: "var(--panel, #160c0f)",
+    color: "var(--text, #f8eeee)",
   };
 
   return (
@@ -548,25 +626,90 @@ export default function NewGame() {
               <option value="未通过">未通过</option>
             </select>
           </label>
+        </div>
 
-          <label>
-            标签（用英文逗号分隔）
+        {/* 自由标签编辑区域：不预设任何标签 */}
+        <section style={sectionStyle}>
+          <h2>游戏标签</h2>
+
+          <p>
+            标签由你自由填写，不会自动添加预设标签。输入后按 Enter
+            或点击添加标签。
+          </p>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+              alignItems: "stretch",
+              marginTop: 12,
+            }}
+          >
             <input
-              value={form.tags.join(", ")}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  tags: e.target.value
-                    .split(",")
-                    .map((tag) => tag.trim())
-                    .filter(Boolean),
-                }))
-              }
-              style={inputStyle}
-              placeholder="喜羊羊, 恐怖, RPG"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleTagKeyDown}
+              placeholder="输入一个标签，例如：恐怖"
+              disabled={loading}
+              style={{
+                ...inputStyle,
+                flex: "1 1 220px",
+                width: "auto",
+                minWidth: 0,
+              }}
             />
-          </label>
 
+            <button
+              type="button"
+              onClick={addTag}
+              disabled={loading || !tagInput.trim()}
+            >
+              添加标签
+            </button>
+          </div>
+
+          {form.tags.length > 0 ? (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: 16,
+              }}
+            >
+              {form.tags.map((tag, index) => (
+                <span key={`${tag}-${index}`} style={tagStyle}>
+                  <span>{tag}</span>
+
+                  <button
+                    type="button"
+                    onClick={() => removeTag(index)}
+                    disabled={loading}
+                    aria-label={`删除标签 ${tag}`}
+                    title={`删除标签 ${tag}`}
+                    style={{
+                      padding: 0,
+                      border: 0,
+                      background: "transparent",
+                      color: "inherit",
+                      cursor: "pointer",
+                      lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p style={{ opacity: 0.7, marginTop: 12 }}>
+              暂无标签。你可以不添加任何标签。
+            </p>
+          )}
+        </section>
+
+        <div className="form-grid" style={{ marginTop: 20 }}>
           <label>
             游戏封面
             <input
@@ -652,7 +795,9 @@ export default function NewGame() {
               disabled={loading}
               style={inputStyle}
             />
-            <small>数值范围为 0–100，具体视觉效果取决于详情页的实现。</small>
+            <small>
+              数值范围为 0–100，具体视觉效果取决于详情页的实现。
+            </small>
           </label>
 
           <label style={{ display: "block", marginTop: 18 }}>
@@ -660,13 +805,19 @@ export default function NewGame() {
             <select
               value={backgroundFit}
               onChange={(e) =>
-                setBackgroundFit(e.target.value as "cover" | "contain")
+                setBackgroundFit(
+                  e.target.value as "cover" | "contain"
+                )
               }
               disabled={loading}
               style={inputStyle}
             >
-              <option value="cover">Cover：铺满区域，可能裁切</option>
-              <option value="contain">Contain：完整显示，可能留白</option>
+              <option value="cover">
+                Cover：铺满区域，可能裁切
+              </option>
+              <option value="contain">
+                Contain：完整显示，可能留白
+              </option>
             </select>
           </label>
         </section>
@@ -694,7 +845,7 @@ export default function NewGame() {
               标题 PNG 图片 *
               <input
                 type="file"
-                accept="image/png,image/jpeg,image/webp"
+                accept="image/png"
                 onChange={selectLogo}
                 disabled={loading}
               />
@@ -707,9 +858,7 @@ export default function NewGame() {
                 />
               )}
 
-              <small>
-                建议使用透明背景 PNG。上传接口同时支持 JPG 和 WebP。
-              </small>
+              <small>请使用 PNG 格式，以便保留透明背景。</small>
             </label>
           )}
         </section>
