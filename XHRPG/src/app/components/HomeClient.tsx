@@ -26,7 +26,10 @@ type ImageFit =
   | "none"
   | "scale-down";
 
-function getImageFit(value: unknown, fallback: ImageFit = "cover"): ImageFit {
+function getImageFit(
+  value: unknown,
+  fallback: ImageFit = "cover"
+): ImageFit {
   if (
     value === "contain" ||
     value === "cover" ||
@@ -527,4 +530,99 @@ export default function HomeClient({
             alignItems: "center",
             justifyContent: "space-between",
             gap: "12px",
-            flex
+            flexWrap: "wrap",
+            marginBottom: "16px",
+          }}
+        >
+          <h2 style={{ margin: 0 }}>游戏库</h2>
+
+          <div
+            role="group"
+            aria-label="游戏排序方式"
+            style={{
+              display: "flex",
+              gap: "8px",
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              type="button"
+              aria-pressed={sortOrder === "default"}
+              onClick={() => setSortOrder("default")}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 0,
+                border:
+                  sortOrder === "default"
+                    ? "1px solid #e5484d"
+                    : "1px solid #444",
+                background:
+                  sortOrder === "default" ? "#e5484d" : "transparent",
+                color: "#fff",
+                cursor: "pointer",
+                transition: "background 0.2s, border-color 0.2s",
+              }}
+            >
+              默认排序
+            </button>
+
+            <button
+              type="button"
+              aria-pressed={sortOrder === "latest"}
+              onClick={() => setSortOrder("latest")}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 0,
+                border:
+                  sortOrder === "latest"
+                    ? "1px solid #e5484d"
+                    : "1px solid #444",
+                background:
+                  sortOrder === "latest" ? "#e5484d" : "transparent",
+                color: "#fff",
+                cursor: "pointer",
+                transition: "background 0.2s, border-color 0.2s",
+              }}
+            >
+              最新上传
+            </button>
+          </div>
+        </div>
+
+        {/* 首页游戏卡片 */}
+        <div
+          className="game-grid"
+          style={{
+            width: "100%",
+            maxWidth: "100%",
+            marginLeft: "auto",
+            marginRight: "auto",
+            boxSizing: "border-box",
+          }}
+        >
+          {filteredGames.map((game) => (
+            <Link
+              key={game.id}
+              className="square-card"
+              href={`/game/${game.id}`}
+            >
+              <div className="cover-box">
+                <img
+                  className="cover-img"
+                  src={game.cover || `/assets/games/games${game.id}.png`}
+                  alt={game.name || "游戏封面"}
+                />
+              </div>
+
+              <div className="game-title">{game.name}</div>
+            </Link>
+          ))}
+
+          {filteredGames.length === 0 && (
+            <div>没有找到相关游戏</div>
+          )}
+        </div>
+      </section>
+    </main>
+  );
+}
