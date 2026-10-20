@@ -1,0 +1,582 @@
+
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+
+type GameItem = {
+  id: number;
+  name: string;
+  en: string | null;
+  author: string;
+  category: string;
+  version: string;
+  cover: string;
+  tags: string[];
+  downloads: number;
+  createdAt: string;
+};
+
+type Props = {
+  games: GameItem[];
+};
+
+const RED = "#e73550";
+const BG = "#10090b";
+const PANEL = "#160c0f";
+const LINE = "#4a2028";
+const TEXT = "#f8eeee";
+
+const DEFAULT_CATEGORIES = [
+  "角色扮演",
+  "动作冒险",
+  "策略战棋",
+  "恐怖悬疑",
+  "模拟经营",
+];
+
+export default function GamesClient({ games }: Props) {
+  const [search, setSearch] = useState("");
+  const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("全部");
+  const [sortOrder, setSortOrder] = useState("default");
+
+  // 作者自动从已发布游戏的数据中生成，去除重复名称
+  const authors = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          games
+            .map((game) => game.author?.trim())
+            .filter((author): author is string => Boolean(author))
+        )
+      ).sort((a, b) => a.localeCompare(b, "zh-CN")),
+    [games]
+  );
+
+  // 标签自动读取游戏中已有的 tags
+  const allTags = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          games.flatMap((game) =>
+            Array.isArray(game.tags)
+              ? game.tags.filter(
+                  (tag) => typeof tag === "string" && tag.trim()
+                )
+              : []
+          )
+        )
+      ).sort((a, b) => a.localeCompare(b, "zh-CN")),
+    [games]
+  );
+
+  const categories = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...DEFAULT_CATEGORIES,
+          ...games
+            .map((game) => game.category?.trim())
+            .filter((category): category is string => Boolean(category)),
+        ])
+      ),
+    [games]
+  );
+
+  const filteredGames = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
+
+    const result = games.filter((game) => {
+      const gameTags = Array.isArray(game.tags) ? game.tags : [];
+
+      const matchesSearch =
+        !keyword ||
+        [
+          game.name,
+          game.en ?? "",
+          game.author,
+          game.category,
+          game.version,
+          ...gameTags,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(keyword);
+
+      // 多个作者之间为 OR：符合任意一个选中的作者即可
+      const matchesAuthor =
+        selectedAuthors.length === 0 ||
+        selectedAuthors.includes(game.author?.trim() ?? "");
+
+      // 多个标签之间为 OR：符合任意一个选中的标签即可
+      const matchesTags =
+        selectedTags.length === 0 ||
+        selectedTags.some((tag) => gameTags.includes(tag));
+
+      const matchesCategory =
+        selectedCategory === "全部" ||
+        game.category === selectedCategory;
+
+      // 搜索、作者、标签、分类之间为 AND
+      return (
+        matchesSearch &&
+        matchesAuthor &&
+        matchesTags &&
+        matchesCategory
+      );
+    });
+
+    if (sortOrder === "latest") {
+      result.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() -
+            new Date(a.createdAt).getTime() || b.id - a.id
+      );
+    } else if (sortOrder === "downloads") {
+      result.sort(
+        (a, b) => b.downloads - a.downloads || a.id - b.id
+      );
+    } else {
+      result.sort((a, b) => a.id - b.id);
+    }
+
+    return result;
+  }, [
+    games,
+    search,
+    selectedAuthors,
+    selectedTags,
+    selectedCategory,
+    sortOrder,
+  ]);
+
+  function toggleValue(
+    value: string,
+    selected: string[],
+    setSelected: (values: string[]) => void
+  ) {
+    setSelected(
+      selected.includes(value)
+        ? selected.filter((item) => item !== value)
+        : [...selected, value]
+    );
+  }
+
+  function clearFilters() {
+    setSearch("");
+    setSelectedAuthors([]);
+    setSelectedTags([]);
+    setSelectedCategory("全部");
+    setSortOrder("default");
+  }
+
+  function filterButtonStyle(active: boolean) {
+    return {
+      border: `1px solid ${active ? RED : LINE}`,
+      background: active ? RED : PANEL,
+      color: TEXT,
+      padding: "8px 13px",
+      fontSize: 13,
+      cursor: "pointer",
+      borderRadius: 0,
+      whiteSpace: "nowrap" as const,
+    };
+  }
+
+  const sectionStyle = {
+    border: `1px solid ${LINE}`,
+    background: PANEL,
+    padding: 16,
+    marginBottom: 14,
+    borderRadius: 0,
+  };
+
+  const labelStyle = {
+    fontSize: 14,
+    fontWeight: 700 as const,
+    color: TEXT,
+    marginBottom: 12,
+  };
+
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        background: BG,
+        color: TEXT,
+        padding: "24px 16px 60px",
+        boxSizing: "border-box",
+      }}
+    >
+      <div style={{ maxWidth: 1240, margin: "0 auto" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
+            borderBottom: `2px solid ${RED}`,
+            paddingBottom: 18,
+            marginBottom: 22,
+          }}
+        >
+          <div>
+            <h1
+              style={{
+                fontSize: 30,
+                fontWeight: 800,
+                margin: 0,
+              }}
+            >
+              游戏库
+            </h1>
+            <p style={{ color: "#c9aeb2", fontSize: 13, marginTop: 8 }}>
+              探索游戏、查找作者，发现更多喜灰 RPG 作品。
+            </p>
+          </div>
+
+          <Link
+            href="/"
+            style={{
+              color: TEXT,
+              background: RED,
+              padding: "10px 16px",
+              textDecoration: "none",
+              fontSize: 14,
+              borderRadius: 0,
+            }}
+          >
+            返回首页
+          </Link>
+        </div>
+
+        <div style={sectionStyle}>
+          <label
+            htmlFor="games-search"
+            style={{ ...labelStyle, display: "block" }}
+          >
+            搜索游戏
+          </label>
+
+          <input
+            id="games-search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="输入游戏名、英文名、作者、版本或关键词……"
+            style={{
+              boxSizing: "border-box",
+              width: "100%",
+              padding: "12px 14px",
+              background: BG,
+              color: TEXT,
+              border: `1px solid ${LINE}`,
+              borderRadius: 0,
+              outlineColor: RED,
+              fontSize: 14,
+            }}
+          />
+        </div>
+
+        <div style={sectionStyle}>
+          <div style={labelStyle}>游戏分类</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {["全部", ...categories].map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() => setSelectedCategory(category)}
+                style={filterButtonStyle(selectedCategory === category)}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={sectionStyle}>
+          <div
+            style={{
+              ...labelStyle,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <span>游戏标签</span>
+            <span style={{ color: "#bca0a5", fontSize: 12, fontWeight: 400 }}>
+              可多选 · 满足任意一个已选标签即可
+            </span>
+          </div>
+
+          {allTags.length > 0 ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {allTags.map((tag) => {
+                const active = selectedTags.includes(tag);
+
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() =>
+                      toggleValue(tag, selectedTags, setSelectedTags)
+                    }
+                    style={filterButtonStyle(active)}
+                  >
+                    {active ? "✓ " : ""}
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p style={{ color: "#bca0a5", fontSize: 13 }}>
+              当前已发布游戏还没有可用标签，请先在后台为游戏添加标签。
+            </p>
+          )}
+        </div>
+
+        <div style={sectionStyle}>
+          <div
+            style={{
+              ...labelStyle,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+            <span>游戏作者</span>
+            <span style={{ color: "#bca0a5", fontSize: 12, fontWeight: 400 }}>
+              自动读取数据库 · 可多选
+            </span>
+          </div>
+
+          {authors.length > 0 ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {authors.map((author) => {
+                const active = selectedAuthors.includes(author);
+
+                return (
+                  <button
+                    key={author}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() =>
+                      toggleValue(
+                        author,
+                        selectedAuthors,
+                        setSelectedAuthors
+                      )
+                    }
+                    style={filterButtonStyle(active)}
+                  >
+                    {active ? "✓ " : ""}
+                    {author}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p style={{ color: "#bca0a5", fontSize: 13 }}>
+              当前没有可供筛选的作者。
+            </p>
+          )}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
+            margin: "24px 0 16px",
+          }}
+        >
+          <div style={{ fontSize: 15 }}>
+            找到{" "}
+            <strong style={{ color: RED }}>{filteredGames.length}</strong>{" "}
+            款游戏
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <select
+              aria-label="游戏排序"
+              value={sortOrder}
+              onChange={(event) => setSortOrder(event.target.value)}
+              style={{
+                padding: "9px 12px",
+                background: PANEL,
+                color: TEXT,
+                border: `1px solid ${LINE}`,
+                borderRadius: 0,
+                fontSize: 13,
+              }}
+            >
+              <option value="default">默认排序</option>
+              <option value="latest">最新上传</option>
+              <option value="downloads">下载量优先</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={clearFilters}
+              style={{
+                ...filterButtonStyle(false),
+                background: "transparent",
+              }}
+            >
+              清空筛选
+            </button>
+          </div>
+        </div>
+
+        {filteredGames.length > 0 ? (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 1fr))",
+              gap: 16,
+            }}
+          >
+            {filteredGames.map((game) => (
+              <Link
+                key={game.id}
+                href={`/game/${game.id}`}
+                style={{
+                  display: "block",
+                  minWidth: 0,
+                  textDecoration: "none",
+                  color: TEXT,
+                  background: PANEL,
+                  border: `1px solid ${LINE}`,
+                  borderRadius: 0,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: "100%",
+                    aspectRatio: "4 / 3",
+                    background: "#090507",
+                    overflow: "hidden",
+                  }}
+                >
+                  <img
+                    src={game.cover || `/assets/games/games${game.id}.png`}
+                    alt={game.name}
+                    loading="lazy"
+                    onError={(event) => {
+                      const img = event.currentTarget;
+                      const stage = img.dataset.fallbackStage ?? "0";
+
+                      if (stage === "0") {
+                        img.dataset.fallbackStage = "1";
+                        img.src = `/assets/games/games${game.id}.png`;
+                      } else if (stage === "1") {
+                        img.dataset.fallbackStage = "2";
+                        img.src = `/assets/games/games${game.id}.jpg`;
+                      } else {
+                        img.style.visibility = "hidden";
+                      }
+                    }}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
+                </div>
+
+                <div style={{ padding: 13 }}>
+                  <h2
+                    style={{
+                      margin: "0 0 10px",
+                      fontSize: 16,
+                      lineHeight: 1.5,
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {game.name}
+                  </h2>
+
+                  <div
+                    style={{
+                      color: "#d5b9bd",
+                      fontSize: 12,
+                      lineHeight: 1.9,
+                    }}
+                  >
+                    <div>作者：{game.author || "未知"}</div>
+                    <div>分类：{game.category || "未分类"}</div>
+                    <div>版本：{game.version || "未填写"}</div>
+                    <div>下载量：{game.downloads}</div>
+                  </div>
+
+                  {game.tags.length > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 5,
+                        marginTop: 10,
+                      }}
+                    >
+                      {game.tags.slice(0, 4).map((tag) => (
+                        <span
+                          key={tag}
+                          style={{
+                            border: `1px solid ${LINE}`,
+                            color: "#efb5bf",
+                            padding: "3px 6px",
+                            fontSize: 11,
+                            borderRadius: 0,
+                          }}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: "50px 20px",
+              textAlign: "center",
+              background: PANEL,
+              border: `1px solid ${LINE}`,
+              color: "#c9aeb2",
+              borderRadius: 0,
+            }}
+          >
+            <div style={{ fontSize: 18, marginBottom: 10 }}>
+              没有找到符合条件的游戏
+            </div>
+            <div style={{ fontSize: 13, marginBottom: 18 }}>
+              试试取消某些作者或标签，或者清空筛选条件。
+            </div>
+            <button
+              type="button"
+              onClick={clearFilters}
+              style={filterButtonStyle(true)}
+            >
+              清空筛选
+            </button>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
