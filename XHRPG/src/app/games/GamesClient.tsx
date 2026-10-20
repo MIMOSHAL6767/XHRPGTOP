@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -63,8 +62,6 @@ export default function GamesClient({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [sortOrder, setSortOrder] = useState("default");
-
-  // 防止首次渲染时空的筛选状态覆盖 URL 中的标签。
   const [urlInitialized, setUrlInitialized] = useState(false);
 
   const normalizedGames = useMemo(
@@ -126,13 +123,13 @@ export default function GamesClient({
   );
 
   /**
-   * 首次进入游戏库时读取 URL 标签。
+   * 首次进入游戏库时读取 URL 中的标签和分类。
    *
-   * 例如：
+   * 支持：
    * /games?tag=恐怖悬疑
-   *
-   * 也支持多个标签参数：
    * /games?tag=恐怖悬疑&tag=解谜
+   * /games?category=角色扮演
+   * /games?category=角色扮演&tag=恐怖悬疑
    */
   useEffect(() => {
     if (urlInitialized) {
@@ -141,6 +138,7 @@ export default function GamesClient({
 
     const params = new URLSearchParams(window.location.search);
     const urlTags = params.getAll("tag");
+    const urlCategory = params.get("category");
 
     const matchedTags = Array.from(
       new Set(
@@ -151,12 +149,19 @@ export default function GamesClient({
     );
 
     setSelectedTags(matchedTags);
+
+    if (urlCategory && categories.includes(urlCategory)) {
+      setSelectedCategory(urlCategory);
+    } else {
+      setSelectedCategory("全部");
+    }
+
     setUrlInitialized(true);
-  }, [allTags, urlInitialized]);
+  }, [allTags, categories, urlInitialized]);
 
   /**
    * 监听浏览器前进、后退。
-   * 当 URL 中的标签发生变化时，同步更新筛选状态。
+   * URL 中的标签和分类发生变化时，同步筛选状态。
    */
   useEffect(() => {
     if (!urlInitialized) {
@@ -166,6 +171,7 @@ export default function GamesClient({
     function handlePopState() {
       const params = new URLSearchParams(window.location.search);
       const urlTags = params.getAll("tag");
+      const urlCategory = params.get("category");
 
       const matchedTags = Array.from(
         new Set(
@@ -176,6 +182,12 @@ export default function GamesClient({
       );
 
       setSelectedTags(matchedTags);
+
+      if (urlCategory && categories.includes(urlCategory)) {
+        setSelectedCategory(urlCategory);
+      } else {
+        setSelectedCategory("全部");
+      }
     }
 
     window.addEventListener("popstate", handlePopState);
@@ -183,10 +195,10 @@ export default function GamesClient({
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [allTags, urlInitialized]);
+  }, [allTags, categories, urlInitialized]);
 
   /**
-   * 将已选标签同步到 URL。
+   * 将选中的标签和分类同步到 URL。
    * 保留其他查询参数，并支持多个标签。
    */
   useEffect(() => {
@@ -197,10 +209,18 @@ export default function GamesClient({
     const url = new URL(window.location.href);
 
     url.searchParams.delete("tag");
+    url.searchParams.delete("category");
 
     validSelectedTags.forEach((tag) => {
       url.searchParams.append("tag", tag);
     });
+
+    if (
+      selectedCategory !== "全部" &&
+      categories.includes(selectedCategory)
+    ) {
+      url.searchParams.set("category", selectedCategory);
+    }
 
     const nextUrl = `${url.pathname}${url.search}${url.hash}`;
     const currentUrl =
@@ -209,7 +229,12 @@ export default function GamesClient({
     if (nextUrl !== currentUrl) {
       window.history.replaceState(null, "", nextUrl);
     }
-  }, [validSelectedTags, urlInitialized]);
+  }, [
+    validSelectedTags,
+    selectedCategory,
+    categories,
+    urlInitialized,
+  ]);
 
   /**
    * 搜索、作者、标签、分类之间采用 AND。
@@ -425,6 +450,7 @@ export default function GamesClient({
             <button
               type="button"
               onClick={() => setSelectedCategory("全部")}
+              aria-pressed={selectedCategory === "全部"}
               style={filterButtonStyle(selectedCategory === "全部")}
             >
               全部
@@ -434,6 +460,7 @@ export default function GamesClient({
               <button
                 key={category}
                 type="button"
+                aria-pressed={selectedCategory === category}
                 onClick={() => setSelectedCategory(category)}
                 style={filterButtonStyle(selectedCategory === category)}
               >
