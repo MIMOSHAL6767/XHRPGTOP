@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 export type DetailHistoryItem = {
@@ -50,17 +51,14 @@ export default function GameDetailClient({
   screenshots,
   tags = [],
 }: Props) {
-  // 每次组件挂载只发起一次统计请求。
+  const router = useRouter();
+
+  // 统计访问量：每次组件挂载最多请求一次。
   const viewRequestStarted = useRef(false);
 
   useEffect(() => {
-    if (viewRequestStarted.current) {
-      return;
-    }
-
-    if (!Number.isSafeInteger(gameId) || gameId <= 0) {
-      return;
-    }
+    if (viewRequestStarted.current) return;
+    if (!Number.isSafeInteger(gameId) || gameId <= 0) return;
 
     viewRequestStarted.current = true;
 
@@ -71,6 +69,15 @@ export default function GameDetailClient({
       console.error("游戏访问统计请求失败：", error);
     });
   }, [gameId]);
+
+  // 返回上一级页面，保留浏览器历史和原有滚动位置。
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.replace("/games");
+    }
+  };
 
   // 预览图：优先使用截图，避免重复展示封面。
   const previewImages = Array.from(
@@ -151,9 +158,13 @@ export default function GameDetailClient({
 
       {/* 顶部区域 */}
       <header className="steam-detail-topbar">
-        <Link href="/" className="steam-back">
-          ← 返回游戏库
-        </Link>
+        <button
+          type="button"
+          className="steam-back"
+          onClick={handleBack}
+        >
+          ← 返回上一级
+        </button>
 
         <div className="steam-brand">
           {titleMode === "image" && titleLogo ? (
@@ -219,7 +230,19 @@ export default function GameDetailClient({
 
             <div>
               <dt>类型</dt>
-              <dd>{category || "未分类"}</dd>
+              <dd>
+                {category ? (
+                  <Link
+                    href={`/games?category=${encodeURIComponent(category)}`}
+                    className="steam-game-tag"
+                    title={`在游戏库中查看类型：${category}`}
+                  >
+                    {category}
+                  </Link>
+                ) : (
+                  "未分类"
+                )}
+              </dd>
             </div>
 
             <div>
@@ -228,7 +251,7 @@ export default function GameDetailClient({
             </div>
           </dl>
 
-          {/* 游戏标签：显示在作者、类型、版本下方 */}
+          {/* 游戏标签 */}
           {displayTags.length > 0 && (
             <div className="steam-game-tags">
               <div className="steam-game-tags-title">
@@ -327,8 +350,31 @@ export default function GameDetailClient({
         </div>
       </section>
 
-      {/* 标签样式：方形边角，红黑主题 */}
+      {/* 标签与返回按钮样式 */}
       <style jsx>{`
+        .steam-back {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 9px 14px;
+          border: 1px solid #4a2028;
+          border-radius: 0;
+          background: rgba(22, 12, 15, 0.92);
+          color: #f8eeee;
+          font: inherit;
+          font-size: 13px;
+          text-decoration: none;
+          cursor: pointer;
+          transition:
+            background-color 0.15s ease,
+            border-color 0.15s ease;
+        }
+
+        .steam-back:hover {
+          border-color: #a52a3a;
+          background: #8b1e2d;
+        }
+
         .steam-game-tags {
           margin-top: 22px;
         }
@@ -371,7 +417,8 @@ export default function GameDetailClient({
           color: #ffffff;
         }
 
-        .steam-game-tag:focus-visible {
+        .steam-game-tag:focus-visible,
+        .steam-back:focus-visible {
           outline: 2px solid #f8eeee;
           outline-offset: 2px;
         }
