@@ -24,9 +24,11 @@ type TimelineClientProps = {
 
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
-  background: "#10090b",
+  background: "transparent",
   color: "#f8eeee",
   padding: "20px 20px 60px",
+  position: "relative",
+  zIndex: 1,
 };
 
 const buttonStyle: CSSProperties = {
@@ -41,7 +43,7 @@ const buttonStyle: CSSProperties = {
 
 const secondaryButtonStyle: CSSProperties = {
   ...buttonStyle,
-  background: "#160c0f",
+  background: "rgba(22, 12, 15, 0.9)",
   border: "1px solid #4a2028",
 };
 
@@ -99,7 +101,7 @@ export default function TimelineClient({
     void loadTimeline();
   }, [loadTimeline]);
 
-  // 记录编辑器中的光标，避免点击工具栏后丢失插入位置
+  // 保存编辑器选区，避免点击工具栏后丢失插入位置
   const saveSelection = () => {
     const editor = editorRef.current;
     const selection = window.getSelection();
@@ -145,8 +147,6 @@ export default function TimelineClient({
     if (!editing) return;
 
     restoreSelection();
-
-    // execCommand 的字号参数使用 1-7，随后转换为实际像素值
     document.execCommand("fontSize", false, "7");
 
     const editor = editorRef.current;
@@ -182,9 +182,7 @@ export default function TimelineClient({
     setEditing(true);
 
     requestAnimationFrame(() => {
-      if (editorRef.current) {
-        editorRef.current.focus();
-      }
+      editorRef.current?.focus();
     });
   };
 
@@ -348,7 +346,6 @@ export default function TimelineClient({
       style={secondaryButtonStyle}
       disabled={!editing || saving || uploading}
       onMouseDown={(event) => {
-        // 保留编辑器中的选区
         event.preventDefault();
         saveSelection();
       }}
@@ -360,7 +357,6 @@ export default function TimelineClient({
 
   return (
     <>
-      {/* 公共首页头图与导航栏 */}
       <SiteHeader
         headerImage={headerImage}
         searchValue={search}
@@ -591,33 +587,29 @@ export default function TimelineClient({
           border-radius: 0 !important;
         }
 
-        body {
-          margin: 0;
-          background: #10090b;
-        }
-
         .timeline-container {
+          position: relative;
           max-width: 1050px;
           margin: 0 auto;
         }
 
         .timeline-content-panel,
         .editor-panel {
-          border: 1px solid #4a2028;
-          background: #160c0f;
+          border: 1px solid rgba(74, 32, 40, 0.92);
+          background: rgba(22, 12, 15, 0.78);
           margin-top: 20px;
         }
 
         .content-panel-top {
           min-height: 48px;
           padding: 12px 18px;
-          border-bottom: 1px solid #4a2028;
+          border-bottom: 1px solid rgba(74, 32, 40, 0.85);
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 12px;
           flex-wrap: wrap;
-          background: #1b0d11;
+          background: rgba(27, 13, 17, 0.78);
         }
 
         .content-panel-label {
@@ -637,7 +629,7 @@ export default function TimelineClient({
         }
 
         .updated-at {
-          color: #967e83;
+          color: #bca4a9;
           font-size: 12px;
         }
 
@@ -649,11 +641,12 @@ export default function TimelineClient({
           line-height: 2;
           overflow-wrap: anywhere;
           outline: none;
+          background: transparent;
         }
 
         .timeline-editor.is-editing {
           min-height: 420px;
-          background: #130a0d;
+          background: rgba(19, 10, 13, 0.88);
           box-shadow: inset 0 0 0 1px #6e2632;
         }
 
@@ -663,7 +656,7 @@ export default function TimelineClient({
 
         .timeline-editor:empty::before {
           content: attr(data-placeholder);
-          color: #755d62;
+          color: #a38a90;
           pointer-events: none;
         }
 
@@ -695,7 +688,7 @@ export default function TimelineClient({
           margin: 20px 0;
           padding: 10px 18px;
           color: #cbb4b9;
-          background: #1d1014;
+          background: rgba(29, 16, 20, 0.85);
         }
 
         .timeline-editor img {
@@ -720,7 +713,7 @@ export default function TimelineClient({
         }
 
         .empty-hint {
-          color: #806a6f;
+          color: #b19ba0;
           font-size: 13px;
           text-align: center;
           padding: 0 20px 28px;
@@ -746,7 +739,7 @@ export default function TimelineClient({
         .toolbar-tip {
           font-size: 12px;
           font-weight: 400;
-          color: #a78b91;
+          color: #c0a8ad;
         }
 
         .toolbar {
@@ -776,7 +769,7 @@ export default function TimelineClient({
           align-items: center;
           flex-wrap: wrap;
           gap: 18px;
-          border-top: 1px solid #4a2028;
+          border-top: 1px solid rgba(74, 32, 40, 0.85);
           margin-top: 16px;
           padding-top: 15px;
         }
@@ -785,7 +778,7 @@ export default function TimelineClient({
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          color: #cbb4b9;
+          color: #d6c1c5;
           font-size: 13px;
         }
 
@@ -817,7 +810,7 @@ export default function TimelineClient({
           justify-content: flex-end;
           margin-top: 20px;
           padding-top: 20px;
-          border-top: 1px solid #4a2028;
+          border-top: 1px solid rgba(74, 32, 40, 0.85);
         }
 
         .editor-actions {
@@ -837,19 +830,20 @@ export default function TimelineClient({
         .timeline-error {
           border: 1px solid #8b1e2d;
           color: #ffb8c0;
-          background: #2a0d13;
+          background: rgba(42, 13, 19, 0.95);
         }
 
         .timeline-success {
           border: 1px solid #315c45;
           color: #a6e5bd;
-          background: #102117;
+          background: rgba(16, 33, 23, 0.95);
         }
 
         .timeline-notice {
           padding: 50px 10px;
-          color: #bba4a8;
+          color: #d0b9be;
           text-align: center;
+          background: rgba(22, 12, 15, 0.72);
         }
 
         .read-only-note {
@@ -857,7 +851,7 @@ export default function TimelineClient({
           display: flex;
           justify-content: center;
           gap: 12px;
-          color: #806a6f;
+          color: #b09ba0;
           font-size: 11px;
           letter-spacing: 3px;
         }
