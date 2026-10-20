@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function Home() {
-  const [games, banners, header] = await Promise.all([
+  const [games, banners, header, activities] = await Promise.all([
     prisma.game.findMany({
       where: {
         status: "已发布",
@@ -29,6 +29,26 @@ export default async function Home() {
         id: 1,
       },
     }),
+
+    prisma.activity.findMany({
+      where: {
+        enabled: true,
+        showOnHome: true,
+      },
+      orderBy: [
+        {
+          sort: "asc",
+        },
+        {
+          id: "desc",
+        },
+      ],
+      select: {
+        id: true,
+        title: true,
+        cover: true,
+      },
+    }),
   ]);
 
   return (
@@ -36,6 +56,7 @@ export default async function Home() {
       games={games}
       banners={banners}
       headerImage={header?.imageUrl ?? null}
+      activities={activities}
     />
   );
 }
