@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { isSiteOwner } from "@/lib/admin-auth";
 
@@ -18,7 +19,8 @@ type UploadKind =
   | "background"
   | "logo"
   | "screenshot"
-  | "homeHeader";
+  | "homeHeader"
+  | "siteBackground";
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json(
@@ -28,13 +30,11 @@ function errorResponse(message: string, status: number) {
 }
 
 export async function POST(req: Request) {
-  // 仅允许站长上传
   if (!(await isSiteOwner())) {
     return errorResponse("无权上传图片，请使用站长账号登录", 401);
   }
 
   try {
-    // GitHub 图片仓库配置
     const token =
       process.env.GITHUB_IMAGE_TOKEN || process.env.GITHUB_TOKEN;
 
@@ -58,13 +58,13 @@ export async function POST(req: Request) {
     const id = formData.get("id");
     const rawKind = formData.get("kind");
 
-    // 兼容旧后台：没有 kind 时默认上传游戏封面
     const allowedKinds: UploadKind[] = [
       "cover",
       "background",
       "logo",
       "screenshot",
       "homeHeader",
+      "siteBackground",
     ];
 
     let kind: UploadKind;
@@ -80,7 +80,6 @@ export async function POST(req: Request) {
       return errorResponse("不支持的图片用途", 400);
     }
 
-    // 验证上传文件
     if (!(file instanceof File)) {
       return errorResponse("缺少图片文件", 400);
     }
@@ -95,10 +94,10 @@ export async function POST(req: Request) {
       return errorResponse("只支持 PNG、JPG、WebP 图片", 415);
     }
 
-    // 首页头图不绑定游戏 ID，其他用途必须绑定已存在的游戏
+    // 只有首页头图和全站背景不需要游戏 ID
     let gameId: number | null = null;
 
-    if (kind !== "homeHeader") {
+    if (kind !== "homeHeader" && kind !== "siteBackground") {
       if (
         typeof id !== "string" ||
         !/^[1-9]\d*$/.test(id)
@@ -122,7 +121,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // 验证文件的真实格式，防止仅修改 MIME 类型
+    // 验证图片真实格式
     const bytes = Buffer.from(await file.arrayBuffer());
 
     const isPng =
@@ -176,13 +175,12 @@ export async function POST(req: Request) {
       }
     }
 
-    // 根据用途选择目录和文件名
+    // 根据用途选择仓库目录和文件名
     let directory: string;
     let filename: string;
 
     switch (kind) {
       case "cover":
-        // 保持原有游戏封面路径不变
         directory = "games";
         filename = `games${gameId}.${ext}`;
         break;
@@ -203,13 +201,16 @@ export async function POST(req: Request) {
         break;
 
       case "homeHeader":
-        // 独立的首页头图，不参与 Banner 轮播
         directory = "home";
         filename = `header.${ext}`;
         break;
+
+      case "siteBackground":
+        directory = "backgrounds";
+        filename = `site-background-${randomUUID()}.${ext}`;
+        break;
     }
 
-    // GitHub 仓库内的完整路径
     const repoPath = `${directory}/${filename}`;
 
     const apiUrl =
@@ -227,7 +228,7 @@ export async function POST(req: Request) {
       "X-GitHub-Api-Version": "2022-11-28",
     };
 
-    // 查询文件是否存在；存在则获取 SHA，以便覆盖更新
+    // 查询文件是否已存在，以便覆盖时提供 SHA
     const existingResponse = await fetch(
       `${apiUrl}?ref=${encodeURIComponent(branch)}`,
       {
@@ -268,7 +269,6 @@ export async function POST(req: Request) {
       payload.sha = sha;
     }
 
-    // 上传或更新 GitHub 文件
     const uploadResponse = await fetch(apiUrl, {
       method: "PUT",
       headers: {
@@ -304,7 +304,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 确认 GitHub 已保存目标文件
     if (
       uploadResult?.content?.path !== repoPath ||
       !uploadResult?.content?.sha
@@ -315,7 +314,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 返回可供前台使用的 Raw 图片地址
     const url =
       `https://raw.githubusercontent.com/` +
       `${encodeURIComponent(owner)}/` +
@@ -342,9 +340,6 @@ export async function POST(req: Request) {
       error instanceof Error ? error.message : "未知错误"
     );
 
-    return errorResponse(
-      "图片上传失败，请检查服务日志",
-      500
-    );
+    return errorResponse("图片上传失败，请检查服务日志", 500);
   }
 }
