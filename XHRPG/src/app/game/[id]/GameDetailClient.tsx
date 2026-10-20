@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type DetailHistoryItem = {
   version: string;
@@ -12,6 +12,7 @@ export type DetailHistoryItem = {
 };
 
 type Props = {
+  gameId: number;
   name: string;
   author: string;
   category: string;
@@ -27,9 +28,11 @@ type Props = {
   detailBackgroundOpacity: number;
   detailBackgroundFit: string;
   screenshots: string[];
+  tags?: string[];
 };
 
 export default function GameDetailClient({
+  gameId,
   name,
   author,
   category,
@@ -45,7 +48,31 @@ export default function GameDetailClient({
   detailBackgroundOpacity,
   detailBackgroundFit,
   screenshots,
+  tags = [],
 }: Props) {
+  // 每次组件挂载只发起一次统计请求。
+  const viewRequestStarted = useRef(false);
+
+  useEffect(() => {
+    if (viewRequestStarted.current) {
+      return;
+    }
+
+    if (!Number.isSafeInteger(gameId) || gameId <= 0) {
+      return;
+    }
+
+    viewRequestStarted.current = true;
+
+    void fetch(`/api/games/${gameId}/view`, {
+      method: "POST",
+      cache: "no-store",
+    }).catch((error) => {
+      console.error("游戏访问统计请求失败：", error);
+    });
+  }, [gameId]);
+
+  // 预览图：优先使用截图，避免重复展示封面。
   const previewImages = Array.from(
     new Set(
       screenshots.filter(
@@ -94,8 +121,21 @@ export default function GameDetailClient({
   const backgroundFit =
     detailBackgroundFit === "contain" ? "contain" : "cover";
 
+  // 清理标签，去重并忽略空标签。
+  const displayTags = Array.from(
+    new Set(
+      tags
+        .filter(
+          (tag) =>
+            typeof tag === "string" && tag.trim().length > 0
+        )
+        .map((tag) => tag.trim())
+    )
+  );
+
   return (
     <main className="steam-detail-page">
+      {/* 页面背景 */}
       <div
         className="steam-detail-background"
         style={{
@@ -124,9 +164,9 @@ export default function GameDetailClient({
         </div>
       </header>
 
-      {/* 上方双栏布局 */}
+      {/* 游戏详情 */}
       <div className="steam-detail-layout">
-        {/* 左侧：预览图与缩略图 */}
+        {/* 左侧：游戏预览图 */}
         <section className="steam-gallery">
           <div className="steam-main-image">
             {activeImage ? (
@@ -163,7 +203,7 @@ export default function GameDetailClient({
           )}
         </section>
 
-        {/* 右侧：游戏介绍 */}
+        {/* 右侧：游戏信息 */}
         <aside className="steam-game-info">
           <h1>{name}</h1>
 
@@ -187,28 +227,47 @@ export default function GameDetailClient({
               <dd>{displayVersion || "最新版"}</dd>
             </div>
           </dl>
+
+          {/* 游戏标签：显示在作者、类型、版本下方 */}
+          {displayTags.length > 0 && (
+            <div className="steam-game-tags">
+              <div className="steam-game-tags-title">
+                游戏标签
+              </div>
+
+              <div className="steam-game-tags-list">
+                {displayTags.map((tag) => (
+                  <Link
+                    key={tag}
+                    href={`/games?tag=${encodeURIComponent(tag)}`}
+                    className="steam-game-tag"
+                    title={`在游戏库中查看标签：${tag}`}
+                  >
+                    {tag}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </aside>
       </div>
 
-      {/* 下方：独立下载区域 */}
+      {/* 下载区域 */}
       <section className="steam-download-panel">
-        {/* 标题独立显示，当前版本信息移至下方控件行 */}
         <div className="steam-download-heading">
           <strong>
             {selectedHistory ? "其他版本下载" : "下载游戏"}
           </strong>
         </div>
 
-        {/* 当前版本、版本选择栏与下载按钮统一排列 */}
         <div className="steam-download-controls">
-          {/* 当前版本信息 */}
           <span className="steam-download-current">
             {selectedHistory
               ? `当前选择：${selectedHistory.version || "其他版本"}`
               : `当前版本：${version || "最新版"}`}
           </span>
 
-          {/* 版本选择 */}
+          {/* 历史版本选择 */}
           {history.length > 0 && (
             <label className="steam-version-select">
               <span>选择版本</span>
@@ -267,6 +326,56 @@ export default function GameDetailClient({
           </div>
         </div>
       </section>
+
+      {/* 标签样式：方形边角，红黑主题 */}
+      <style jsx>{`
+        .steam-game-tags {
+          margin-top: 22px;
+        }
+
+        .steam-game-tags-title {
+          margin-bottom: 10px;
+          color: #f8eeee;
+          font-size: 13px;
+          font-weight: 600;
+          letter-spacing: 1px;
+        }
+
+        .steam-game-tags-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .steam-game-tag {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 6px 11px;
+          border: 1px solid #4a2028;
+          border-radius: 0;
+          background: rgba(22, 12, 15, 0.88);
+          color: #f8eeee;
+          font-size: 12px;
+          line-height: 1.4;
+          text-decoration: none;
+          transition:
+            background-color 0.15s ease,
+            border-color 0.15s ease,
+            color 0.15s ease;
+        }
+
+        .steam-game-tag:hover {
+          border-color: #a52a3a;
+          background: #8b1e2d;
+          color: #ffffff;
+        }
+
+        .steam-game-tag:focus-visible {
+          outline: 2px solid #f8eeee;
+          outline-offset: 2px;
+        }
+      `}</style>
     </main>
   );
 }
