@@ -312,3 +312,59 @@ model SiteBackground {
 
   @@index([enabled, sort])
 }
+
+
+model FloatingWidget {
+  id        Int      @id @default(1)
+
+  // 是否在首页展示
+  enabled   Boolean  @default(false)
+
+  // GitHub 仓库中的 GIF 地址
+  gifUrl    String?
+
+  // 悬浮按钮尺寸
+  width     Int      @default(90)
+  height    Int      @default(90)
+
+  // 初始位置，使用 CSS 定位值
+  positionX Int      @default(24)
+  positionY Int      @default(120)
+
+  // 是否启用音乐
+  musicEnabled Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  tracks FloatingWidgetTrack[]
+}
+
+model FloatingWidgetTrack {
+  id        Int      @id @default(autoincrement())
+
+  // 曲目名称
+  title     String
+
+  // GitHub 音乐文件地址
+  url       String
+
+  // 是否参与随机播放
+  enabled   Boolean  @default(true)
+
+  // 排序，数值越小越靠前
+  sort      Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  widgetId Int @default(1)
+
+  widget FloatingWidget @relation(
+    fields: [widgetId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([widgetId, enabled, sort])
+}
+
