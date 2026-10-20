@@ -184,7 +184,7 @@ export default function SiteHeader({
               boxSizing: "border-box",
               whiteSpace: "nowrap",
               textDecoration: "none",
-              transform: "translateY(16px)",
+              transform: "translateY(14px)",
             }}
           >
             <b
@@ -293,7 +293,7 @@ export default function SiteHeader({
               background: "transparent",
               boxSizing: "border-box",
               height: "100%",
-              transform: "translateY(16px)",
+              transform: "translateY(14px)",
             }}
           >
             {/* 新增：hideSearch 为 true 时不显示搜索框 */}
