@@ -184,7 +184,7 @@ export default function SiteHeader({
               boxSizing: "border-box",
               whiteSpace: "nowrap",
               textDecoration: "none",
-              transform: "translateY(14px)",
+              transform: "translateY(10px)",
             }}
           >
             <b
