@@ -2013,3 +2013,41 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* 全站背景图层 */
+.site-background-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--bg);
+}
+
+.site-background-image {
+  position: absolute;
+  inset: -24px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  transform: scale(1.03);
+  will-change: filter;
+}
+
+.site-background-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+/* 游戏库允许透出全站背景 */
+.site-content-layer,
+.xhrpg-home {
+  background-color: transparent;
+}
+
+/* 活动详情页的全站背景仅显示在顶部区域 */
+.site-background-layer-activity-header {
+  bottom: auto;
+  height: 344px;
+}
