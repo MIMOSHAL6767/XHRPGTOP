@@ -1,7 +1,7 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Track = {
   id?: number;
@@ -553,9 +553,9 @@ export default function FloatingWidgetClient() {
           {saving ? "正在保存……" : "保存全部设置"}
         </button>
 
-        <a href="/" style={secondaryLinkStyle}>
+        <Link href="/" style={secondaryLinkStyle}>
           返回首页
-        </a>
+        </Link>
       </div>
     </main>
   );
