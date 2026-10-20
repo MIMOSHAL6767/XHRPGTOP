@@ -57,7 +57,6 @@ export default async function ActivityDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  // 同时读取活动详情和网站顶部头图
   const [activity, header] = await Promise.all([
     prisma.activity.findFirst({
       where: {
@@ -95,57 +94,17 @@ export default async function ActivityDetailPage({ params }: PageProps) {
       style={{
         minHeight: "100vh",
         position: "relative",
-        isolation: "isolate",
-        background: "#10090b",
         color: "#f8eeee",
-        overflow: "hidden",
+        background: "transparent",
       }}
     >
-      {/* 活动背景 */}
-      {activity.background && (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={activity.background}
-            alt=""
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              zIndex: -2,
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit:
-                activity.backgroundFit === "contain"
-                  ? "contain"
-                  : "cover",
-              objectPosition: "center top",
-              filter: "blur(3px)",
-              transform: "scale(1.02)",
-              pointerEvents: "none",
-            }}
-          />
-
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              zIndex: -1,
-              inset: 0,
-              background: `rgba(16, 9, 11, ${
-                1 - backgroundOpacity / 100
-              })`,
-              pointerEvents: "none",
-            }}
-          />
-        </>
-      )}
-
-      {/* 网站头图与公共导航栏，活动详情页单独隐藏搜索框 */}
+      {/* 顶部头图与导航栏：由全站背景选择器提供背景层 */}
       <div
+        className="activity-detail-site-header"
         style={{
           position: "relative",
           zIndex: 2,
+          background: "transparent",
         }}
       >
         <SiteHeader
@@ -154,98 +113,147 @@ export default async function ActivityDetailPage({ params }: PageProps) {
         />
       </div>
 
-      {/* 活动详情内容：不再显示返回按钮 */}
-      <div
+      {/* 正文区域：活动专属背景只在此区域生效 */}
+      <section
+        className="activity-detail-body"
         style={{
           position: "relative",
-          zIndex: 1,
-          width: "100%",
-          maxWidth: 1000,
-          margin: "0 auto",
-          padding: "32px 18px 64px",
-          boxSizing: "border-box",
+          isolation: "isolate",
+          minHeight: "calc(100vh - 280px)",
+          overflow: "hidden",
+          background: "#10090b",
         }}
       >
-        <article
+        {activity.background && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={activity.background}
+              alt=""
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                zIndex: -2,
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                objectFit:
+                  activity.backgroundFit === "contain"
+                    ? "contain"
+                    : "cover",
+                objectPosition: "center top",
+                filter: "blur(3px)",
+                transform: "scale(1.02)",
+                pointerEvents: "none",
+              }}
+            />
+
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                zIndex: -1,
+                inset: 0,
+                background: `rgba(16, 9, 11, ${
+                  1 - backgroundOpacity / 100
+                })`,
+                pointerEvents: "none",
+              }}
+            />
+          </>
+        )}
+
+        <div
           style={{
-            background: "rgba(22, 12, 15, 0.96)",
-            border: "1px solid #4a2028",
-            borderRadius: 0,
-            overflow: "hidden",
+            position: "relative",
+            zIndex: 1,
+            width: "100%",
+            maxWidth: 1000,
+            margin: "0 auto",
+            padding: "32px 18px 64px",
+            boxSizing: "border-box",
           }}
         >
-          {/* 活动封面 */}
-          {activity.cover && (
-            <div
+          <article
+            style={{
+              background: "rgba(22, 12, 15, 0.90)",
+              border: "1px solid #4a2028",
+              borderRadius: 0,
+              overflow: "hidden",
+            }}
+          >
+            {/* 活动封面 */}
+            {activity.cover && (
+              <div
+                style={{
+                  background: "rgba(22, 12, 15, 0.78)",
+                  textAlign: "center",
+                  borderBottom: "1px solid #4a2028",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={activity.cover}
+                  alt={activity.title}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    maxHeight: 520,
+                    objectFit: "contain",
+                    margin: "0 auto",
+                  }}
+                />
+              </div>
+            )}
+
+            {/* 活动标题 */}
+            <header
               style={{
-                background: "#160c0f",
-                textAlign: "center",
+                padding: "28px 30px 22px",
                 borderBottom: "1px solid #4a2028",
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={activity.cover}
-                alt={activity.title}
+              <h1
                 style={{
-                  display: "block",
-                  width: "100%",
-                  maxHeight: 520,
-                  objectFit: "contain",
-                  margin: "0 auto",
+                  margin: 0,
+                  color: activity.titleColor || "#ffffff",
+                  fontSize: `clamp(26px, ${titleSize}px, 64px)`,
+                  lineHeight: 1.35,
+                  overflowWrap: "anywhere",
                 }}
-              />
-            </div>
-          )}
+              >
+                {activity.title}
+              </h1>
 
-          {/* 活动标题 */}
-          <header
-            style={{
-              padding: "28px 30px 22px",
-              borderBottom: "1px solid #4a2028",
-            }}
-          >
-            <h1
+              <p
+                style={{
+                  margin: "12px 0 0",
+                  color: "#bba9ac",
+                  fontSize: 13,
+                }}
+              >
+                活动详情
+              </p>
+            </header>
+
+            {/* 活动正文 */}
+            <div
+              className="activity-rich-content"
+              dangerouslySetInnerHTML={{
+                __html: safeContent,
+              }}
               style={{
-                margin: 0,
-                color: activity.titleColor || "#ffffff",
-                fontSize: `clamp(26px, ${titleSize}px, 64px)`,
-                lineHeight: 1.35,
+                padding: "28px 30px 42px",
+                fontSize: 16,
+                lineHeight: 1.9,
                 overflowWrap: "anywhere",
+                boxSizing: "border-box",
               }}
-            >
-              {activity.title}
-            </h1>
+            />
+          </article>
+        </div>
+      </section>
 
-            <p
-              style={{
-                margin: "12px 0 0",
-                color: "#bba9ac",
-                fontSize: 13,
-              }}
-            >
-              活动详情
-            </p>
-          </header>
-
-          {/* 活动正文 */}
-          <div
-            className="activity-rich-content"
-            dangerouslySetInnerHTML={{
-              __html: safeContent,
-            }}
-            style={{
-              padding: "28px 30px 42px",
-              fontSize: 16,
-              lineHeight: 1.9,
-              overflowWrap: "anywhere",
-              boxSizing: "border-box",
-            }}
-          />
-        </article>
-      </div>
-
-      {/* 正文内容样式，保持 Server Component */}
       <style>{`
         .activity-rich-content img {
           max-width: 100%;
