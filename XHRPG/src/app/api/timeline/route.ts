@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
@@ -30,19 +29,30 @@ async function getAuthorizedUser(): Promise<AuthUser | null> {
 
     // 兼容常见的 JWT 用户 ID 字段
     const payload = decoded as jwt.JwtPayload & {
+      id?: string | number;
       userId?: string | number;
       user?: { id?: string | number };
     };
 
-    const rawId =
-      payload.id ?? payload.userId ?? payload.user?.id;
+    const rawId = payload.id ?? payload.userId ?? payload.user?.id;
 
-    if (rawId === undefined || rawId === null || String(rawId) === "") {
+    if (
+      rawId === undefined ||
+      rawId === null ||
+      String(rawId).trim() === ""
+    ) {
+      return null;
+    }
+
+    // Prisma User.id 是 number 类型，查询前必须转换成数字
+    const userId = Number(rawId);
+
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
       return null;
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: String(rawId) },
+      where: { id: userId },
       select: {
         id: true,
         role: true,
@@ -68,7 +78,8 @@ async function getAuthorizedUser(): Promise<AuthUser | null> {
       id: String(user.id),
       role: user.role,
     };
-  } catch {
+  } catch (error) {
+    console.error("验证大事记编辑权限失败：", error);
     return null;
   }
 }
@@ -84,11 +95,27 @@ function cleanContent(content: unknown): string {
 
   return sanitizeHtml(content, {
     allowedTags: [
-      "h1", "h2", "h3", "h4",
-      "p", "div", "span", "br", "hr",
-      "strong", "b", "em", "i", "u", "s",
-      "blockquote", "ul", "ol", "li",
-      "a", "img",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "p",
+      "div",
+      "span",
+      "br",
+      "hr",
+      "strong",
+      "b",
+      "em",
+      "i",
+      "u",
+      "s",
+      "blockquote",
+      "ul",
+      "ol",
+      "li",
+      "a",
+      "img",
     ],
     allowedAttributes: {
       "*": ["style"],
@@ -180,7 +207,7 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const content = cleanContent(body.content);
+    const content = cleanContent(body?.content);
 
     const timeline = await prisma.timeline.upsert({
       where: { id: 1 },
