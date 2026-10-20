@@ -1,6 +1,7 @@
 
 import type { Metadata } from "next";
 import "./globals.css";
+import SiteBackgroundSwitcher from "./components/SiteBackgroundSwitcher";
 
 export const metadata: Metadata = {
   title: "喜灰RPG游戏资源站",
@@ -14,7 +15,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        <SiteBackgroundSwitcher />
+        <div className="site-content-layer">{children}</div>
+      </body>
     </html>
   );
 }
