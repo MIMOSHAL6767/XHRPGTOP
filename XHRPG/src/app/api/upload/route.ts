@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -8,8 +7,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const IMAGE_MAX_SIZE = 5 * 1024 * 1024;
-const GIF_MAX_SIZE = 5 * 1024 * 1024;
-const MUSIC_MAX_SIZE = 10 * 1024 * 1024;
+const GIF_MAX_SIZE = 15 * 1024 * 1024;
+const MUSIC_MAX_SIZE = 15 * 1024 * 1024;
 
 type UploadKind =
   | "cover"
@@ -24,23 +23,26 @@ type UploadKind =
 const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
+  "image/jpg": "jpg",
   "image/webp": "webp",
 };
 
 const MUSIC_EXTENSIONS: Record<string, string> = {
   "audio/mpeg": "mp3",
   "audio/mp3": "mp3",
+  "audio/x-mp3": "mp3",
   "audio/ogg": "ogg",
   "application/ogg": "ogg",
   "audio/wav": "wav",
   "audio/x-wav": "wav",
   "audio/wave": "wav",
   "audio/vnd.wave": "wav",
+  "audio/vnd.wav": "wav",
 };
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json(
-    { success: false, message },
+    { success: false, message, error: message },
     { status }
   );
 }
@@ -80,7 +82,7 @@ function validGif(bytes: Buffer): boolean {
 
 function validMusic(bytes: Buffer, ext: string): boolean {
   if (ext === "mp3") {
-    // ID3 标签，或 MPEG 音频帧同步头
+    // 支持带 ID3 标签的 MP3，以及没有 ID3 标签的 MPEG 音频帧。
     const hasId3 =
       bytes.length >= 3 &&
       bytes.toString("ascii", 0, 3) === "ID3";
@@ -138,7 +140,12 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file");
     const id = formData.get("id");
+
+    // 兼容两种前端字段名称：
+    // 旧接口使用 kind，悬浮组件前端使用 type。
     const rawKind = formData.get("kind");
+    const rawType = formData.get("type");
+    const suppliedKind = rawKind ?? rawType;
 
     const allowedKinds: UploadKind[] = [
       "cover",
@@ -153,13 +160,13 @@ export async function POST(req: Request) {
 
     let kind: UploadKind;
 
-    if (rawKind === null || rawKind === "") {
+    if (suppliedKind === null || suppliedKind === "") {
       kind = "cover";
     } else if (
-      typeof rawKind === "string" &&
-      allowedKinds.includes(rawKind as UploadKind)
+      typeof suppliedKind === "string" &&
+      allowedKinds.includes(suppliedKind as UploadKind)
     ) {
-      kind = rawKind as UploadKind;
+      kind = suppliedKind as UploadKind;
     } else {
       return errorResponse("不支持的文件用途", 400);
     }
@@ -170,7 +177,6 @@ export async function POST(req: Request) {
 
     const isGif = kind === "floatingGif";
     const isMusic = kind === "music";
-    const isImage = !isGif && !isMusic;
 
     const maxSize = isMusic
       ? MUSIC_MAX_SIZE
@@ -179,7 +185,7 @@ export async function POST(req: Request) {
         : IMAGE_MAX_SIZE;
 
     if (file.size === 0 || file.size > maxSize) {
-      const limit = isMusic ? "10 MB" : "5 MB";
+      const limit = isMusic || isGif ? "15 MB" : "5 MB";
 
       return errorResponse(
         `文件不能为空，且不能超过 ${limit}`,
@@ -190,17 +196,19 @@ export async function POST(req: Request) {
     let ext: string | undefined;
 
     if (isMusic) {
-      ext = MUSIC_EXTENSIONS[file.type];
+      ext = MUSIC_EXTENSIONS[file.type.toLowerCase()];
     } else if (isGif) {
-      if (file.type === "image/gif") ext = "gif";
+      if (file.type.toLowerCase() === "image/gif") {
+        ext = "gif";
+      }
     } else {
-      ext = IMAGE_EXTENSIONS[file.type];
+      ext = IMAGE_EXTENSIONS[file.type.toLowerCase()];
     }
 
     if (!ext) {
       return errorResponse(
         isMusic
-          ? "音乐只支持 MP3、OGG、WAV"
+          ? "音乐只支持 MP3、OGG、WAV 格式，请检查文件类型"
           : isGif
             ? "悬浮动画只支持 GIF 格式"
             : "图片只支持 PNG、JPG、WebP",
@@ -208,7 +216,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 普通游戏图片仍然校验游戏 ID；
+    // 普通游戏图片仍然校验游戏 ID。
     // 首页头图、网站背景、悬浮 GIF 和音乐不需要游戏 ID。
     const needsGameId =
       kind !== "homeHeader" &&
@@ -252,12 +260,12 @@ export async function POST(req: Request) {
 
     if (!valid) {
       return errorResponse(
-        "文件内容与所选文件格式不匹配",
+        "文件内容与所选文件格式不匹配，请确认文件没有损坏",
         400
       );
     }
 
-    // 预览图编号校验
+    // 预览图编号校验。
     const rawSlot = formData.get("slot");
     let slot = 0;
 
