@@ -28,11 +28,6 @@ const LINE = "#4a2028";
 const TEXT = "#f8eeee";
 
 const DEFAULT_CATEGORIES = [
-  "角色扮演",
-  "动作冒险",
-  "策略战棋",
-  "恐怖悬疑",
-  "模拟经营",
 ];
 
 export default function GamesClient({ games }: Props) {
@@ -422,7 +417,7 @@ export default function GamesClient({ games }: Props) {
             >
               <option value="default">默认排序</option>
               <option value="latest">最新上传</option>
-              <option value="downloads">下载量优先</option>
+              <option value="downloads">点击量优先</option>
             </select>
 
             <button
@@ -518,7 +513,7 @@ export default function GamesClient({ games }: Props) {
                     <div>作者：{game.author || "未知"}</div>
                     <div>分类：{game.category || "未分类"}</div>
                     <div>版本：{game.version || "未填写"}</div>
-                    <div>下载量：{game.downloads}</div>
+                    <div>点击量：{game.downloads}</div>
                   </div>
 
                   {game.tags.length > 0 && (
