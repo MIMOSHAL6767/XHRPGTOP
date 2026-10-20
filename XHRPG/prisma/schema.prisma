@@ -244,5 +244,27 @@ model HomeHeader {
 model Timeline {
   id        Int      @id @default(1)
   content   String   @default("") @db.Text
+
+model Activity {
+  id                Int      @id @default(autoincrement())
+
+  title             String
+  cover             String?
+  background        String?
+  backgroundFit     String   @default("cover")
+  backgroundOpacity Int      @default(35)
+
+  titleColor        String   @default("#ffffff")
+  titleSize         Int      @default(36)
+
+  content           String   @default("") @db.Text
+
+  showOnHome        Boolean  @default(false)
+  enabled           Boolean  @default(true)
+  sort              Int      @default(0)
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
   updatedAt DateTime @updatedAt
 }
