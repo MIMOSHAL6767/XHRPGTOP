@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import SiteHeader from "@/app/components/SiteHeader";
 
 type GameItem = {
   id: number;
@@ -19,6 +20,7 @@ type GameItem = {
 
 type Props = {
   games: GameItem[];
+  headerImage?: string | null;
 };
 
 const RED = "#e73550";
@@ -27,7 +29,10 @@ const PANEL = "#160c0f";
 const LINE = "#4a2028";
 const TEXT = "#f8eeee";
 
-export default function GamesClient({ games }: Props) {
+export default function GamesClient({
+  games,
+  headerImage = null,
+}: Props) {
   const [search, setSearch] = useState("");
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -56,7 +61,9 @@ export default function GamesClient({ games }: Props) {
             Array.isArray(game.tags)
               ? game.tags
                   .filter(
-                    (tag) => typeof tag === "string" && tag.trim().length > 0
+                    (tag) =>
+                      typeof tag === "string" &&
+                      tag.trim().length > 0
                   )
                   .map((tag) => tag.trim())
               : []
@@ -66,7 +73,7 @@ export default function GamesClient({ games }: Props) {
     [games]
   );
 
-  // 分类同样完全来自数据库，不预填分类
+  // 分类完全来自数据库，不预填分类
   const categories = useMemo(
     () =>
       Array.from(
@@ -99,12 +106,12 @@ export default function GamesClient({ games }: Props) {
           .toLowerCase()
           .includes(keyword);
 
-      // 选中的多个作者之间采用 OR
+      // 多个作者之间采用 OR
       const matchesAuthor =
         selectedAuthors.length === 0 ||
         selectedAuthors.includes(game.author?.trim() ?? "");
 
-      // 选中的多个标签之间采用 OR
+      // 多个标签之间采用 OR
       const matchesTags =
         selectedTags.length === 0 ||
         selectedTags.some((tag) => gameTags.includes(tag));
@@ -130,7 +137,7 @@ export default function GamesClient({ games }: Props) {
           b.id - a.id
       );
     } else if (sortOrder === "downloads") {
-      // 暂时沿用 downloads 字段，后续再调整为真正的点击统计
+      // 暂时沿用 downloads 字段，后续再接入真正的点击统计
       result.sort(
         (a, b) => b.downloads - a.downloads || a.id - b.id
       );
@@ -202,12 +209,26 @@ export default function GamesClient({ games }: Props) {
         minHeight: "100vh",
         background: BG,
         color: TEXT,
-        padding: "24px 16px 60px",
+        padding: "0 0 60px",
         boxSizing: "border-box",
       }}
     >
-      <div style={{ maxWidth: 1240, margin: "0 auto" }}>
-        {/* 标题区域：不再显示底部红色线条 */}
+      {/* 公共头图、导航栏、搜索和用户信息 */}
+      <SiteHeader
+        headerImage={headerImage}
+        searchValue={search}
+        onSearchChange={setSearch}
+      />
+
+      <div
+        style={{
+          maxWidth: 1272,
+          margin: "0 auto",
+          padding: "24px 16px 0",
+          boxSizing: "border-box",
+        }}
+      >
+        {/* 标题区域 */}
         <div
           style={{
             display: "flex",
@@ -242,7 +263,7 @@ export default function GamesClient({ games }: Props) {
           </div>
         </div>
 
-        {/* 搜索 */}
+        {/* 搜索：与顶部公共搜索框使用同一个状态 */}
         <div style={sectionStyle}>
           <label
             htmlFor="games-search"
@@ -270,7 +291,7 @@ export default function GamesClient({ games }: Props) {
           />
         </div>
 
-        {/* 分类：自动读取 */}
+        {/* 分类筛选 */}
         <div style={sectionStyle}>
           <div style={labelStyle}>游戏分类</div>
 
@@ -296,7 +317,7 @@ export default function GamesClient({ games }: Props) {
           </div>
         </div>
 
-        {/* 标签：自动读取，不预填 */}
+        {/* 标签筛选 */}
         <div style={sectionStyle}>
           <div
             style={{
@@ -349,7 +370,7 @@ export default function GamesClient({ games }: Props) {
           )}
         </div>
 
-        {/* 作者：自动读取，支持多选 */}
+        {/* 作者筛选 */}
         <div style={sectionStyle}>
           <div
             style={{
