@@ -22,13 +22,14 @@ type UploadKind = "cover" | "background" | "logo" | "screenshot";
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+// 解析详情预览图，兼容字符串数组和对象数组
 function parseScreenshots(value: unknown): ScreenshotItem[] {
   if (!Array.isArray(value)) return [];
 
   return value
     .map((item): ScreenshotItem | null => {
       if (typeof item === "string" && item.trim()) {
-        return { url: item };
+        return { url: item.trim() };
       }
 
       if (
@@ -38,7 +39,7 @@ function parseScreenshots(value: unknown): ScreenshotItem[] {
         typeof item.url === "string" &&
         item.url.trim()
       ) {
-        return { url: item.url };
+        return { url: item.url.trim() };
       }
 
       return null;
@@ -46,15 +47,21 @@ function parseScreenshots(value: unknown): ScreenshotItem[] {
     .filter((item): item is ScreenshotItem => item !== null);
 }
 
-// 兼容数据库中的 JSON 数组及旧数据
+// 解析标签，兼容 JSON 数组、JSON 字符串和旧版单个标签
 function parseTags(value: unknown): string[] {
   let raw: unknown = value;
 
   if (typeof raw === "string") {
+    const original = raw;
+
     try {
-      raw = JSON.parse(raw);
+      raw = JSON.parse(original);
     } catch {
-      raw = raw.trim() ? [raw.trim()] : [];
+      // 旧数据可能直接保存为普通字符串
+      return original
+        .split(/[,，、\n]/)
+        .map((tag) => tag.trim())
+        .filter(Boolean);
     }
   }
 
@@ -65,6 +72,18 @@ function parseTags(value: unknown): string[] {
       raw
         .filter((item): item is string => typeof item === "string")
         .map((item) => item.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+// 统一整理标签：去空格、过滤空值、去重
+function normalizeTags(value: string[]): string[] {
+  return Array.from(
+    new Set(
+      value
+        .filter((tag): tag is string => typeof tag === "string")
+        .map((tag) => tag.trim())
         .filter(Boolean)
     )
   );
@@ -102,11 +121,11 @@ export default function EditGameClient({ id }: { id: string }) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [screenshots, setScreenshots] = useState<ScreenshotItem[]>([]);
 
-  // 标签单独维护，避免输入过程中影响其他游戏信息
+  // 标签独立维护
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
 
-  // 加载游戏信息和详情页设置
+  // 加载游戏数据
   useEffect(() => {
     let cancelled = false;
 
@@ -155,6 +174,7 @@ export default function EditGameClient({ id }: { id: string }) {
         if (cancelled) return;
 
         console.error("获取游戏失败:", error);
+
         alert(
           error instanceof Error
             ? error.message
@@ -181,7 +201,7 @@ export default function EditGameClient({ id }: { id: string }) {
     }));
   }
 
-  // 添加自定义标签，不使用预设标签
+  // 添加自定义标签
   function addTag() {
     const value = tagInput.trim();
 
@@ -190,15 +210,26 @@ export default function EditGameClient({ id }: { id: string }) {
       return;
     }
 
-    if (tags.includes(value)) {
+    if (normalizeTags(tags).includes(value)) {
       alert("这个标签已经存在");
       return;
     }
 
-    setTags((current) => [...current, value]);
+    setTags((current) => normalizeTags([...current, value]));
     setTagInput("");
   }
 
+  // 回车添加标签
+  function handleTagKeyDown(
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addTag();
+    }
+  }
+
+  // 删除指定标签
   function removeTag(index: number) {
     setTags((current) => current.filter((_, i) => i !== index));
   }
@@ -362,11 +393,17 @@ export default function EditGameClient({ id }: { id: string }) {
     return data.url;
   }
 
+  // 保存修改
   async function save() {
     if (!form || loading) return;
 
     if (!String(form.name || "").trim()) {
       alert("游戏名称不能为空");
+      return;
+    }
+
+    if (form.titleMode === "image" && !logoFile && !logoPreview) {
+      alert("当前选择了图片标题模式，请先上传标题 PNG");
       return;
     }
 
@@ -397,7 +434,7 @@ export default function EditGameClient({ id }: { id: string }) {
         titleLogo = await uploadImage(logoFile, "logo");
       }
 
-      // 4. 上传新增的预览图，保留已有图片和当前排序
+      // 4. 上传新增的预览图，保留已有图片和排序
       const screenshotUrls: string[] = [];
 
       for (let index = 0; index < screenshots.length; index++) {
@@ -416,14 +453,15 @@ export default function EditGameClient({ id }: { id: string }) {
         }
       }
 
-      // 5. 保存游戏信息、标签和详情页设置
+      // 5. 规范化标签
+      const normalizedTags = normalizeTags(tags);
+
+      // 6. 保存游戏信息
       const payload = {
         ...form,
         name: String(form.name).trim(),
         cover,
-        tags: Array.from(
-          new Set(tags.map((tag) => tag.trim()).filter(Boolean))
-        ),
+        tags: normalizedTags,
         history,
         titleMode: form.titleMode === "image" ? "image" : "text",
         titleLogo: titleLogo || null,
@@ -452,6 +490,7 @@ export default function EditGameClient({ id }: { id: string }) {
       }
 
       alert("游戏信息、标签及详情页设置保存成功");
+
       router.push("/admin/games");
       router.refresh();
     } catch (error) {
@@ -507,6 +546,7 @@ export default function EditGameClient({ id }: { id: string }) {
     }
   }
 
+  // 永久删除
   async function remove() {
     if (loading) return;
 
@@ -528,6 +568,7 @@ export default function EditGameClient({ id }: { id: string }) {
       }
 
       alert("删除成功");
+
       router.push("/admin/games");
       router.refresh();
     } catch (error) {
@@ -675,8 +716,8 @@ export default function EditGameClient({ id }: { id: string }) {
           <h2>游戏标签</h2>
 
           <p style={{ color: "#c9aeb2", fontSize: 13 }}>
-            自由添加任意标签。删除标签后，点击保存修改才会写入数据库。
-            这里不会自动添加任何预设标签。
+            自由添加任意标签，没有预设标签。按 Enter 或点击添加按钮即可添加。
+            删除标签后，点击保存修改才会写入数据库。
           </p>
 
           <div
@@ -691,12 +732,7 @@ export default function EditGameClient({ id }: { id: string }) {
             <input
               value={tagInput}
               onChange={(event) => setTagInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  addTag();
-                }
-              }}
+              onKeyDown={handleTagKeyDown}
               placeholder="输入自定义标签，例如：像素、恐怖、解谜"
               aria-label="输入新标签"
               disabled={loading}
@@ -782,7 +818,7 @@ export default function EditGameClient({ id }: { id: string }) {
           )}
 
           <p style={{ marginTop: 12, fontSize: 12, color: "#bca0a5" }}>
-            当前共 {tags.length} 个标签。
+            当前共 {normalizeTags(tags).length} 个标签。
           </p>
         </section>
 
