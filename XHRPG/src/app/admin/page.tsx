@@ -5,8 +5,24 @@ export default async function AdminPage() {
   const payload = await requireOwnerPage();
 
   return (
-    <main className="admin-page">
-      <div className="admin-box">
+    <main
+      className="admin-page"
+      style={{
+        width: "100%",
+        minHeight: "100vh",
+        padding: "32px 20px",
+        boxSizing: "border-box",
+      }}
+    >
+      <div
+        className="admin-box"
+        style={{
+          width: "100%",
+          maxWidth: "1200px",
+          margin: "0 auto",
+          boxSizing: "border-box",
+        }}
+      >
         <Link href="/">
           <button className="back-btn">← 返回首页</button>
         </Link>
@@ -37,6 +53,10 @@ export default async function AdminPage() {
 
           <Link href="/admin/header">
             <button>首页头图设置</button>
+          </Link>
+
+          <Link href="/admin/site-backgrounds">
+            <button>网站背景管理</button>
           </Link>
         </div>
 
