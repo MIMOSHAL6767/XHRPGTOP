@@ -1,4 +1,3 @@
-
 import { prisma } from "@/lib/prisma";
 import SiteHeader from "@/app/components/SiteHeader";
 
@@ -19,7 +18,9 @@ export default async function ActivitiesPage() {
     }),
     prisma.homeHeader.findUnique({
       where: { id: 1 },
-      select: { imageUrl: true },
+      select: {
+        imageUrl: true,
+      },
     }),
   ]);
 
@@ -33,13 +34,13 @@ export default async function ActivitiesPage() {
         margin: 0,
       }}
     >
-      {/* 复用首页的公共头图和导航栏。
-          不传递事件处理函数，避免 Server/Client Component 边界错误。 */}
+      {/* 公共头图和导航栏。
+          注意：Server Component 不传递事件处理函数。 */}
       <SiteHeader headerImage={header?.imageUrl ?? null} />
 
       <section
         style={{
-          width: "min(100% - 32px, 1440px)",
+          width: "min(calc(100% - 32px), 1440px)",
           margin: "0 auto",
           padding: "32px 0 64px",
           boxSizing: "border-box",
@@ -95,7 +96,7 @@ export default async function ActivitiesPage() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={activity.cover}
-                      alt={activity.title}
+                      alt={activity.title ?? "活动封面"}
                       loading="lazy"
                     />
                   ) : (
@@ -106,7 +107,7 @@ export default async function ActivitiesPage() {
                 </div>
 
                 <div className="activity-card-info">
-                  <h2>{activity.title}</h2>
+                  <h2>{activity.title || "未命名活动"}</h2>
                   <span>查看活动详情 →</span>
                 </div>
               </a>
@@ -115,7 +116,7 @@ export default async function ActivitiesPage() {
         )}
       </section>
 
-      <style>{`
+      <style jsx global>{`
         .activity-list-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
