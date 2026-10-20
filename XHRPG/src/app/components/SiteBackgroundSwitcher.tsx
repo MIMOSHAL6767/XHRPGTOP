@@ -27,7 +27,7 @@ const DEFAULT_SETTINGS: SavedSettings = {
 };
 
 export default function SiteBackgroundSwitcher() {
-  const pathname = usePathname();
+  const pathname = usePathname() || "/";
 
   const [backgrounds, setBackgrounds] = useState<SiteBackground[]>([]);
   const [settings, setSettings] =
@@ -36,14 +36,17 @@ export default function SiteBackgroundSwitcher() {
   const [open, setOpen] = useState(false);
 
   const segments = pathname.split("/").filter(Boolean);
+  const route = segments[0];
 
-  // 游戏详情页保留原有专属背景
+  // 兼容 /game/[id] 和 /games/[id] 两种游戏详情路由。
+  // 游戏详情页保留自己的专属背景。
   const isGameDetail =
-    segments[0] === "game" && segments.length >= 2;
+    (route === "game" || route === "games") &&
+    segments.length >= 2;
 
-  // 活动详情页只显示全站背景，不显示背景设置控制器
+  // 活动详情页：顶部显示全站背景，正文保留活动专属背景。
   const isActivityDetail =
-    segments[0] === "activities" && segments.length >= 2;
+    route === "activities" && segments.length >= 2;
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +57,10 @@ export default function SiteBackgroundSwitcher() {
           cache: "no-store",
         });
 
-        if (!response.ok) return;
+        if (!response.ok) {
+          console.error("读取网站背景失败：HTTP", response.status);
+          return;
+        }
 
         const data = await response.json();
 
@@ -62,7 +68,9 @@ export default function SiteBackgroundSwitcher() {
           setBackgrounds(data.backgrounds);
         }
       } catch (error) {
-        console.error("读取网站背景失败：", error);
+        if (!cancelled) {
+          console.error("读取网站背景失败：", error);
+        }
       }
     }
 
@@ -113,23 +121,27 @@ export default function SiteBackgroundSwitcher() {
   }, [settings, loaded]);
 
   const selectedBackground = backgrounds.find(
-    (item) => item.id === settings.backgroundId
+    (item) => item.id === settings.backgroundId,
   );
 
   function updateSettings(patch: Partial<SavedSettings>) {
     setSettings((previous) => ({ ...previous, ...patch }));
   }
 
-  // 游戏详情页不显示全站背景，也不显示设置按钮
-  if (isGameDetail) return null;
+  // 游戏详情页完全不显示全站背景层和背景控制器。
+  if (isGameDetail) {
+    return null;
+  }
 
   return (
     <>
       {selectedBackground && (
         <div
-          className={`site-background-layer${
-            isActivityDetail ? " site-background-layer-activity-header" : ""
-          }`}
+          className={
+            isActivityDetail
+              ? "site-background-layer site-background-layer-activity-header"
+              : "site-background-layer"
+          }
           aria-hidden="true"
         >
           <div
@@ -143,12 +155,15 @@ export default function SiteBackgroundSwitcher() {
           <div
             className="site-background-overlay"
             style={{
-              backgroundColor: `rgba(0, 0, 0, ${settings.overlayOpacity / 100})`,
+              backgroundColor: `rgba(0, 0, 0, ${
+                settings.overlayOpacity / 100
+              })`,
             }}
           />
         </div>
       )}
 
+      {/* 活动详情页隐藏设置按钮，但继续使用已保存的全站背景设置。 */}
       {!isActivityDetail && (
         <div className="site-background-controls">
           {open && (
