@@ -339,32 +339,18 @@ model FloatingWidget {
   tracks FloatingWidgetTrack[]
 }
 
+
 model FloatingWidgetTrack {
   id        Int      @id @default(autoincrement())
-
-  // 曲目名称
   title     String
-
-  // GitHub 音乐文件地址
   url       String
-
-  // 是否参与随机播放
   enabled   Boolean  @default(true)
-
-  // 排序，数值越小越靠前
   sort      Int      @default(0)
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  widgetId Int @default(1)
-
-  widget FloatingWidget @relation(
-    fields: [widgetId],
-    references: [id],
-    onDelete: Cascade
-  )
-
+  widgetId  Int      @default(1)
+  widget    FloatingWidget @relation(fields: [widgetId], references: [id], onDelete: Cascade)
   @@index([widgetId, enabled, sort])
 }
+
 
