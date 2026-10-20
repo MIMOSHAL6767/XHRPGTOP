@@ -179,7 +179,7 @@ export default function SiteHeader({
               boxSizing: "border-box",
               whiteSpace: "nowrap",
               textDecoration: "none",
-              transform: "translateY(6px)",
+              transform: "translateY(12px)",
             }}
           >
             <b
@@ -288,7 +288,7 @@ export default function SiteHeader({
               background: "transparent",
               boxSizing: "border-box",
               height: "100%",
-              transform: "translateY(6px)",
+              transform: "translateY(12px)",
             }}
           >
             <input
