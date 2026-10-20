@@ -56,9 +56,6 @@ export default function HomeClient({
 }) {
   const [bannerIndex, setBannerIndex] = useState(0);
   const [search, setSearch] = useState("");
-  const [sortOrder, setSortOrder] = useState<"default" | "latest">(
-    "default"
-  );
 
   const banner = banners.length
     ? banners[bannerIndex % banners.length]
@@ -83,7 +80,7 @@ export default function HomeClient({
     return () => clearInterval(timer);
   }, [banners.length]);
 
-  // 首页搜索和排序
+  // 首页搜索：按游戏 ID 从大到小排序，只显示前 7 个匹配结果
   const filteredGames = games
     .filter((game) => {
       const key = search.trim().toLowerCase();
@@ -100,9 +97,9 @@ export default function HomeClient({
     .sort((a, b) => {
       const idA = Number(a.id) || 0;
       const idB = Number(b.id) || 0;
-
-      return sortOrder === "default" ? idA - idB : idB - idA;
-    });
+      return idB - idA;
+    })
+    .slice(0, 7);
 
   // 兼容数字、"40" 和 "40px"
   function cssSize(value: unknown, fallback: string): string {
@@ -522,7 +519,7 @@ export default function HomeClient({
           </section>
         )}
 
-        {/* 首页游戏库标题和排序 */}
+        {/* 最新上传标题：已移除排序按钮 */}
         <div
           className="game-library-heading"
           style={{
@@ -534,62 +531,10 @@ export default function HomeClient({
             marginBottom: "16px",
           }}
         >
-          <h2 style={{ margin: 0 }}>游戏库</h2>
-
-          <div
-            role="group"
-            aria-label="游戏排序方式"
-            style={{
-              display: "flex",
-              gap: "8px",
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              type="button"
-              aria-pressed={sortOrder === "default"}
-              onClick={() => setSortOrder("default")}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 0,
-                border:
-                  sortOrder === "default"
-                    ? "1px solid #e5484d"
-                    : "1px solid #444",
-                background:
-                  sortOrder === "default" ? "#e5484d" : "transparent",
-                color: "#fff",
-                cursor: "pointer",
-                transition: "background 0.2s, border-color 0.2s",
-              }}
-            >
-              默认排序
-            </button>
-
-            <button
-              type="button"
-              aria-pressed={sortOrder === "latest"}
-              onClick={() => setSortOrder("latest")}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 0,
-                border:
-                  sortOrder === "latest"
-                    ? "1px solid #e5484d"
-                    : "1px solid #444",
-                background:
-                  sortOrder === "latest" ? "#e5484d" : "transparent",
-                color: "#fff",
-                cursor: "pointer",
-                transition: "background 0.2s, border-color 0.2s",
-              }}
-            >
-              最新上传
-            </button>
-          </div>
+          <h2 style={{ margin: 0 }}>最新上传</h2>
         </div>
 
-        {/* 首页游戏卡片 */}
+        {/* 最新上传游戏卡片：最多显示 7 个 */}
         <div
           className="game-grid"
           style={{
