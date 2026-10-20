@@ -236,3 +236,13 @@ model HomeHeader {
   imageUrl  String?
   updatedAt DateTime @updatedAt
 }
+
+// =====================
+// 大事记
+// =====================
+
+model Timeline {
+  id        Int      @id @default(1)
+  content   String   @default("") @db.Text
+  updatedAt DateTime @updatedAt
+}
