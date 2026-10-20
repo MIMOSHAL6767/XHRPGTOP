@@ -27,9 +27,6 @@ const PANEL = "#160c0f";
 const LINE = "#4a2028";
 const TEXT = "#f8eeee";
 
-const DEFAULT_CATEGORIES = [
-];
-
 export default function GamesClient({ games }: Props) {
   const [search, setSearch] = useState("");
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
@@ -37,7 +34,7 @@ export default function GamesClient({ games }: Props) {
   const [selectedCategory, setSelectedCategory] = useState("全部");
   const [sortOrder, setSortOrder] = useState("default");
 
-  // 作者自动从已发布游戏的数据中生成，去除重复名称
+  // 自动读取已发布游戏的作者，去重后生成按钮
   const authors = useMemo(
     () =>
       Array.from(
@@ -50,16 +47,18 @@ export default function GamesClient({ games }: Props) {
     [games]
   );
 
-  // 标签自动读取游戏中已有的 tags
+  // 自动读取数据库中实际存在的标签，不预填任何标签
   const allTags = useMemo(
     () =>
       Array.from(
         new Set(
           games.flatMap((game) =>
             Array.isArray(game.tags)
-              ? game.tags.filter(
-                  (tag) => typeof tag === "string" && tag.trim()
-                )
+              ? game.tags
+                  .filter(
+                    (tag) => typeof tag === "string" && tag.trim().length > 0
+                  )
+                  .map((tag) => tag.trim())
               : []
           )
         )
@@ -67,16 +66,16 @@ export default function GamesClient({ games }: Props) {
     [games]
   );
 
+  // 分类同样完全来自数据库，不预填分类
   const categories = useMemo(
     () =>
       Array.from(
-        new Set([
-          ...DEFAULT_CATEGORIES,
-          ...games
+        new Set(
+          games
             .map((game) => game.category?.trim())
-            .filter((category): category is string => Boolean(category)),
-        ])
-      ),
+            .filter((category): category is string => Boolean(category))
+        )
+      ).sort((a, b) => a.localeCompare(b, "zh-CN")),
     [games]
   );
 
@@ -100,12 +99,12 @@ export default function GamesClient({ games }: Props) {
           .toLowerCase()
           .includes(keyword);
 
-      // 多个作者之间为 OR：符合任意一个选中的作者即可
+      // 选中的多个作者之间采用 OR
       const matchesAuthor =
         selectedAuthors.length === 0 ||
         selectedAuthors.includes(game.author?.trim() ?? "");
 
-      // 多个标签之间为 OR：符合任意一个选中的标签即可
+      // 选中的多个标签之间采用 OR
       const matchesTags =
         selectedTags.length === 0 ||
         selectedTags.some((tag) => gameTags.includes(tag));
@@ -114,7 +113,7 @@ export default function GamesClient({ games }: Props) {
         selectedCategory === "全部" ||
         game.category === selectedCategory;
 
-      // 搜索、作者、标签、分类之间为 AND
+      // 搜索、作者、标签、分类之间采用 AND
       return (
         matchesSearch &&
         matchesAuthor &&
@@ -127,9 +126,11 @@ export default function GamesClient({ games }: Props) {
       result.sort(
         (a, b) =>
           new Date(b.createdAt).getTime() -
-            new Date(a.createdAt).getTime() || b.id - a.id
+            new Date(a.createdAt).getTime() ||
+          b.id - a.id
       );
     } else if (sortOrder === "downloads") {
+      // 暂时沿用 downloads 字段，后续再调整为真正的点击统计
       result.sort(
         (a, b) => b.downloads - a.downloads || a.id - b.id
       );
@@ -206,6 +207,7 @@ export default function GamesClient({ games }: Props) {
       }}
     >
       <div style={{ maxWidth: 1240, margin: "0 auto" }}>
+        {/* 标题区域：不再显示底部红色线条 */}
         <div
           style={{
             display: "flex",
@@ -213,7 +215,6 @@ export default function GamesClient({ games }: Props) {
             justifyContent: "space-between",
             gap: 16,
             flexWrap: "wrap",
-            borderBottom: `2px solid ${RED}`,
             paddingBottom: 18,
             marginBottom: 22,
           }}
@@ -228,26 +229,20 @@ export default function GamesClient({ games }: Props) {
             >
               游戏库
             </h1>
-            <p style={{ color: "#c9aeb2", fontSize: 13, marginTop: 8 }}>
+
+            <p
+              style={{
+                color: "#c9aeb2",
+                fontSize: 13,
+                marginTop: 8,
+              }}
+            >
               探索游戏、查找作者，发现更多喜灰 RPG 作品。
             </p>
           </div>
-
-          <Link
-            href="/"
-            style={{
-              color: TEXT,
-              background: RED,
-              padding: "10px 16px",
-              textDecoration: "none",
-              fontSize: 14,
-              borderRadius: 0,
-            }}
-          >
-            返回首页
-          </Link>
         </div>
 
+        {/* 搜索 */}
         <div style={sectionStyle}>
           <label
             htmlFor="games-search"
@@ -275,10 +270,20 @@ export default function GamesClient({ games }: Props) {
           />
         </div>
 
+        {/* 分类：自动读取 */}
         <div style={sectionStyle}>
           <div style={labelStyle}>游戏分类</div>
+
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {["全部", ...categories].map((category) => (
+            <button
+              type="button"
+              onClick={() => setSelectedCategory("全部")}
+              style={filterButtonStyle(selectedCategory === "全部")}
+            >
+              全部
+            </button>
+
+            {categories.map((category) => (
               <button
                 key={category}
                 type="button"
@@ -291,6 +296,7 @@ export default function GamesClient({ games }: Props) {
           </div>
         </div>
 
+        {/* 标签：自动读取，不预填 */}
         <div style={sectionStyle}>
           <div
             style={{
@@ -303,7 +309,14 @@ export default function GamesClient({ games }: Props) {
             }}
           >
             <span>游戏标签</span>
-            <span style={{ color: "#bca0a5", fontSize: 12, fontWeight: 400 }}>
+
+            <span
+              style={{
+                color: "#bca0a5",
+                fontSize: 12,
+                fontWeight: 400,
+              }}
+            >
               可多选 · 满足任意一个已选标签即可
             </span>
           </div>
@@ -330,12 +343,13 @@ export default function GamesClient({ games }: Props) {
               })}
             </div>
           ) : (
-            <p style={{ color: "#bca0a5", fontSize: 13 }}>
-              当前已发布游戏还没有可用标签，请先在后台为游戏添加标签。
+            <p style={{ color: "#bca0a5", fontSize: 13, margin: 0 }}>
+              当前已发布游戏还没有可用标签。
             </p>
           )}
         </div>
 
+        {/* 作者：自动读取，支持多选 */}
         <div style={sectionStyle}>
           <div
             style={{
@@ -348,7 +362,14 @@ export default function GamesClient({ games }: Props) {
             }}
           >
             <span>游戏作者</span>
-            <span style={{ color: "#bca0a5", fontSize: 12, fontWeight: 400 }}>
+
+            <span
+              style={{
+                color: "#bca0a5",
+                fontSize: 12,
+                fontWeight: 400,
+              }}
+            >
               自动读取数据库 · 可多选
             </span>
           </div>
@@ -379,12 +400,13 @@ export default function GamesClient({ games }: Props) {
               })}
             </div>
           ) : (
-            <p style={{ color: "#bca0a5", fontSize: 13 }}>
+            <p style={{ color: "#bca0a5", fontSize: 13, margin: 0 }}>
               当前没有可供筛选的作者。
             </p>
           )}
         </div>
 
+        {/* 排序与结果统计 */}
         <div
           style={{
             display: "flex",
@@ -433,11 +455,13 @@ export default function GamesClient({ games }: Props) {
           </div>
         </div>
 
+        {/* 游戏卡片 */}
         {filteredGames.length > 0 ? (
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 220px), 1fr))",
+              gridTemplateColumns:
+                "repeat(auto-fill, minmax(min(100%, 220px), 1fr))",
               gap: 16,
             }}
           >
@@ -559,9 +583,11 @@ export default function GamesClient({ games }: Props) {
             <div style={{ fontSize: 18, marginBottom: 10 }}>
               没有找到符合条件的游戏
             </div>
+
             <div style={{ fontSize: 13, marginBottom: 18 }}>
               试试取消某些作者或标签，或者清空筛选条件。
             </div>
+
             <button
               type="button"
               onClick={clearFilters}
