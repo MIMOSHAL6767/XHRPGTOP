@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import SiteHeader from "@/app/components/SiteHeader";
 
 export default function HomeClient({
   games,
@@ -14,9 +14,6 @@ export default function HomeClient({
   banners: any[];
   headerImage?: string | null;
 }) {
-  const router = useRouter();
-
-  const [user, setUser] = useState<any>(null);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<"default" | "latest">("default");
@@ -36,27 +33,7 @@ export default function HomeClient({
     return () => clearInterval(timer);
   }, [banners.length]);
 
-  // 读取登录状态
-  useEffect(() => {
-    try {
-      const data = localStorage.getItem("user");
-
-      if (data) {
-        setUser(JSON.parse(data));
-      }
-    } catch {
-      localStorage.removeItem("user");
-      setUser(null);
-    }
-  }, []);
-
-  function logout() {
-    localStorage.removeItem("user");
-    setUser(null);
-    router.refresh();
-  }
-
-  // 搜索和排序
+  // 首页搜索和排序
   const filteredGames = games
     .filter((game) => {
       const key = search.trim().toLowerCase();
@@ -92,25 +69,6 @@ export default function HomeClient({
     return Number.isFinite(num) ? num : fallback;
   }
 
-  const navLinkStyle: React.CSSProperties = {
-    display: "inline-flex",
-    flex: "0 0 auto",
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: "40px",
-    padding: "0 14px",
-    color: "#ffffff",
-    textDecoration: "none",
-    fontSize: "15px",
-    fontWeight: 600,
-    whiteSpace: "nowrap",
-    border: "none",
-    borderRadius: 0,
-    background: "transparent",
-    boxSizing: "border-box",
-    cursor: "pointer",
-  };
-
   return (
     <main
       className="xhrpg-home"
@@ -123,216 +81,12 @@ export default function HomeClient({
         margin: 0,
       }}
     >
-      {/* 首页固定头图：独立于轮播，点击返回首页 */}
-      {headerImage && (
-        <Link
-          href="/"
-          aria-label="返回首页"
-          style={{
-            display: "block",
-            width: "100%",
-            margin: 0,
-            padding: 0,
-            lineHeight: 0,
-            cursor: "pointer",
-            overflow: "hidden",
-            borderRadius: 0,
-            flexShrink: 0,
-          }}
-        >
-          <img
-            src={headerImage}
-            alt="XHRPG 首页头图"
-            style={{
-              display: "block",
-              width: "100%",
-              height: "auto",
-              maxHeight: "280px",
-              objectFit: "cover",
-              objectPosition: "center",
-              margin: 0,
-              padding: 0,
-              border: "none",
-              borderRadius: 0,
-            }}
-          />
-        </Link>
-      )}
-
-      {/* 顶部红色导航栏 */}
-      <aside
-        className="drawer-nav"
-        style={{
-          position: "relative",
-          inset: "auto",
-          width: "100%",
-          minWidth: 0,
-          maxWidth: "none",
-          height: "64px",
-          minHeight: "64px",
-          flex: "0 0 64px",
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          overflow: "visible",
-          zIndex: 20,
-          background: "#e73550",
-          boxSizing: "border-box",
-          padding: "0 clamp(12px, 2vw, 32px)",
-          gap: "8px",
-        }}
-      >
-        {/* 网站 Logo */}
-        <Link
-          href="/"
-          aria-label="XHRPG 首页"
-          className="logo-box"
-          style={{
-            position: "static",
-            width: "auto",
-            height: "100%",
-            minWidth: "max-content",
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "6px",
-            padding: "0 8px",
-            background: "transparent",
-            border: "none",
-            outline: "none",
-            boxShadow: "none",
-            boxSizing: "border-box",
-            whiteSpace: "nowrap",
-            textDecoration: "none",
-            transform: "translateY(5px)",
-          }}
-        >
-          <b style={{ fontSize: "32px", lineHeight: 1, color: "#111111" }}>
-            喜灰
-          </b>
-          <span style={{ fontSize: "32px", lineHeight: 1, color: "#FFFFFF" }}>
-            RPG
-          </span>
-        </Link>
-
-        {/* 主导航按钮 */}
-        <nav
-          aria-label="主导航"
-          style={{
-            display: "flex",
-            flex: "1 1 auto",
-            alignItems: "center",
-            justifyContent: "flex-start",
-            gap: "2px",
-            minWidth: 0,
-            marginLeft: "clamp(4px, 1.5vw, 24px)",
-            overflowX: "auto",
-            overflowY: "hidden",
-            scrollbarWidth: "none",
-            whiteSpace: "nowrap",
-          }}
-        >
-          <Link href="/" style={navLinkStyle}>
-            首页
-          </Link>
-
-          <Link href="/games" style={navLinkStyle}>
-            游戏库
-          </Link>
-
-          <Link href="/activities" style={navLinkStyle}>
-            活动
-          </Link>
-
-          <Link href="/timeline" style={navLinkStyle}>
-            大事记
-          </Link>
-
-          {/* 上传功能最后开发，目前只预留入口 */}
-          <button
-            type="button"
-            disabled
-            title="上传功能暂未开放"
-            style={{
-              ...navLinkStyle,
-              opacity: 0.55,
-              cursor: "not-allowed",
-            }}
-          >
-            上传
-          </button>
-        </nav>
-
-        {/* 搜索栏和用户信息 */}
-        <header
-          className="top-bar"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            gap: "12px",
-            flex: "0 1 auto",
-            minWidth: 0,
-            marginLeft: "auto",
-            padding: "0",
-            transform: "translateY(4px)",
-            background: "transparent",
-            boxSizing: "border-box",
-          }}
-        >
-          <input
-            aria-label="搜索游戏"
-            placeholder="搜索游戏..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              width: "160px",
-              minWidth: "100px",
-              maxWidth: "160px",
-              flex: "0 1 160px",
-              boxSizing: "border-box",
-            }}
-          />
-
-          <div
-            className="user-area"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              gap: "12px",
-              flexShrink: 0,
-            }}
-          >
-            {user && (
-              <>
-                <div className="avatar">
-                  {user.username?.charAt(0)}
-                </div>
-
-                <span className="username">
-                  {user.username}
-                </span>
-
-                {user.role === "owner" && (
-                  <button
-                    type="button"
-                    onClick={() => router.push("/admin")}
-                  >
-                    后台管理
-                  </button>
-                )}
-
-                <button type="button" onClick={logout}>
-                  退出
-                </button>
-              </>
-            )}
-          </div>
-        </header>
-      </aside>
+      {/* 公共头图、导航栏、搜索栏和用户信息 */}
+      <SiteHeader
+        headerImage={headerImage}
+        searchValue={search}
+        onSearchChange={setSearch}
+      />
 
       {/* 首页主体 */}
       <section
@@ -348,7 +102,7 @@ export default function HomeClient({
           alignSelf: "center",
         }}
       >
-        {/* 原有首页轮播 */}
+        {/* 首页轮播 */}
         {banner && (
           <section
             className="latest-box"
@@ -600,7 +354,7 @@ export default function HomeClient({
           </div>
         </div>
 
-        {/* 游戏卡片 */}
+        {/* 首页游戏卡片 */}
         <div
           className="game-grid"
           style={{
@@ -629,9 +383,7 @@ export default function HomeClient({
             </Link>
           ))}
 
-          {filteredGames.length === 0 && (
-            <div>没有找到相关游戏</div>
-          )}
+          {filteredGames.length === 0 && <div>没有找到相关游戏</div>}
         </div>
       </section>
     </main>
