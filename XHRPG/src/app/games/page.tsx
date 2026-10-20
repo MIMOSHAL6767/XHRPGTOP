@@ -1,13 +1,21 @@
-
 import { prisma } from "@/lib/prisma";
 import GamesClient from "./GamesClient";
 import { Prisma } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 function parseTags(value: Prisma.JsonValue | null): string[] {
   if (Array.isArray(value)) {
-    return value.filter(
-      (item): item is string =>
-        typeof item === "string" && item.trim().length > 0
+    return Array.from(
+      new Set(
+        value
+          .filter(
+            (item): item is string =>
+              typeof item === "string" &&
+              item.trim().length > 0
+          )
+          .map((item) => item.trim())
+      )
     );
   }
 
@@ -16,9 +24,16 @@ function parseTags(value: Prisma.JsonValue | null): string[] {
       const parsed: unknown = JSON.parse(value);
 
       if (Array.isArray(parsed)) {
-        return parsed.filter(
-          (item): item is string =>
-            typeof item === "string" && item.trim().length > 0
+        return Array.from(
+          new Set(
+            parsed
+              .filter(
+                (item): item is string =>
+                  typeof item === "string" &&
+                  item.trim().length > 0
+              )
+              .map((item) => item.trim())
+          )
         );
       }
     } catch {
@@ -32,7 +47,6 @@ function parseTags(value: Prisma.JsonValue | null): string[] {
 }
 
 export default async function GamesPage() {
-  // 同时获取已发布游戏和首页头图
   const [games, homeHeader] = await Promise.all([
     prisma.game.findMany({
       where: {
@@ -65,7 +79,6 @@ export default async function GamesPage() {
     }),
   ]);
 
-  // 保留原来的标签和日期处理
   const safeGames = games.map((game) => ({
     ...game,
     tags: parseTags(game.tags),
