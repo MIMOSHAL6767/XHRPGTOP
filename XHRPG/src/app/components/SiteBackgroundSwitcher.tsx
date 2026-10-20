@@ -35,14 +35,15 @@ export default function SiteBackgroundSwitcher() {
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
 
-  // 游戏详情页和活动详情页保留原有专属背景
   const segments = pathname.split("/").filter(Boolean);
+
+  // 游戏详情页保留原有专属背景
   const isGameDetail =
-    segments[0] === "games" && segments.length >= 2;
+    segments[0] === "game" && segments.length >= 2;
+
+  // 活动详情页只显示全站背景，不显示背景设置控制器
   const isActivityDetail =
     segments[0] === "activities" && segments.length >= 2;
-
-  const excluded = isGameDetail || isActivityDetail;
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +66,7 @@ export default function SiteBackgroundSwitcher() {
       }
     }
 
-    loadBackgrounds();
+    void loadBackgrounds();
 
     return () => {
       cancelled = true;
@@ -119,12 +120,18 @@ export default function SiteBackgroundSwitcher() {
     setSettings((previous) => ({ ...previous, ...patch }));
   }
 
-  if (excluded) return null;
+  // 游戏详情页不显示全站背景，也不显示设置按钮
+  if (isGameDetail) return null;
 
   return (
     <>
       {selectedBackground && (
-        <div className="site-background-layer" aria-hidden="true">
+        <div
+          className={`site-background-layer${
+            isActivityDetail ? " site-background-layer-activity-header" : ""
+          }`}
+          aria-hidden="true"
+        >
           <div
             className="site-background-image"
             style={{
@@ -132,6 +139,7 @@ export default function SiteBackgroundSwitcher() {
               filter: `blur(${settings.blur}px)`,
             }}
           />
+
           <div
             className="site-background-overlay"
             style={{
@@ -141,107 +149,113 @@ export default function SiteBackgroundSwitcher() {
         </div>
       )}
 
-      <div className="site-background-controls">
-        {open && (
-          <section
-            className="site-background-panel"
-            aria-label="网站背景设置"
-          >
-            <div className="site-background-panel-heading">
-              <strong>网站背景设置</strong>
+      {!isActivityDetail && (
+        <div className="site-background-controls">
+          {open && (
+            <section
+              className="site-background-panel"
+              aria-label="网站背景设置"
+            >
+              <div className="site-background-panel-heading">
+                <strong>网站背景设置</strong>
+
+                <button
+                  type="button"
+                  className="site-background-close"
+                  onClick={() => setOpen(false)}
+                  aria-label="关闭背景设置"
+                >
+                  ×
+                </button>
+              </div>
+
+              <label className="site-background-label">
+                背景图片
+                <select
+                  value={settings.backgroundId ?? ""}
+                  onChange={(event) =>
+                    updateSettings({
+                      backgroundId: event.target.value
+                        ? Number(event.target.value)
+                        : null,
+                    })
+                  }
+                >
+                  <option value="">使用默认背景</option>
+
+                  {backgrounds.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {selectedBackground && (
+                <div className="site-background-preview">
+                  <img
+                    src={selectedBackground.imageUrl}
+                    alt={selectedBackground.name}
+                  />
+                </div>
+              )}
+
+              <label className="site-background-label">
+                黑色遮罩：{settings.overlayOpacity}%
+                <input
+                  type="range"
+                  min="0"
+                  max="90"
+                  value={settings.overlayOpacity}
+                  onChange={(event) =>
+                    updateSettings({
+                      overlayOpacity: Number(event.target.value),
+                    })
+                  }
+                />
+              </label>
+
+              <label className="site-background-label">
+                背景模糊：{settings.blur}px
+                <input
+                  type="range"
+                  min="0"
+                  max="20"
+                  value={settings.blur}
+                  onChange={(event) =>
+                    updateSettings({
+                      blur: Number(event.target.value),
+                    })
+                  }
+                />
+              </label>
+
               <button
                 type="button"
-                className="site-background-close"
-                onClick={() => setOpen(false)}
-                aria-label="关闭背景设置"
+                className="site-background-reset"
+                onClick={() =>
+                  updateSettings({
+                    backgroundId: null,
+                    overlayOpacity: 45,
+                    blur: 0,
+                  })
+                }
               >
-                ×
+                恢复默认设置
               </button>
-            </div>
+            </section>
+          )}
 
-            <label className="site-background-label">
-              背景图片
-              <select
-                value={settings.backgroundId ?? ""}
-                onChange={(event) =>
-                  updateSettings({
-                    backgroundId: event.target.value
-                      ? Number(event.target.value)
-                      : null,
-                  })
-                }
-              >
-                <option value="">使用默认背景</option>
-                {backgrounds.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {selectedBackground && (
-              <div className="site-background-preview">
-                <img
-                  src={selectedBackground.imageUrl}
-                  alt={selectedBackground.name}
-                />
-              </div>
-            )}
-
-            <label className="site-background-label">
-              黑色遮罩：{settings.overlayOpacity}%
-              <input
-                type="range"
-                min="0"
-                max="90"
-                value={settings.overlayOpacity}
-                onChange={(event) =>
-                  updateSettings({
-                    overlayOpacity: Number(event.target.value),
-                  })
-                }
-              />
-            </label>
-
-            <label className="site-background-label">
-              背景模糊：{settings.blur}px
-              <input
-                type="range"
-                min="0"
-                max="20"
-                value={settings.blur}
-                onChange={(event) =>
-                  updateSettings({ blur: Number(event.target.value) })
-                }
-              />
-            </label>
-
-            <button
-              type="button"
-              className="site-background-reset"
-              onClick={() =>
-                updateSettings({
-                  backgroundId: null,
-                  overlayOpacity: 45,
-                  blur: 0,
-                })
-              }
-            >
-              恢复默认设置
-            </button>
-          </section>
-        )}
-
-        <button
-          type="button"
-          className="site-background-toggle"
-          onClick={() => setOpen((previous) => !previous)}
-          aria-expanded={open}
-        >
-          {open ? "关闭背景设置" : "背景设置"}
-        </button>
-      </div>
+          <button
+            type="button"
+            className="site-background-toggle"
+            onClick={() => setOpen((previous) => !previous)}
+            aria-expanded={open}
+          >
+            {open ? "关闭背景设置" : "背景设置"}
+          </button>
+        </div>
+      )}
     </>
   );
 }
