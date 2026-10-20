@@ -1,3 +1,4 @@
+
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { Prisma } from "@prisma/client";
@@ -46,6 +47,26 @@ function parseScreenshots(
   );
 }
 
+function parseTags(
+  value: Prisma.JsonValue | null
+): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .filter(
+          (item): item is string =>
+            typeof item === "string" &&
+            item.trim().length > 0
+        )
+        .map((item) => item.trim())
+    )
+  );
+}
+
 export default async function GamePage({
   params,
 }: {
@@ -75,6 +96,7 @@ export default async function GamePage({
 
   const history = parseHistory(game.history);
   const screenshots = parseScreenshots(game.screenshots);
+  const tags = parseTags(game.tags);
 
   return (
     <GameDetailClient
@@ -94,6 +116,7 @@ export default async function GamePage({
       detailBackgroundOpacity={game.detailBackgroundOpacity}
       detailBackgroundFit={game.detailBackgroundFit}
       screenshots={screenshots}
+      tags={tags}
     />
   );
 }
