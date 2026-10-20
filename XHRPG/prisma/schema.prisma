@@ -283,3 +283,32 @@ model Activity {
 
   updatedAt         DateTime @updatedAt
 }
+
+
+model SiteBackground {
+  id Int @id @default(autoincrement())
+
+  // 背景名称
+  name String
+
+  // GitHub 图片仓库中的图片 URL
+  imageUrl String
+
+  // 是否允许在前台选择
+  enabled Boolean @default(true)
+
+  // 前台列表排序
+  sort Int @default(0)
+
+  // 默认暗色遮罩，范围 0-90
+  overlayOpacity Int @default(45)
+
+  // 默认背景模糊度，单位 px
+  blur Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled, sort])
+}
