@@ -31,10 +31,7 @@ const DEFAULT_CONFIG: Config = {
   tracks: [],
 };
 
-// 拖动超过此距离就不再被识别为点击。
 const DRAG_THRESHOLD = 8;
-
-// 双击判定时间。
 const DOUBLE_CLICK_DELAY = 280;
 
 export default function FloatingWidget() {
@@ -56,9 +53,12 @@ export default function FloatingWidget() {
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastClick = useRef(0);
 
-  // 拖动结束后，忽略浏览器可能补发的 click。
+  // 拖动完成后，屏蔽浏览器生成的 click。
   const suppressClickRef = useRef(false);
   const suppressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 当前或刚结束的手势是否发生过拖动。
+  const draggedSincePointerDownRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +68,7 @@ export default function FloatingWidget() {
         if (!response.ok) {
           throw new Error(`配置读取失败：HTTP ${response.status}`);
         }
+
         return response.json();
       })
       .then((data: Config) => {
@@ -86,11 +87,18 @@ export default function FloatingWidget() {
     return () => {
       cancelled = true;
 
-      if (clickTimer.current) clearTimeout(clickTimer.current);
-      if (suppressTimer.current) clearTimeout(suppressTimer.current);
+      if (clickTimer.current) {
+        clearTimeout(clickTimer.current);
+      }
 
-      audioRef.current?.pause();
-      audioRef.current = null;
+      if (suppressTimer.current) {
+        clearTimeout(suppressTimer.current);
+      }
+
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
   }, []);
 
@@ -143,24 +151,23 @@ export default function FloatingWidget() {
   }
 
   function handleClick() {
-    // 拖动产生的 click 一律忽略。
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-
-      if (suppressTimer.current) {
-        clearTimeout(suppressTimer.current);
-        suppressTimer.current = null;
-      }
-
+    // 拖动、取消手势或拖动后产生的合成点击均不能触发操作。
+    if (
+      draggedSincePointerDownRef.current ||
+      suppressClickRef.current
+    ) {
       return;
     }
 
-    // 正在拖动时不处理任何点击。
     if (dragRef.current) return;
 
     const now = Date.now();
 
-    if (now - lastClick.current < DOUBLE_CLICK_DELAY) {
+    // 只有两次独立的、未发生拖动的点击才算双击。
+    if (
+      lastClick.current !== 0 &&
+      now - lastClick.current < DOUBLE_CLICK_DELAY
+    ) {
       lastClick.current = 0;
 
       if (clickTimer.current) {
@@ -193,10 +200,23 @@ export default function FloatingWidget() {
   function onPointerDown(
     event: ReactPointerEvent<HTMLButtonElement>
   ) {
-    // 鼠标只接受左键；触屏和触控笔正常处理。
-    if (event.pointerType === "mouse" && event.button !== 0) return;
+    // 鼠标只接受左键。
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
 
-    // 新手势开始前清理上次尚未执行的单击。
+    // 清除拖动后的点击抑制定时器。
+    if (suppressTimer.current) {
+      clearTimeout(suppressTimer.current);
+      suppressTimer.current = null;
+    }
+
+    // 新手势开始，重置本次拖动状态。
+    suppressClickRef.current = false;
+    draggedSincePointerDownRef.current = false;
+
+    // 如果之前有尚未执行的单击，暂时取消。
+    // 只有本次确认是点击后，才会重新安排单击操作。
     if (clickTimer.current) {
       clearTimeout(clickTimer.current);
       clickTimer.current = null;
@@ -219,7 +239,9 @@ export default function FloatingWidget() {
   ) {
     const drag = dragRef.current;
 
-    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
 
     const dx = event.clientX - drag.pointerX;
     const dy = event.clientY - drag.pointerY;
@@ -229,32 +251,34 @@ export default function FloatingWidget() {
       Math.abs(dy) > DRAG_THRESHOLD
     ) {
       drag.moved = true;
+      draggedSincePointerDownRef.current = true;
+      suppressClickRef.current = true;
+
+      // 一旦开始拖动，立即清除之前的双击记录。
+      lastClick.current = 0;
+
+      if (clickTimer.current) {
+        clearTimeout(clickTimer.current);
+        clickTimer.current = null;
+      }
     }
 
     if (!drag.moved) return;
 
-    // 移动一旦发生，立即取消待处理的单击。
-    if (clickTimer.current) {
-      clearTimeout(clickTimer.current);
-      clickTimer.current = null;
-    }
-
-    lastClick.current = 0;
-
-    // 当前组件通过 right 和 bottom 定位：
-    // 鼠标向右移动时，right 数值应减小。
+    // 组件使用 right 和 bottom 定位。
+    // 鼠标向右移动，right 数值就减小。
     setPosition({
       x: Math.max(
         0,
         Math.min(
-          window.innerWidth - config.width,
+          Math.max(0, window.innerWidth - config.width),
           drag.startX - dx
         )
       ),
       y: Math.max(
         0,
         Math.min(
-          window.innerHeight - config.height,
+          Math.max(0, window.innerHeight - config.height),
           drag.startY - dy
         )
       ),
@@ -266,12 +290,13 @@ export default function FloatingWidget() {
   ) {
     const drag = dragRef.current;
 
-    if (!drag || drag.pointerId !== event.pointerId) return;
-
-    dragRef.current = null;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
 
     if (drag.moved) {
-      // 清除双击记录，防止拖动被算作第二次点击。
+      draggedSincePointerDownRef.current = true;
+      suppressClickRef.current = true;
       lastClick.current = 0;
 
       if (clickTimer.current) {
@@ -279,9 +304,7 @@ export default function FloatingWidget() {
         clickTimer.current = null;
       }
 
-      // 忽略拖动结束时浏览器合成的 click。
-      suppressClickRef.current = true;
-
+      // 保留抑制状态，防止浏览器稍后生成 click。
       if (suppressTimer.current) {
         clearTimeout(suppressTimer.current);
       }
@@ -289,16 +312,63 @@ export default function FloatingWidget() {
       suppressTimer.current = setTimeout(() => {
         suppressClickRef.current = false;
         suppressTimer.current = null;
-      }, 400);
-    }
-  }
 
-  function onLostPointerCapture() {
-    // 仅兜底清理状态，不触发点击或跳转。
+        // 不在这里恢复双击记录。
+        // 下一次 pointerdown 才能开始新的有效手势。
+      }, 600);
+    }
+
     dragRef.current = null;
   }
 
-  if (!config.enabled || !config.gifUrl) return null;
+  function onPointerCancel(
+    event: ReactPointerEvent<HTMLButtonElement>
+  ) {
+    const drag = dragRef.current;
+
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    // 取消的手势绝不能被当作点击或双击。
+    lastClick.current = 0;
+
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+    }
+
+    draggedSincePointerDownRef.current = true;
+    suppressClickRef.current = true;
+
+    if (suppressTimer.current) {
+      clearTimeout(suppressTimer.current);
+    }
+
+    suppressTimer.current = setTimeout(() => {
+      suppressClickRef.current = false;
+      suppressTimer.current = null;
+    }, 600);
+
+    dragRef.current = null;
+  }
+
+  function onLostPointerCapture() {
+    // 仅清理拖动状态，不触发点击、播放或页面跳转。
+    if (dragRef.current) {
+      if (dragRef.current.moved) {
+        draggedSincePointerDownRef.current = true;
+        suppressClickRef.current = true;
+        lastClick.current = 0;
+      }
+
+      dragRef.current = null;
+    }
+  }
+
+  if (!config.enabled || !config.gifUrl) {
+    return null;
+  }
 
   return (
     <div
@@ -323,7 +393,7 @@ export default function FloatingWidget() {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={onPointerCancel}
         onLostPointerCapture={onLostPointerCapture}
         style={{
           display: "block",
