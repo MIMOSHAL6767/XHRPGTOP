@@ -1,0 +1,248 @@
+"use client";
+
+import { useState } from "react";
+
+const linkStyle: React.CSSProperties = {
+  color: "#c9b9bb",
+  textDecoration: "none",
+  fontSize: "14px",
+  background: "transparent",
+  border: "none",
+  padding: 0,
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const footerContents: Record<string, { title: string; content: string }> = {
+  about: {
+    title: "关于本站",
+    content:
+      "喜灰RPG资源站（XHRPG）是一个专注于喜羊羊与灰太狼同人 RPG 游戏的资源索引站，旨在整理、展示相关游戏信息，为玩家提供便捷的查找入口。",
+  },
+  contact: {
+    title: "联系站长",
+    content:
+      "如果你发现本站存在错误信息、失效链接或其他问题，可以通过站长公布的联系方式反馈。具体联系方式将在后续补充。",
+  },
+  friends: {
+    title: "友情链接",
+    content:
+      "这里用于展示与喜羊羊与灰太狼、RPG 游戏制作、游戏资源整理等相关的网站。目前暂无已添加的友情链接。",
+  },
+  disclaimer: {
+    title: "免责声明",
+    content:
+      "本站主要提供同人游戏信息整理与资源索引。相关游戏、角色、美术素材及其他内容的版权归各自的原作者或权利人所有。如相关权利人认为本站内容侵犯其合法权益，请联系站长处理。",
+  },
+};
+
+export default function Footer() {
+  const [activeModal, setActiveModal] = useState<string | null>(null);
+
+  const activeContent = activeModal
+    ? footerContents[activeModal]
+    : null;
+
+  return (
+    <>
+      <footer
+        style={{
+          width: "100%",
+          marginTop: "48px",
+          padding: "32px 24px 20px",
+          background: "#10090b",
+          borderTop: "1px solid #4a2028",
+          color: "#c9b9bb",
+          boxSizing: "border-box",
+          borderRadius: 0,
+        }}
+      >
+        <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+          <div style={{ marginBottom: "24px" }}>
+            <h2
+              style={{
+                margin: "0 0 8px",
+                color: "#f8eeee",
+                fontSize: "22px",
+                fontWeight: 700,
+              }}
+            >
+              喜灰RPG资源站
+            </h2>
+
+            <p style={{ margin: 0, fontSize: "14px", lineHeight: 1.8 }}>
+              XHRPG · 喜羊羊与灰太狼同人 RPG 游戏资源索引
+            </p>
+          </div>
+
+          <nav
+            aria-label="页脚导航"
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "20px",
+              marginBottom: "24px",
+            }}
+          >
+            <button
+              type="button"
+              style={linkStyle}
+              onClick={() => setActiveModal("about")}
+            >
+              关于本站
+            </button>
+
+            <button
+              type="button"
+              style={linkStyle}
+              onClick={() => setActiveModal("contact")}
+            >
+              联系站长
+            </button>
+
+            <button
+              type="button"
+              style={linkStyle}
+              onClick={() => setActiveModal("friends")}
+            >
+              友情链接
+            </button>
+
+            <button
+              type="button"
+              style={linkStyle}
+              onClick={() => setActiveModal("disclaimer")}
+            >
+              免责声明
+            </button>
+          </nav>
+
+          <div
+            style={{
+              borderTop: "1px solid #4a2028",
+              marginBottom: "16px",
+            }}
+          />
+
+          <p style={{ margin: "0 0 8px", fontSize: "12px", lineHeight: 1.8 }}>
+            © {new Date().getFullYear()} XHRPG STUDIO · All Rights Reserved.
+          </p>
+
+          <p style={{ margin: 0, fontSize: "12px", lineHeight: 1.8 }}>
+            本站为同人游戏资源索引站，游戏版权归原作者所有。
+          </p>
+        </div>
+      </footer>
+
+      {activeContent && (
+        <div
+          onClick={() => setActiveModal(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0, 0, 0, 0.78)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+            boxSizing: "border-box",
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="footer-modal-title"
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "560px",
+              background: "#160c0f",
+              border: "1px solid #8b1e2d",
+              borderRadius: 0,
+              color: "#f8eeee",
+              boxSizing: "border-box",
+              boxShadow: "0 16px 60px rgba(0,0,0,0.55)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "18px 22px",
+                borderBottom: "1px solid #4a2028",
+              }}
+            >
+              <h2
+                id="footer-modal-title"
+                style={{
+                  margin: 0,
+                  fontSize: "19px",
+                  fontWeight: 700,
+                }}
+              >
+                {activeContent.title}
+              </h2>
+
+              <button
+                type="button"
+                aria-label="关闭窗口"
+                onClick={() => setActiveModal(null)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  borderRadius: 0,
+                  color: "#c9b9bb",
+                  fontSize: "26px",
+                  cursor: "pointer",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: "24px 22px 30px",
+                fontSize: "14px",
+                lineHeight: 2,
+                color: "#c9b9bb",
+                whiteSpace: "pre-wrap",
+                overflowWrap: "anywhere",
+              }}
+            >
+              {activeContent.content}
+            </div>
+
+            <div
+              style={{
+                padding: "14px 22px",
+                borderTop: "1px solid #4a2028",
+                display: "flex",
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                style={{
+                  padding: "9px 22px",
+                  background: "#8b1e2d",
+                  border: "1px solid #a52a3a",
+                  borderRadius: 0,
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                }}
+              >
+                关闭
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+    </>
+  );
+}
