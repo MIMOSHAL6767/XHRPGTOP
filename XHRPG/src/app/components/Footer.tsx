@@ -47,8 +47,8 @@ export default function Footer() {
       <footer
         style={{
           width: "100%",
-          marginTop: "48px",
-          padding: "32px 24px 20px",
+          marginTop: "28px",
+          padding: "12px 24px 20px",
           background: "#10090b",
           borderTop: "1px solid #4a2028",
           color: "#c9b9bb",
