@@ -90,7 +90,7 @@ export default function GamesClient({
     });
 
     return Array.from(authorCounts.entries())
-      .filter(([, count]) => count > 3)
+      .filter(([, count]) => count > 2)
       .map(([author]) => author)
       .sort((a, b) => a.localeCompare(b, "zh-CN"));
   }, [normalizedGames]);
