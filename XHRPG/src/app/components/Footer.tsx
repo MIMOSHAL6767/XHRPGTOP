@@ -27,7 +27,6 @@ const footerContents: Record<string, { title: string; content: string }> = {
   friends: {
     title: "友情链接",
     content:"羊村大崩坏完结篇吧：https://tieba.baidu.com/f?kw=羊村大崩坏完结篇",
-      "",
   },
   disclaimer: {
     title: "免责声明",
