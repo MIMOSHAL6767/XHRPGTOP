@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import SiteHeader from "@/app/components/SiteHeader";
 
@@ -59,11 +60,10 @@ export default function RandomGameClient({
               new Set(
                 parsed.filter(
                   (id): id is number =>
-                    typeof id === "number" &&
-                    Number.isFinite(id)
-                )
-              )
-            )
+                    typeof id === "number" && Number.isFinite(id),
+                ),
+              ),
+            ),
           );
         }
       }
@@ -76,30 +76,30 @@ export default function RandomGameClient({
 
   const publishedIds = useMemo(
     () => new Set(games.map((game) => game.id)),
-    [games]
+    [games],
   );
 
   const validPlayedIds = useMemo(
     () => playedIds.filter((id) => publishedIds.has(id)),
-    [playedIds, publishedIds]
+    [playedIds, publishedIds],
   );
 
   const playedSet = useMemo(
     () => new Set(validPlayedIds),
-    [validPlayedIds]
+    [validPlayedIds],
   );
 
   const availableGames = useMemo(
     () => games.filter((game) => !playedSet.has(game.id)),
-    [games, playedSet]
+    [games, playedSet],
   );
 
   const playedGames = useMemo(
     () => games.filter((game) => playedSet.has(game.id)),
-    [games, playedSet]
+    [games, playedSet],
   );
 
-  // 下方紧凑游戏网格：支持状态筛选与名称搜索。
+  // 游戏网格：支持状态筛选与名称、编号搜索。
   const visibleGames = useMemo(() => {
     const key = keyword.trim().toLowerCase();
 
@@ -123,7 +123,7 @@ export default function RandomGameClient({
 
   function savePlayedIds(ids: number[]) {
     const uniqueIds = Array.from(
-      new Set(ids.filter((id) => publishedIds.has(id)))
+      new Set(ids.filter((id) => publishedIds.has(id))),
     );
 
     setPlayedIds(uniqueIds);
@@ -157,12 +157,12 @@ export default function RandomGameClient({
       setMessage(
         games.length === 0
           ? "目前没有已发布的游戏。"
-          : "所有游戏都已标记为玩过，请在下方取消部分标记后再抽取。"
+          : "所有游戏都已标记为玩过，请在下方取消部分标记后再抽取。",
       );
       return;
     }
 
-    // 避免连续抽取时尽可能重复上一款结果。
+    // 有多款可抽取游戏时，尽量避免连续抽中同一款。
     const candidates =
       availableGames.length > 1 && currentGame
         ? availableGames.filter((game) => game.id !== currentGame.id)
@@ -180,7 +180,7 @@ export default function RandomGameClient({
 
     if (
       !window.confirm(
-        "确定清空所有已玩记录吗？所有游戏都将重新参与抽取。"
+        "确定清空所有已玩记录吗？所有游戏都将重新参与抽取。",
       )
     ) {
       return;
@@ -190,7 +190,7 @@ export default function RandomGameClient({
     setMessage("已清空已玩记录。");
   }
 
-  const buttonStyle: React.CSSProperties = {
+  const buttonStyle: CSSProperties = {
     minHeight: 36,
     padding: "8px 14px",
     border: `1px solid ${C.red}`,
@@ -207,7 +207,7 @@ export default function RandomGameClient({
     boxSizing: "border-box",
   };
 
-  const outlineButton: React.CSSProperties = {
+  const outlineButton: CSSProperties = {
     ...buttonStyle,
     background: "transparent",
     borderColor: C.line,
@@ -289,9 +289,11 @@ export default function RandomGameClient({
             >
               XHRPG RANDOM SELECTOR
             </div>
+
             <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>
               随机抽取游戏
             </h1>
+
             <p
               style={{
                 margin: "8px 0 0",
@@ -309,7 +311,7 @@ export default function RandomGameClient({
           </Link>
         </header>
 
-        {/* 紧凑统计条 */}
+        {/* 游戏统计 */}
         <section
           style={{
             display: "grid",
@@ -336,6 +338,7 @@ export default function RandomGameClient({
               <div style={{ color: C.muted, fontSize: 12 }}>
                 {item.label}
               </div>
+
               <div
                 style={{
                   marginTop: 5,
@@ -368,9 +371,11 @@ export default function RandomGameClient({
           >
             YOUR NEXT ADVENTURE
           </div>
+
           <h2 style={{ margin: "0 0 8px", fontSize: 21 }}>
             今天玩什么？
           </h2>
+
           <p
             style={{
               color: C.muted,
@@ -418,6 +423,7 @@ export default function RandomGameClient({
                 >
                   抽取结果 · #{currentGame.id}
                 </div>
+
                 <h3
                   style={{
                     fontSize: 24,
@@ -439,9 +445,11 @@ export default function RandomGameClient({
                   {currentGame.category && (
                     <div>分类：{currentGame.category}</div>
                   )}
+
                   {currentGame.author && (
                     <div>作者：{currentGame.author}</div>
                   )}
+
                   {currentGame.version && (
                     <div>版本：{currentGame.version}</div>
                   )}
@@ -460,13 +468,20 @@ export default function RandomGameClient({
                   {currentGame.description || "暂无游戏简介。"}
                 </p>
 
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                  }}
+                >
                   <Link
                     href={`/game/${currentGame.id}`}
                     style={buttonStyle}
                   >
                     查看游戏详情
                   </Link>
+
                   <button
                     type="button"
                     onClick={() => togglePlayed(currentGame)}
@@ -512,7 +527,8 @@ export default function RandomGameClient({
                 ...buttonStyle,
                 minHeight: 42,
                 padding: "10px 22px",
-                opacity: !loaded || availableGames.length === 0 ? 0.5 : 1,
+                opacity:
+                  !loaded || availableGames.length === 0 ? 0.5 : 1,
                 cursor:
                   !loaded || availableGames.length === 0
                     ? "not-allowed"
@@ -521,6 +537,7 @@ export default function RandomGameClient({
             >
               {currentGame ? "再抽一款" : "开始随机抽取"}
             </button>
+
             <span style={{ color: C.muted, fontSize: 12 }}>
               当前剩余 {loaded ? availableGames.length : "—"} 款可抽取
             </span>
@@ -558,6 +575,7 @@ export default function RandomGameClient({
               <h2 style={{ fontSize: 21, margin: "0 0 6px" }}>
                 游戏状态管理
               </h2>
+
               <p style={{ color: C.muted, fontSize: 12, margin: 0 }}>
                 点击封面卡片上的状态按钮，即可提前设置是否玩过。
               </p>
@@ -569,7 +587,8 @@ export default function RandomGameClient({
               disabled={!loaded || validPlayedIds.length === 0}
               style={{
                 ...outlineButton,
-                opacity: !loaded || validPlayedIds.length === 0 ? 0.5 : 1,
+                opacity:
+                  !loaded || validPlayedIds.length === 0 ? 0.5 : 1,
                 cursor:
                   !loaded || validPlayedIds.length === 0
                     ? "not-allowed"
@@ -676,9 +695,7 @@ export default function RandomGameClient({
                       minWidth: 0,
                       overflow: "hidden",
                       background: C.panel,
-                      border: `1px solid ${
-                        isPlayed ? C.red : C.line
-                      }`,
+                      border: `1px solid ${isPlayed ? C.red : C.line}`,
                       opacity: isPlayed ? 0.86 : 1,
                     }}
                   >
@@ -718,7 +735,6 @@ export default function RandomGameClient({
                         href={`/game/${game.id}`}
                         title={game.name}
                         style={{
-                          display: "block",
                           color: C.text,
                           fontSize: 12,
                           lineHeight: 1.5,
@@ -730,7 +746,7 @@ export default function RandomGameClient({
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: "vertical",
                           overflow: "hidden",
-                        } as React.CSSProperties}
+                        } as CSSProperties}
                       >
                         {game.name}
                       </Link>
@@ -745,9 +761,7 @@ export default function RandomGameClient({
                           minHeight: 29,
                           marginTop: 7,
                           padding: "5px 4px",
-                          border: `1px solid ${
-                            isPlayed ? C.red : C.line
-                          }`,
+                          border: `1px solid ${isPlayed ? C.red : C.line}`,
                           borderRadius: 0,
                           background: isPlayed ? C.red : "transparent",
                           color: C.text,
