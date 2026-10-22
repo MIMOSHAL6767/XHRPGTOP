@@ -22,12 +22,12 @@ const footerContents: Record<string, { title: string; content: string }> = {
   contact: {
     title: "联系站长",
     content:
-      "如果你发现本站存在错误信息、失效链接或其他问题，可以通过站长公布的联系方式反馈。具体联系方式将在后续补充。",
+      "如果你发现本站存在错误信息、失效链接或其他问题，请反馈到3899256013@qq.com，或添加站长QQ：3899256013",
   },
   friends: {
-    title: "友情链接",
+    title: "友情链接。羊村大崩坏完结篇吧：https://tieba.baidu.com/f?kw=%E7%BE%8A%E6%9D%91%E5%A4%A7%E5%B4%A9%E5%9D%8F%E5%AE%8C%E7%BB%93%E7%AF%87",
     content:
-      "这里用于展示与喜羊羊与灰太狼、RPG 游戏制作、游戏资源整理等相关的网站。目前暂无已添加的友情链接。",
+      "",
   },
   disclaimer: {
     title: "免责声明",
