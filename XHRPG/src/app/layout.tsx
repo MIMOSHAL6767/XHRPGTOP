@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SiteBackgroundSwitcher from "./components/SiteBackgroundSwitcher";
-import Footer from "@/components/Footer";
+import Footer from "./components/Footer";
 
 export const metadata: Metadata = {
   title: "喜灰RPG游戏资源站",
