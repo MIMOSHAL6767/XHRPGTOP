@@ -25,8 +25,8 @@ const footerContents: Record<string, { title: string; content: string }> = {
       "如果你发现本站存在错误信息、失效链接或其他问题，请反馈到3899256013@qq.com，或添加站长QQ：3899256013",
   },
   friends: {
-    title: "友情链接。羊村大崩坏完结篇吧：https://tieba.baidu.com/f?kw=羊村大崩坏完结篇",
-    content:
+    title: "友情链接",
+    content:"羊村大崩坏完结篇吧：https://tieba.baidu.com/f?kw=羊村大崩坏完结篇",
       "",
   },
   disclaimer: {
@@ -109,10 +109,6 @@ export default function Footer() {
 
           <p style={{ margin: "0 0 8px", fontSize: "12px", lineHeight: 1.8 }}>
             © {new Date().getFullYear()} XHRPG STUDIO · All Rights Reserved.
-          </p>
-
-          <p style={{ margin: 0, fontSize: "12px", lineHeight: 1.8 }}>
-            本站为同人游戏资源索引站，游戏版权归原作者所有。
           </p>
         </div>
       </footer>
