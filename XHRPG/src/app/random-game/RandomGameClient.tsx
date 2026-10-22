@@ -247,7 +247,7 @@ export default function RandomGameClient({
       style={{
         minHeight: "100vh",
         width: "100%",
-        background: C.background,
+        background: "transparent",
         color: C.text,
         margin: 0,
         padding: 0,
