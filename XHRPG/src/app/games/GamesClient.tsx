@@ -76,13 +76,25 @@ export default function GamesClient({
     [games]
   );
 
-  const authors = useMemo(
-    () =>
-      Array.from(
-        new Set(normalizedGames.map((game) => game.author).filter(Boolean))
-      ).sort((a, b) => a.localeCompare(b, "zh-CN")),
-    [normalizedGames]
-  );
+
+  const authors = useMemo(() => {
+    const authorCounts = new Map<string, number>();
+
+    normalizedGames.forEach((game) => {
+      if (game.author) {
+        authorCounts.set(
+          game.author,
+          (authorCounts.get(game.author) ?? 0) + 1
+        );
+      }
+    });
+
+    return Array.from(authorCounts.entries())
+      .filter(([, count]) => count > 3)
+      .map(([author]) => author)
+      .sort((a, b) => a.localeCompare(b, "zh-CN"));
+  }, [normalizedGames]);
+
 
   const allTags = useMemo(
     () =>
