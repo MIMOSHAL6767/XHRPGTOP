@@ -23,6 +23,10 @@ export default async function RandomGamePage() {
     },
   });
 
+  // 将首页实际使用的头图地址传给公共导航组件。
+  // 请将这里替换成首页服务端组件中获取 headerImage 的原有逻辑。
+  const headerImage: string | null = null;
+
   return (
     <RandomGameClient
       games={games.map((game) => ({
@@ -34,6 +38,7 @@ export default async function RandomGamePage() {
         version: game.version ?? "",
         author: game.author ?? "",
       }))}
+      headerImage={headerImage}
     />
   );
 }
