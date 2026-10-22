@@ -25,7 +25,7 @@ const footerContents: Record<string, { title: string; content: string }> = {
       "如果你发现本站存在错误信息、失效链接或其他问题，请反馈到3899256013@qq.com，或添加站长QQ：3899256013",
   },
   friends: {
-    title: "友情链接。羊村大崩坏完结篇吧：https://tieba.baidu.com/f?kw=%E7%BE%8A%E6%9D%91%E5%A4%A7%E5%B4%A9%E5%9D%8F%E5%AE%8C%E7%BB%93%E7%AF%87",
+    title: "友情链接。羊村大崩坏完结篇吧：https://tieba.baidu.com/f?kw=羊村大崩坏完结篇",
     content:
       "",
   },
@@ -58,23 +58,6 @@ export default function Footer() {
         }}
       >
         <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
-          <div style={{ marginBottom: "24px" }}>
-            <h2
-              style={{
-                margin: "0 0 8px",
-                color: "#f8eeee",
-                fontSize: "22px",
-                fontWeight: 700,
-              }}
-            >
-              喜灰RPG资源站
-            </h2>
-
-            <p style={{ margin: 0, fontSize: "14px", lineHeight: 1.8 }}>
-              XHRPG · 喜羊羊与灰太狼同人 RPG 游戏资源索引
-            </p>
-          </div>
-
           <nav
             aria-label="页脚导航"
             style={{
