@@ -63,7 +63,7 @@ export default function Footer() {
               display: "flex",
               flexWrap: "wrap",
               gap: "20px",
-              marginBottom: "24px",
+              marginBottom: "12px",
             }}
           >
             <button
