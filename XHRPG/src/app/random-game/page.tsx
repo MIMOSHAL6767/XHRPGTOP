@@ -3,29 +3,39 @@ import { prisma } from "@/lib/prisma";
 import RandomGameClient from "./RandomGameClient";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function RandomGamePage() {
-  const games = await prisma.game.findMany({
-    where: {
-      status: "已发布",
-    },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      cover: true,
-      category: true,
-      version: true,
-      author: true,
-    },
-    orderBy: {
-      id: "asc",
-    },
-  });
+  const [games, header] = await Promise.all([
+    // 只获取已发布的游戏
+    prisma.game.findMany({
+      where: {
+        status: "已发布",
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        cover: true,
+        category: true,
+        version: true,
+        author: true,
+      },
+      orderBy: {
+        id: "asc",
+      },
+    }),
 
-  // 将首页实际使用的头图地址传给公共导航组件。
-  // 请将这里替换成首页服务端组件中获取 headerImage 的原有逻辑。
-  const headerImage: string | null = null;
+    // 复用首页的头图
+    prisma.homeHeader.findUnique({
+      where: {
+        id: 1,
+      },
+      select: {
+        imageUrl: true,
+      },
+    }),
+  ]);
 
   return (
     <RandomGameClient
@@ -38,7 +48,7 @@ export default async function RandomGamePage() {
         version: game.version ?? "",
         author: game.author ?? "",
       }))}
-      headerImage={headerImage}
+      headerImage={header?.imageUrl ?? null}
     />
   );
 }
