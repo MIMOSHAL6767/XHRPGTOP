@@ -5,7 +5,7 @@ import Footer from "./components/Footer";
 import DisclaimerPopup from "./components/DisclaimerPopup";
 
 export const metadata: Metadata = {
-  title: "喜灰RPG游戏资源站",
+  title: "喜灰RPG档案馆",
   description: "收录所有喜灰RPG，感兴趣可以来看一下",
 };
 
