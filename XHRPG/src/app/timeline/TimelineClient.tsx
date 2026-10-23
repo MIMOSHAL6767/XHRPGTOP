@@ -67,6 +67,21 @@ export default function TimelineClient({
   const [textColor, setTextColor] = useState("#f8eeee");
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
+  // 统一处理图片样式，确保编辑和查看状态表现一致。
+  const applyImageStyles = useCallback((root: HTMLElement) => {
+    root.querySelectorAll("img").forEach((image) => {
+      image.style.maxWidth = "100%";
+      image.style.width = "auto";
+      image.style.height = "auto";
+      image.style.maxHeight = "none";
+      image.style.display = "block";
+      image.style.margin = "16px auto";
+      image.style.objectFit = "contain";
+      image.style.visibility = "visible";
+      image.style.opacity = "1";
+    });
+  }, []);
+
   const loadTimeline = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -101,7 +116,14 @@ export default function TimelineClient({
     void loadTimeline();
   }, [loadTimeline]);
 
-  // 保存编辑器选区，避免点击工具栏后丢失插入位置
+  // 查看内容或载入新内容后，统一处理已有图片。
+  useEffect(() => {
+    if (!loading && editorRef.current) {
+      applyImageStyles(editorRef.current);
+    }
+  }, [content, loading, applyImageStyles]);
+
+  // 保存编辑器选区，避免点击工具栏后丢失插入位置。
   const saveSelection = () => {
     const editor = editorRef.current;
     const selection = window.getSelection();
@@ -179,6 +201,12 @@ export default function TimelineClient({
   const startEditing = () => {
     setError("");
     setMessage("");
+
+    if (editorRef.current) {
+      editorRef.current.innerHTML = content;
+      applyImageStyles(editorRef.current);
+    }
+
     setEditing(true);
 
     requestAnimationFrame(() => {
@@ -189,6 +217,7 @@ export default function TimelineClient({
   const cancelEditing = () => {
     if (editorRef.current) {
       editorRef.current.innerHTML = content;
+      applyImageStyles(editorRef.current);
     }
 
     savedRangeRef.current = null;
@@ -198,14 +227,41 @@ export default function TimelineClient({
   };
 
   const saveContent = async () => {
-    if (!editorRef.current) return;
+    const editor = editorRef.current;
+
+    if (!editor) {
+      setError("找不到大事记编辑器");
+      return;
+    }
 
     setSaving(true);
     setError("");
     setMessage("");
 
     try {
-      const html = editorRef.current.innerHTML;
+      applyImageStyles(editor);
+
+      const html = editor.innerHTML;
+
+      // 输出保存前图片信息，方便排查图片无法显示的问题。
+      const images = Array.from(editor.querySelectorAll("img")).map(
+        (image) => ({
+          src: image.getAttribute("src"),
+          loaded: image.complete && image.naturalWidth > 0,
+          naturalWidth: image.naturalWidth,
+        }),
+      );
+
+      console.log("[大事记] 保存前图片：", images);
+      console.log("[大事记] 保存前 HTML：", html);
+
+      const missingSrc = images.some(
+        (image) => !image.src || !image.src.trim(),
+      );
+
+      if (missingSrc) {
+        throw new Error("编辑器中存在没有图片地址的图片，请重新插入图片");
+      }
 
       const response = await fetch("/api/timeline", {
         method: "PUT",
@@ -221,8 +277,16 @@ export default function TimelineClient({
         throw new Error(data.error || "保存失败");
       }
 
-      setContent(data.content ?? html);
+      const savedContent = data.content ?? html;
+
+      setContent(savedContent);
       setUpdatedAt(data.updatedAt || null);
+
+      if (editorRef.current) {
+        editorRef.current.innerHTML = savedContent;
+        applyImageStyles(editorRef.current);
+      }
+
       setEditing(false);
       setMessage("大事记保存成功");
       savedRangeRef.current = null;
@@ -236,6 +300,8 @@ export default function TimelineClient({
   };
 
   const openImagePicker = () => {
+    if (!editing || saving || uploading) return;
+
     saveSelection();
     imageInputRef.current?.click();
   };
@@ -243,7 +309,7 @@ export default function TimelineClient({
   const uploadImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
 
-    // 允许重复选择同一个文件
+    // 允许重复选择同一个文件。
     event.target.value = "";
 
     if (!file) return;
@@ -260,8 +326,8 @@ export default function TimelineClient({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setError("图片不能超过 5 MB");
+    if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
+      setError("图片大小必须大于 0 且不能超过 5 MB");
       return;
     }
 
@@ -288,43 +354,98 @@ export default function TimelineClient({
         throw new Error(data.error || "图片上传失败");
       }
 
+      // 限制为 HTTP(S) 图片地址。
+      let imageUrl: URL;
+
+      try {
+        imageUrl = new URL(data.url);
+      } catch {
+        throw new Error("上传接口返回的图片地址无效");
+      }
+
+      if (
+        imageUrl.protocol !== "https:" &&
+        imageUrl.protocol !== "http:"
+      ) {
+        throw new Error("图片地址必须使用 HTTP 或 HTTPS");
+      }
+
       const editor = editorRef.current;
 
       if (!editor) {
         throw new Error("找不到编辑器");
       }
 
+      if (!editing) {
+        throw new Error("当前不是编辑模式，请先点击编辑大事记");
+      }
+
       restoreSelection();
 
       const image = document.createElement("img");
-      image.src = data.url;
+      image.src = imageUrl.href;
       image.alt = file.name;
+      image.title = file.name;
+      image.loading = "lazy";
+      image.decoding = "async";
+
       image.style.maxWidth = "100%";
+      image.style.width = "auto";
       image.style.height = "auto";
+      image.style.maxHeight = "none";
       image.style.display = "block";
       image.style.margin = "16px auto";
+      image.style.objectFit = "contain";
+      image.style.visibility = "visible";
+      image.style.opacity = "1";
+
+      // 上传成功不代表原图一定能正常访问。
+      image.onerror = () => {
+        setError(
+          `图片已上传到图床，但浏览器无法加载原图。请检查图片地址：${imageUrl.href}`,
+        );
+        setMessage("");
+      };
+
+      image.onload = () => {
+        setError("");
+        setMessage("图片已插入编辑器，请保存大事记以保留修改");
+      };
 
       const selection = window.getSelection();
 
       if (
         selection &&
         selection.rangeCount > 0 &&
-        editor.contains(selection.getRangeAt(0).commonAncestorContainer)
+        editor.contains(
+          selection.getRangeAt(0).commonAncestorContainer,
+        )
       ) {
         const range = selection.getRangeAt(0);
         range.deleteContents();
         range.insertNode(image);
-        range.setStartAfter(image);
+
+        // 图片后面插入一个可继续输入的段落。
+        const paragraph = document.createElement("p");
+        paragraph.appendChild(document.createElement("br"));
+        image.after(paragraph);
+
+        range.setStart(paragraph, 0);
         range.collapse(true);
 
         selection.removeAllRanges();
         selection.addRange(range);
       } else {
         editor.appendChild(image);
+        const paragraph = document.createElement("p");
+        paragraph.appendChild(document.createElement("br"));
+        editor.appendChild(paragraph);
       }
 
       saveSelection();
-      setMessage("图片上传成功，请保存大事记以保留修改");
+
+      // 先提示插入成功；图片加载失败时 onerror 会覆盖此提示。
+      setMessage("图片已插入编辑器，请保存大事记以保留修改");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "图片上传失败",
@@ -443,7 +564,7 @@ export default function TimelineClient({
                         onChange={(event) =>
                           changeFontSize(event.target.value)
                         }
-                        disabled={!editing}
+                        disabled={!editing || saving || uploading}
                       >
                         {[
                           12, 14, 16, 18, 20, 24, 28, 32, 36, 42, 48,
@@ -465,7 +586,7 @@ export default function TimelineClient({
                         onChange={(event) =>
                           changeColor(event.target.value)
                         }
-                        disabled={!editing}
+                        disabled={!editing || saving || uploading}
                       />
                     </label>
 
@@ -642,6 +763,7 @@ export default function TimelineClient({
           overflow-wrap: anywhere;
           outline: none;
           background: transparent;
+          overflow-x: auto;
         }
 
         .timeline-editor.is-editing {
@@ -692,13 +814,21 @@ export default function TimelineClient({
         }
 
         .timeline-editor img {
-          max-width: 100%;
-          height: auto;
+          display: block;
+          max-width: 100% !important;
+          width: auto;
+          height: auto !important;
+          max-height: none !important;
+          object-fit: contain;
+          margin: 16px auto;
+          visibility: visible;
+          opacity: 1;
         }
 
         .timeline-editor a {
           color: #e46a7a;
           text-decoration: underline;
+          overflow-wrap: anywhere;
         }
 
         .timeline-editor ul,
