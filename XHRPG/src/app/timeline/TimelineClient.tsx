@@ -510,7 +510,7 @@ export default function TimelineClient({
       />
 
       <main style={pageStyle}>
-        <div className="timeline-container">
+        <div className={`timeline-container ${editing ? "has-editor-sidebar" : ""}`}>
           {loading ? (
             <div className="timeline-notice">正在加载大事记……</div>
           ) : (
@@ -738,6 +738,14 @@ export default function TimelineClient({
           margin: 0 auto;
         }
 
+        /* 编辑时把工具栏固定在左侧，长篇编辑或插入图片时无需滚回页面顶部。 */
+        .timeline-container.has-editor-sidebar {
+          width: auto;
+          max-width: none;
+          margin-left: 300px;
+          margin-right: 20px;
+        }
+
         .timeline-content-panel,
         .editor-panel {
           border: 1px solid rgba(74, 32, 40, 0.92);
@@ -874,16 +882,26 @@ export default function TimelineClient({
         }
 
         .editor-panel {
-          padding: 18px;
+          position: fixed;
+          z-index: 50;
+          top: 112px;
+          left: 18px;
+          width: 262px;
+          max-height: calc(100vh - 132px);
+          overflow-y: auto;
+          padding: 14px;
+          margin-top: 0;
+          border: 1px solid rgba(74, 32, 40, 0.96);
+          background: rgba(16, 9, 11, 0.98);
+          box-shadow: 8px 8px 24px rgba(0, 0, 0, 0.28);
         }
 
         .editor-panel-title {
           display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 10px;
-          margin-bottom: 15px;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 6px;
+          margin-bottom: 13px;
           color: #f8eeee;
           font-size: 14px;
           font-weight: 700;
@@ -897,9 +915,16 @@ export default function TimelineClient({
         }
 
         .toolbar {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 7px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 6px;
+        }
+
+        .toolbar button {
+          min-height: 34px;
+          padding: 7px 5px !important;
+          font-size: 12px !important;
+          white-space: nowrap;
         }
 
         .toolbar button,
@@ -920,23 +945,25 @@ export default function TimelineClient({
 
         .toolbar-options {
           display: flex;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 18px;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 12px;
           border-top: 1px solid rgba(74, 32, 40, 0.85);
-          margin-top: 16px;
-          padding-top: 15px;
+          margin-top: 14px;
+          padding-top: 13px;
         }
 
         .toolbar-label {
-          display: inline-flex;
+          display: flex;
           align-items: center;
+          justify-content: space-between;
           gap: 8px;
           color: #d6c1c5;
           font-size: 13px;
         }
 
         .toolbar-label select {
+          min-width: 105px;
           background: #10090b;
           color: #f8eeee;
           border: 1px solid #63303a;
@@ -1014,6 +1041,39 @@ export default function TimelineClient({
           color: #8b1e2d;
         }
 
+        @media (max-width: 1000px) {
+          .timeline-container.has-editor-sidebar {
+            max-width: 1050px;
+            margin: 0 auto;
+          }
+
+          .editor-panel {
+            position: sticky;
+            top: 8px;
+            left: auto;
+            width: 100%;
+            max-height: none;
+            margin-top: 14px;
+            margin-bottom: 16px;
+          }
+
+          .editor-panel-title {
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: wrap;
+          }
+
+          .toolbar {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+
+          .toolbar-options {
+            flex-direction: row;
+            align-items: center;
+            flex-wrap: wrap;
+          }
+        }
+
         @media (max-width: 600px) {
           .timeline-editor {
             padding: 20px 16px;
@@ -1026,6 +1086,10 @@ export default function TimelineClient({
 
           .content-panel-top {
             padding: 12px;
+          }
+
+          .toolbar {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
           .toolbar-options {
