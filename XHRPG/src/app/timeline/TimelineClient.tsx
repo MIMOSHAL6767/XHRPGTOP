@@ -116,12 +116,19 @@ export default function TimelineClient({
     void loadTimeline();
   }, [loadTimeline]);
 
-  // 查看内容或载入新内容后，统一处理已有图片。
+  // 仅在查看状态同步服务器内容。编辑状态下让 contentEditable 自己管理 DOM，
+  // 避免上传图片或工具栏触发 React 重新渲染时覆盖用户正在编辑的 HTML。
   useEffect(() => {
-    if (!loading && editorRef.current) {
-      applyImageStyles(editorRef.current);
+    const editor = editorRef.current;
+
+    if (loading || editing || !editor) return;
+
+    if (editor.innerHTML !== content) {
+      editor.innerHTML = content;
     }
-  }, [content, loading, applyImageStyles]);
+
+    applyImageStyles(editor);
+  }, [content, loading, editing, applyImageStyles]);
 
   // 保存编辑器选区，避免点击工具栏后丢失插入位置。
   const saveSelection = () => {
@@ -147,12 +154,25 @@ export default function TimelineClient({
 
     editor.focus();
 
-    const range = savedRangeRef.current;
+    const savedRange = savedRangeRef.current;
 
-    if (range && editor.contains(range.commonAncestorContainer)) {
+    if (
+      savedRange &&
+      editor.contains(savedRange.commonAncestorContainer)
+    ) {
       selection.removeAllRanges();
-      selection.addRange(range);
+      selection.addRange(savedRange);
+      return;
     }
+
+    // 如果文件选择框导致浏览器丢失了光标，就把插入位置放到正文末尾，
+    // 不要因为没有有效选区而让图片插入失败。
+    const fallbackRange = document.createRange();
+    fallbackRange.selectNodeContents(editor);
+    fallbackRange.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(fallbackRange);
+    savedRangeRef.current = fallbackRange.cloneRange();
   };
 
   const runCommand = (command: string, value?: string) => {
@@ -386,7 +406,8 @@ export default function TimelineClient({
       image.src = imageUrl.href;
       image.alt = file.name;
       image.title = file.name;
-      image.loading = "lazy";
+      // 编辑器内立即加载，避免懒加载导致刚插入时看起来像空白。
+      image.loading = "eager";
       image.decoding = "async";
 
       image.style.maxWidth = "100%";
@@ -443,6 +464,10 @@ export default function TimelineClient({
       }
 
       saveSelection();
+
+      // 确认图片已经进入编辑器 DOM；后续保存会直接读取 editor.innerHTML。
+      console.log("[大事记] 图片插入后数量：", editor.querySelectorAll("img").length);
+      console.log("[大事记] 图片插入后 HTML 含 img：", /<img\b/i.test(editor.innerHTML));
 
       // 先提示插入成功；图片加载失败时 onerror 会覆盖此提示。
       setMessage("图片已插入编辑器，请保存大事记以保留修改");
@@ -643,7 +668,6 @@ export default function TimelineClient({
                   onMouseUp={saveSelection}
                   onKeyUp={saveSelection}
                   onInput={saveSelection}
-                  dangerouslySetInnerHTML={{ __html: content }}
                   data-placeholder={
                     editing
                       ? "在这里编写大事记……可以输入文字、调整排版或插入图片。"
