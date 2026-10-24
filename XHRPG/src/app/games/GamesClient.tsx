@@ -131,6 +131,7 @@ export default function GamesClient({
   const [sortOrder, setSortOrder] = useState("default");
   const [urlInitialized, setUrlInitialized] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState("");
 
   const normalizedGames = useMemo(
     () =>
@@ -195,18 +196,19 @@ export default function GamesClient({
     if (urlInitialized) return;
 
     const params = new URLSearchParams(window.location.search);
-    const urlTags = params.getAll("tag");
-    const urlCategory = params.get("category");
 
     setSelectedTags(
       Array.from(
         new Set(
-          urlTags
+          params
+            .getAll("tag")
             .map((tag) => tag.trim())
             .filter((tag) => allTags.includes(tag))
         )
       )
     );
+
+    const urlCategory = params.get("category");
 
     setSelectedCategory(
       urlCategory && categories.includes(urlCategory)
@@ -243,6 +245,7 @@ export default function GamesClient({
       );
 
       setCurrentPage(1);
+      setPageInput("");
     }
 
     window.addEventListener("popstate", handlePopState);
@@ -347,6 +350,7 @@ export default function GamesClient({
 
   useEffect(() => {
     setCurrentPage(1);
+    setPageInput("");
   }, [
     search,
     validSelectedAuthors,
@@ -399,16 +403,33 @@ export default function GamesClient({
     setSelectedCategory("全部");
     setSortOrder("default");
     setCurrentPage(1);
+    setPageInput("");
   }
 
   function goToPage(page: number) {
-    const nextPage = Math.max(1, Math.min(page, pageCount));
+    if (!Number.isFinite(page)) return;
+
+    const nextPage = Math.max(1, Math.min(Math.trunc(page), pageCount));
+
     setCurrentPage(nextPage);
+    setPageInput("");
 
     window.scrollTo({
       top: 0,
       behavior: "smooth",
     });
+  }
+
+  function submitPageJump() {
+    const raw = pageInput.trim();
+
+    if (!raw || !/^\d+$/.test(raw)) return;
+
+    const targetPage = Number(raw);
+
+    if (!Number.isSafeInteger(targetPage)) return;
+
+    goToPage(targetPage);
   }
 
   function filterButtonStyle(active: boolean) {
@@ -835,50 +856,96 @@ export default function GamesClient({
                 aria-label="游戏库分页"
                 className="library-games-pagination"
               >
-                <button
-                  type="button"
-                  disabled={safePage === 1}
-                  onClick={() => goToPage(safePage - 1)}
-                  style={pageButtonStyle(false, safePage === 1)}
-                >
-                  上一页
-                </button>
+                <div className="library-pagination-pages">
+                  <button
+                    type="button"
+                    disabled={safePage === 1}
+                    onClick={() => goToPage(safePage - 1)}
+                    style={pageButtonStyle(false, safePage === 1)}
+                  >
+                    上一页
+                  </button>
 
-                {visiblePages.map((page, index) =>
-                  page === "ellipsis" ? (
-                    <span
-                      key={`ellipsis-${index}`}
-                      aria-hidden="true"
-                      className="library-pagination-ellipsis"
-                    >
-                      …
-                    </span>
-                  ) : (
-                    <button
-                      key={page}
-                      type="button"
-                      aria-current={
-                        page === safePage ? "page" : undefined
-                      }
-                      onClick={() => goToPage(page)}
-                      style={pageButtonStyle(page === safePage)}
-                    >
-                      {page}
-                    </button>
-                  )
-                )}
-
-                <button
-                  type="button"
-                  disabled={safePage === pageCount}
-                  onClick={() => goToPage(safePage + 1)}
-                  style={pageButtonStyle(
-                    false,
-                    safePage === pageCount
+                  {visiblePages.map((page, index) =>
+                    page === "ellipsis" ? (
+                      <span
+                        key={`ellipsis-${index}`}
+                        aria-hidden="true"
+                        className="library-pagination-ellipsis"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={page}
+                        type="button"
+                        aria-current={
+                          page === safePage ? "page" : undefined
+                        }
+                        onClick={() => goToPage(page)}
+                        style={pageButtonStyle(page === safePage)}
+                      >
+                        {page}
+                      </button>
+                    )
                   )}
+
+                  <button
+                    type="button"
+                    disabled={safePage === pageCount}
+                    onClick={() => goToPage(safePage + 1)}
+                    style={pageButtonStyle(
+                      false,
+                      safePage === pageCount
+                    )}
+                  >
+                    下一页
+                  </button>
+                </div>
+
+                <form
+                  className="library-page-jump"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    submitPageJump();
+                  }}
                 >
-                  下一页
-                </button>
+                  <label htmlFor="library-page-number">
+                    跳转到
+                  </label>
+
+                  <input
+                    id="library-page-number"
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={pageCount}
+                    step={1}
+                    value={pageInput}
+                    onChange={(event) =>
+                      setPageInput(event.target.value)
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        setPageInput("");
+                      }
+                    }}
+                    placeholder="页码"
+                    aria-label={`输入页码，范围为 1 到 ${pageCount}`}
+                    className="library-page-number-input"
+                  />
+
+                  <span className="library-page-total">
+                    / {pageCount} 页
+                  </span>
+
+                  <button
+                    type="submit"
+                    className="library-page-jump-button"
+                  >
+                    跳转
+                  </button>
+                </form>
               </nav>
             )}
           </>
@@ -1053,7 +1120,6 @@ export default function GamesClient({
           box-sizing: border-box;
         }
 
-        /* 游戏库独立网格，不使用首页卡片的 CSS 类 */
         .xhrpg-games-grid {
           display: grid !important;
           grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1174,7 +1240,6 @@ export default function GamesClient({
           padding: 0;
         }
 
-        /* 独立标题类名 + 明确重置，防止首页全局标题样式覆盖 */
         .library-game-title {
           position: static !important;
           inset: auto !important;
@@ -1293,20 +1358,17 @@ export default function GamesClient({
           text-overflow: ellipsis;
         }
 
-        /* 独立分页样式：不依赖全局 nav、button 或 pagination 类 */
         .library-games-pagination {
           position: relative !important;
           z-index: 2;
           display: flex !important;
           visibility: visible !important;
           opacity: 1 !important;
-          flex-direction: row;
+          flex-direction: column;
           justify-content: center;
           align-items: center;
-          flex-wrap: wrap;
-          gap: 8px;
+          gap: 14px;
           width: 100%;
-          min-height: 38px;
           margin: 34px 0 0 !important;
           padding: 0 !important;
           overflow: visible;
@@ -1317,7 +1379,17 @@ export default function GamesClient({
           box-shadow: none;
         }
 
-        .library-games-pagination button {
+        .library-pagination-pages {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          width: 100%;
+          min-width: 0;
+        }
+
+        .library-pagination-pages button {
           position: static !important;
           display: inline-flex !important;
           visibility: visible !important;
@@ -1331,7 +1403,7 @@ export default function GamesClient({
           white-space: nowrap;
         }
 
-        .library-games-pagination button:disabled {
+        .library-pagination-pages button:disabled {
           opacity: 0.55 !important;
         }
 
@@ -1342,6 +1414,80 @@ export default function GamesClient({
           min-width: 12px;
           color: ${MUTED};
           padding: 0 2px;
+        }
+
+        /* 页码输入和跳转按钮 */
+        .library-page-jump {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          width: 100%;
+          margin: 0;
+          padding: 12px;
+          box-sizing: border-box;
+          background: rgba(22, 12, 15, 0.78);
+          border: 1px solid ${LINE};
+          border-radius: 0 !important;
+        }
+
+        .library-page-jump label {
+          color: ${TEXT};
+          font-size: 13px;
+          white-space: nowrap;
+        }
+
+        .library-page-number-input {
+          display: block;
+          width: 84px;
+          height: 36px;
+          min-width: 0;
+          margin: 0;
+          padding: 0 9px;
+          box-sizing: border-box;
+          color: ${TEXT};
+          background: ${BG};
+          border: 1px solid ${LINE};
+          border-radius: 0 !important;
+          outline-color: ${RED};
+          font-size: 13px;
+          text-align: center;
+        }
+
+        .library-page-number-input:focus {
+          border-color: ${RED};
+        }
+
+        .library-page-total {
+          color: ${MUTED};
+          font-size: 12px;
+          white-space: nowrap;
+        }
+
+        .library-page-jump-button {
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          min-width: 64px;
+          height: 36px;
+          margin: 0;
+          padding: 0 16px;
+          box-sizing: border-box;
+          color: #fff;
+          background: ${RED};
+          border: 1px solid ${RED};
+          border-radius: 0 !important;
+          font-size: 13px;
+          cursor: pointer;
+          transition:
+            background-color 180ms ease,
+            border-color 180ms ease;
+        }
+
+        .library-page-jump-button:hover {
+          background: ${RED_HOVER};
+          border-color: ${RED_HOVER};
         }
 
         .library-games-empty {
@@ -1421,14 +1567,27 @@ export default function GamesClient({
           }
 
           .library-games-pagination {
-            gap: 6px;
+            gap: 12px;
             margin-top: 26px !important;
           }
 
-          .library-games-pagination button {
+          .library-pagination-pages {
+            gap: 6px;
+          }
+
+          .library-pagination-pages button {
             min-width: 34px;
             height: 36px;
             padding: 0 8px;
+          }
+
+          .library-page-jump {
+            gap: 7px;
+            padding: 10px 8px;
+          }
+
+          .library-page-number-input {
+            width: 76px;
           }
         }
 
@@ -1454,11 +1613,11 @@ export default function GamesClient({
             font-size: 10px;
           }
 
-          .library-games-pagination {
+          .library-pagination-pages {
             gap: 5px;
           }
 
-          .library-games-pagination button {
+          .library-pagination-pages button {
             min-width: 32px;
             height: 34px;
             padding: 0 7px;
