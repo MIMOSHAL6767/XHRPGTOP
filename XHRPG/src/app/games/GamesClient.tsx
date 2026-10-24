@@ -1185,8 +1185,11 @@ export default function GamesClient({
           max-height: none !important;
           margin: 0 !important;
           padding: 0 !important;
-          object-fit: contain !important;
+
+          /* 自动放大图片并铺满封面区域 */
+          object-fit: cover !important;
           object-position: center;
+
           visibility: visible;
           opacity: 1;
           transform: none;
@@ -1194,10 +1197,15 @@ export default function GamesClient({
           border-radius: 0 !important;
           box-shadow: none;
           transition: transform 180ms ease;
+       }
+
+        /* 鼠标悬停时轻微放大 */
+       .library-game-card:hover .library-game-cover img {
+         transform: scale(1.04);
         }
 
-        .library-game-card:hover .library-game-cover img {
-          transform: scale(1.015);
+       .library-game-card:hover .library-game-cover img {
+         transform: scale(1.015);
         }
 
         .library-game-status {
