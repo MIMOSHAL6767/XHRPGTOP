@@ -2,6 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isSiteOwner } from "@/lib/admin-auth";
 
+const ALLOWED_GAME_STATUSES = [
+  "完结",
+  "更新中",
+  "Demo",
+  "弃坑",
+  "断更",
+] as const;
+
+type GameStatus = (typeof ALLOWED_GAME_STATUSES)[number];
+
 // 获取游戏列表：仅限站长
 export async function GET() {
   if (!(await isSiteOwner())) {
@@ -85,25 +95,59 @@ export async function POST(req: Request) {
       );
     }
 
+    // 作品状态与发布/审核状态分开保存。
+    // 未传入有效作品状态时，默认设为“更新中”。
+    let gameStatus: GameStatus = "更新中";
+
+    if (body.gameStatus !== undefined) {
+      if (
+        typeof body.gameStatus !== "string" ||
+        !ALLOWED_GAME_STATUSES.includes(
+          body.gameStatus as GameStatus
+        )
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "作品状态无效，请选择：完结、更新中、Demo、弃坑或断更",
+          },
+          { status: 400 }
+        );
+      }
+
+      gameStatus = body.gameStatus as GameStatus;
+    }
+
     const now = new Date().toISOString().split("T")[0];
 
     const game = await prisma.game.create({
       data: {
         name: body.name.trim(),
-        en: body.en || "",
-        author: body.author || "",
-        category: body.category || "",
-        version: body.version || "",
-        description: body.description || "",
-        cover: body.cover || "",
-        lanzou: body.lanzou || "",
-        pan123: body.pan123 || "",
-        symbol: body.symbol || "✦",
-        tags: body.tags || [],
-        status: body.status || "已发布",
-        history: body.history || [],
-        date: body.date || now,
-        updateDate: body.updateDate || now,
+        en: typeof body.en === "string" ? body.en : "",
+        author: typeof body.author === "string" ? body.author : "",
+        category: typeof body.category === "string" ? body.category : "",
+        version: typeof body.version === "string" ? body.version : "",
+        description:
+          typeof body.description === "string" ? body.description : "",
+        cover: typeof body.cover === "string" ? body.cover : "",
+        lanzou: typeof body.lanzou === "string" ? body.lanzou : "",
+        pan123: typeof body.pan123 === "string" ? body.pan123 : "",
+        symbol: typeof body.symbol === "string" ? body.symbol : "✦",
+        tags: body.tags ?? [],
+        status:
+          typeof body.status === "string" && body.status.trim()
+            ? body.status
+            : "已发布",
+        gameStatus,
+        history: body.history ?? [],
+        date:
+          typeof body.date === "string" && body.date
+            ? body.date
+            : now,
+        updateDate:
+          typeof body.updateDate === "string" && body.updateDate
+            ? body.updateDate
+            : now,
       },
     });
 
