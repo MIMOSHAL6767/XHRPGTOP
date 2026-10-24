@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -26,11 +25,13 @@ type Props = {
   headerImage?: string | null;
 };
 
-const RED = "#e73550";
+const RED = "#8b1e2d";
+const RED_HOVER = "#a52a3a";
 const BG = "#10090b";
 const PANEL = "#160c0f";
 const LINE = "#4a2028";
 const TEXT = "#f8eeee";
+const MUTED = "#c9aeb2";
 const PAGE_SIZE = 20;
 
 function normalizeTags(value: unknown): string[] {
@@ -99,7 +100,6 @@ function getStatusLabel(status?: string | null): GameStatus {
       return "更新中";
 
     default:
-      // 不再把未知状态误判为“完结”
       return "更新中";
   }
 }
@@ -410,12 +410,14 @@ export default function GamesClient({
       cursor: "pointer",
       borderRadius: 0,
       whiteSpace: "nowrap" as const,
+      transition:
+        "background-color 180ms ease, border-color 180ms ease",
     };
   }
 
   const sectionStyle = {
     border: `1px solid ${LINE}`,
-    background: PANEL,
+    background: "rgba(22, 12, 15, 0.78)",
     padding: 16,
     marginBottom: 14,
     borderRadius: 0,
@@ -468,12 +470,18 @@ export default function GamesClient({
 
   return (
     <main
+      className="games-page"
       style={{
         minHeight: "100vh",
+        width: "100%",
         background: "transparent",
         color: TEXT,
+        margin: 0,
         padding: "0 0 60px",
         boxSizing: "border-box",
+        position: "relative",
+        zIndex: 1,
+        isolation: "isolate",
       }}
     >
       <SiteHeader
@@ -482,46 +490,38 @@ export default function GamesClient({
         onSearchChange={setSearch}
       />
 
-      <div
+      <section
+        className="games-content"
         style={{
-          maxWidth: 1272,
+          width: "min(calc(100% - 32px), 1440px)",
+          maxWidth: "1440px",
           margin: "0 auto",
-          padding: "24px 16px 0",
+          padding: "32px 0 0",
           boxSizing: "border-box",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 16,
-            flexWrap: "wrap",
-            paddingBottom: 18,
-            marginBottom: 22,
-          }}
-        >
-          <div>
-            <h1
-              style={{
-                fontSize: 30,
-                fontWeight: 800,
-                margin: 0,
-              }}
-            >
-              游戏库
-            </h1>
+        <div className="games-heading">
+          <h1
+            style={{
+              margin: 0,
+              fontSize: 30,
+              lineHeight: 1.4,
+              fontWeight: 800,
+            }}
+          >
+            游戏库
+          </h1>
 
-            <p
-              style={{
-                color: "#c9aeb2",
-                fontSize: 13,
-                marginTop: 8,
-              }}
-            >
-              探索游戏、查找作者，发现更多喜灰 RPG 作品。
-            </p>
-          </div>
+          <p
+            style={{
+              color: "#d0bfc2",
+              fontSize: 14,
+              lineHeight: 1.8,
+              margin: "8px 0 0",
+            }}
+          >
+            探索游戏、查找作者，发现更多喜灰 RPG 作品。
+          </p>
         </div>
 
         <div style={sectionStyle}>
@@ -673,7 +673,7 @@ export default function GamesClient({
                     padding: "3px 7px",
                     border: `1px solid ${RED}`,
                     color: TEXT,
-                    background: "rgba(231,53,80,0.12)",
+                    background: "rgba(139, 30, 45, 0.12)",
                   }}
                 >
                   {tag}
@@ -686,7 +686,7 @@ export default function GamesClient({
                 style={{
                   border: "none",
                   background: "transparent",
-                  color: RED,
+                  color: RED_HOVER,
                   cursor: "pointer",
                   padding: "3px 0",
                 }}
@@ -832,15 +832,7 @@ export default function GamesClient({
 
         {filteredGames.length > 0 ? (
           <>
-            <div
-              className="xhrpg-games-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-                gap: 20,
-                alignItems: "stretch",
-              }}
-            >
+            <div className="xhrpg-games-grid">
               {pageGames.map((game) => {
                 const coverSrc =
                   game.cover || `/assets/games/games${game.id}.png`;
@@ -852,27 +844,9 @@ export default function GamesClient({
                   <Link
                     key={game.id}
                     href={`/game/${game.id}`}
-                    style={{
-                      display: "block",
-                      minWidth: 0,
-                      textDecoration: "none",
-                      color: TEXT,
-                      background: "#a90000",
-                      border: `1px solid ${LINE}`,
-                      borderRadius: 0,
-                      overflow: "hidden",
-                      transition: "border-color 150ms ease",
-                    }}
+                    className="game-library-card"
                   >
-                    <div
-                      style={{
-                        position: "relative",
-                        width: "100%",
-                        aspectRatio: "4 / 3",
-                        background: "#ffffff",
-                        overflow: "hidden",
-                      }}
-                    >
+                    <div className="game-library-cover">
                       <img
                         src={coverSrc}
                         alt={game.name}
@@ -892,66 +866,21 @@ export default function GamesClient({
                             img.style.visibility = "hidden";
                           }
                         }}
-                        style={{
-                          display: "block",
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "contain",
-                        }}
                       />
 
                       <span
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          right: 0,
-                          padding: "7px 11px",
-                          color: "#fff",
-                          background: statusColor,
-                          borderLeft:
-                            "1px solid rgba(255,255,255,0.45)",
-                          borderBottom:
-                            "1px solid rgba(255,255,255,0.45)",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          lineHeight: 1.2,
-                          letterSpacing: 0.3,
-                        }}
+                        className="game-status-label"
+                        style={{ background: statusColor }}
                       >
                         {statusLabel}
                       </span>
                     </div>
 
-                    <div
-                      style={{
-                        padding: "12px 13px 14px",
-                        background: "#a90000",
-                      }}
-                    >
-                      {/* 游戏名和上传日期同一行 */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "baseline",
-                          justifyContent: "space-between",
-                          gap: 8,
-                          minWidth: 0,
-                          marginBottom: 7,
-                        }}
-                      >
+                    <div className="game-library-info">
+                      <div className="game-title-row">
                         <h2
                           title={game.name}
-                          style={{
-                            minWidth: 0,
-                            flex: "1 1 auto",
-                            margin: 0,
-                            fontSize: 16,
-                            lineHeight: 1.5,
-                            fontWeight: 700,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
+                          className="game-title"
                         >
                           {game.name}
                         </h2>
@@ -959,100 +888,38 @@ export default function GamesClient({
                         <time
                           dateTime={game.createdAt}
                           title={`上传日期：${formatUploadDate(game.createdAt)}`}
-                          style={{
-                            flex: "0 0 auto",
-                            color: "#ffe0e0",
-                            fontSize: 11,
-                            whiteSpace: "nowrap",
-                          }}
+                          className="game-upload-date"
                         >
                           {formatUploadDate(game.createdAt)}
                         </time>
                       </div>
 
-                      {/* 作者和点击量同一行 */}
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          gap: 8,
-                          minWidth: 0,
-                          color: "#ffe5e5",
-                          fontSize: 12,
-                          lineHeight: 1.8,
-                        }}
-                      >
+                      <div className="game-author-row">
                         <span
                           title={`作者：${game.author || "未知"}`}
-                          style={{
-                            flex: "1 1 auto",
-                            minWidth: 0,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
+                          className="game-author"
                         >
                           作者：{game.author || "未知"}
                         </span>
 
                         <span
                           title={`点击量：${game.downloads}`}
-                          style={{
-                            flex: "0 0 auto",
-                            whiteSpace: "nowrap",
-                            color: "#ffffff",
-                            fontSize: 11,
-                          }}
+                          className="game-downloads"
                         >
                           点击量：{game.downloads.toLocaleString("zh-CN")}
                         </span>
                       </div>
 
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                          gap: 8,
-                          marginTop: 9,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            flex: "1 1 auto",
-                            flexWrap: "wrap",
-                            gap: 5,
-                            minWidth: 0,
-                          }}
-                        >
+                      <div className="game-meta-row">
+                        <div className="game-tags">
                           {game.tags.length > 0 ? (
                             game.tags.slice(0, 3).map((tag) => (
-                              <span
-                                key={tag}
-                                style={{
-                                  border:
-                                    "1px solid rgba(255,255,255,0.65)",
-                                  color: "#fff",
-                                  padding: "2px 5px",
-                                  fontSize: 10,
-                                  lineHeight: 1.4,
-                                  borderRadius: 0,
-                                  maxWidth: "100%",
-                                  overflowWrap: "anywhere",
-                                }}
-                              >
+                              <span key={tag} className="game-tag">
                                 {tag}
                               </span>
                             ))
                           ) : (
-                            <span
-                              style={{
-                                color: "#ffd0d0",
-                                fontSize: 10,
-                              }}
-                            >
+                            <span className="game-no-tags">
                               暂无标签
                             </span>
                           )}
@@ -1060,15 +927,7 @@ export default function GamesClient({
 
                         <span
                           title={game.category || "未分类"}
-                          style={{
-                            flex: "0 1 auto",
-                            color: "#fff",
-                            fontSize: 11,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            maxWidth: "45%",
-                          }}
+                          className="game-category"
                         >
                           {game.category || "未分类"}
                         </span>
@@ -1079,38 +938,10 @@ export default function GamesClient({
               })}
             </div>
 
-            <style jsx>{`
-              @media (max-width: 1000px) {
-                .xhrpg-games-grid {
-                  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-                }
-              }
-
-              @media (max-width: 720px) {
-                .xhrpg-games-grid {
-                  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                  gap: 12px !important;
-                }
-              }
-
-              @media (max-width: 420px) {
-                .xhrpg-games-grid {
-                  grid-template-columns: minmax(0, 1fr) !important;
-                }
-              }
-            `}</style>
-
             {pageCount > 1 && (
               <nav
                 aria-label="游戏库分页"
-                style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: 8,
-                  marginTop: 34,
-                }}
+                className="games-pagination"
               >
                 <button
                   type="button"
@@ -1130,7 +961,7 @@ export default function GamesClient({
                       key={`ellipsis-${index}`}
                       aria-hidden="true"
                       style={{
-                        color: "#c9aeb2",
+                        color: MUTED,
                         padding: "0 2px",
                       }}
                     >
@@ -1177,16 +1008,7 @@ export default function GamesClient({
             )}
           </>
         ) : (
-          <div
-            style={{
-              padding: "50px 20px",
-              textAlign: "center",
-              background: PANEL,
-              border: `1px solid ${LINE}`,
-              color: "#c9aeb2",
-              borderRadius: 0,
-            }}
-          >
+          <div className="games-empty">
             <div style={{ fontSize: 18, marginBottom: 10 }}>
               没有找到符合条件的游戏
             </div>
@@ -1204,7 +1026,290 @@ export default function GamesClient({
             </button>
           </div>
         )}
-      </div>
+      </section>
+
+      <style jsx>{`
+        .games-page {
+          background: transparent !important;
+        }
+
+        .games-content {
+          position: relative;
+          z-index: 1;
+          width: min(calc(100% - 32px), 1440px);
+          max-width: 1440px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .games-heading {
+          margin-bottom: 28px;
+          padding: 18px 20px;
+          background: rgba(16, 9, 11, 0.45);
+          border-left: 3px solid ${RED};
+          box-sizing: border-box;
+        }
+
+        /* 桌面端四列等宽，铺满 1440px 内容区域 */
+        .xhrpg-games-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 20px;
+          width: 100%;
+          align-items: stretch;
+          box-sizing: border-box;
+        }
+
+        .game-library-card {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          box-sizing: border-box;
+          color: ${TEXT};
+          text-decoration: none;
+          background: ${PANEL};
+          border: 1px solid rgba(74, 32, 40, 0.85);
+          border-radius: 0 !important;
+          transition:
+            border-color 180ms ease,
+            background-color 180ms ease;
+        }
+
+        .game-library-card:hover {
+          border-color: ${RED_HOVER};
+          background: ${PANEL};
+        }
+
+        /* 封面保持黑底，图片完整展示，不裁切 */
+        .game-library-cover {
+          position: relative;
+          flex: 0 0 auto;
+          width: 100%;
+          aspect-ratio: 4 / 3;
+          overflow: hidden;
+          background: #000000;
+        }
+
+        .game-library-cover img {
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          transition: transform 180ms ease;
+        }
+
+        .game-library-card:hover .game-library-cover img {
+          transform: scale(1.015);
+        }
+
+        .game-status-label {
+          position: absolute;
+          top: 0;
+          right: 0;
+          padding: 7px 11px;
+          color: #ffffff;
+          border-left: 1px solid rgba(255, 255, 255, 0.35);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1.2;
+          letter-spacing: 0.3px;
+        }
+
+        /* 信息区域使用网站统一的深色面板 */
+        .game-library-info {
+          flex: 1 1 auto;
+          min-width: 0;
+          padding: 14px 15px 16px;
+          background: ${PANEL};
+          border-top: 1px solid ${LINE};
+          box-sizing: border-box;
+        }
+
+        .game-title-row {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 8px;
+          min-width: 0;
+          margin-bottom: 8px;
+        }
+
+        .game-title {
+          min-width: 0;
+          flex: 1 1 auto;
+          margin: 0;
+          font-size: 16px;
+          line-height: 1.5;
+          font-weight: 700;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .game-upload-date {
+          flex: 0 0 auto;
+          color: #bba4a8;
+          font-size: 11px;
+          white-space: nowrap;
+        }
+
+        .game-author-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+          color: #d0bfc2;
+          font-size: 12px;
+          line-height: 1.8;
+        }
+
+        .game-author {
+          flex: 1 1 auto;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .game-downloads {
+          flex: 0 0 auto;
+          white-space: nowrap;
+          color: #e8d9dc;
+          font-size: 11px;
+        }
+
+        .game-meta-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 8px;
+          margin-top: 10px;
+        }
+
+        .game-tags {
+          display: flex;
+          flex: 1 1 auto;
+          flex-wrap: wrap;
+          gap: 5px;
+          min-width: 0;
+        }
+
+        .game-tag {
+          border: 1px solid ${LINE};
+          color: #e8d9dc;
+          background: rgba(139, 30, 45, 0.12);
+          padding: 3px 6px;
+          font-size: 10px;
+          line-height: 1.4;
+          border-radius: 0;
+          max-width: 100%;
+          overflow-wrap: anywhere;
+        }
+
+        .game-no-tags {
+          color: #a99296;
+          font-size: 10px;
+        }
+
+        .game-category {
+          flex: 0 1 auto;
+          color: #c9b8bb;
+          font-size: 11px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 45%;
+        }
+
+        .games-pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 34px;
+        }
+
+        .games-empty {
+          padding: 50px 20px;
+          text-align: center;
+          background: rgba(22, 12, 15, 0.78);
+          border: 1px solid rgba(74, 32, 40, 0.85);
+          color: ${MUTED};
+          border-radius: 0;
+        }
+
+        /* 中等屏幕：每行三张卡片 */
+        @media (max-width: 1100px) {
+          .xhrpg-games-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+          }
+        }
+
+        /* 平板及手机：每行两张卡片 */
+        @media (max-width: 720px) {
+          .games-content {
+            width: calc(100% - 24px) !important;
+            max-width: 1440px;
+            padding-top: 24px !important;
+          }
+
+          .games-heading {
+            padding: 14px 12px;
+          }
+
+          .games-heading h1 {
+            font-size: 25px !important;
+          }
+
+          .xhrpg-games-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+          }
+
+          .game-library-info {
+            padding: 10px;
+          }
+
+          .game-title {
+            font-size: 14px;
+          }
+
+          .game-upload-date {
+            font-size: 10px;
+          }
+
+          .game-author-row {
+            font-size: 11px;
+          }
+
+          .game-downloads {
+            font-size: 10px;
+          }
+        }
+
+        /* 窄屏手机：每行一张，避免信息挤压 */
+        @media (max-width: 420px) {
+          .xhrpg-games-grid {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 14px;
+          }
+
+          .game-library-info {
+            padding: 12px 13px 14px;
+          }
+
+          .game-title {
+            font-size: 16px;
+          }
+        }
+      `}</style>
     </main>
   );
 }
