@@ -135,7 +135,11 @@ model Game {
 
   history Json?
 
+  // 审核状态：沿用现有逻辑
   status String
+
+  // 作品状态：完结、更新中、demo、弃坑、断更
+  gameStatus String @default("更新中")
 
   symbol String
 
