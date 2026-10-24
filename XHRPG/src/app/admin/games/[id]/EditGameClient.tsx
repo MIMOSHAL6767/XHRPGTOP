@@ -22,6 +22,27 @@ type UploadKind = "cover" | "background" | "logo" | "screenshot";
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+const GAME_STATUSES = [
+  "完结",
+  "更新中",
+  "Demo",
+  "弃坑",
+  "断更",
+] as const;
+
+type GameStatus = (typeof GAME_STATUSES)[number];
+
+function normalizeGameStatus(value: unknown): GameStatus {
+  if (
+    typeof value === "string" &&
+    GAME_STATUSES.includes(value as GameStatus)
+  ) {
+    return value as GameStatus;
+  }
+
+  return "更新中";
+}
+
 // 解析详情预览图，兼容字符串数组和对象数组
 function parseScreenshots(value: unknown): ScreenshotItem[] {
   if (!Array.isArray(value)) return [];
@@ -57,7 +78,6 @@ function parseTags(value: unknown): string[] {
     try {
       raw = JSON.parse(original);
     } catch {
-      // 旧数据可能直接保存为普通字符串
       return original
         .split(/[,，、\n]/)
         .map((tag) => tag.trim())
@@ -77,7 +97,6 @@ function parseTags(value: unknown): string[] {
   );
 }
 
-// 统一整理标签：去空格、过滤空值、去重
 function normalizeTags(value: string[]): string[] {
   return Array.from(
     new Set(
@@ -121,7 +140,6 @@ export default function EditGameClient({ id }: { id: string }) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [screenshots, setScreenshots] = useState<ScreenshotItem[]>([]);
 
-  // 标签独立维护
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
 
@@ -153,6 +171,8 @@ export default function EditGameClient({ id }: { id: string }) {
 
         setForm({
           ...game,
+          // 作品状态与发布审核状态分开
+          gameStatus: normalizeGameStatus(game.gameStatus),
           titleMode: game.titleMode === "image" ? "image" : "text",
           detailBackgroundOpacity: Math.min(
             100,
@@ -201,7 +221,22 @@ export default function EditGameClient({ id }: { id: string }) {
     }));
   }
 
-  // 添加自定义标签
+  // 修改作品状态
+  function changeGameStatus(
+    e: React.ChangeEvent<HTMLSelectElement>
+  ) {
+    const value = e.target.value;
+
+    if (!GAME_STATUSES.includes(value as GameStatus)) {
+      return;
+    }
+
+    setForm((current: any) => ({
+      ...current,
+      gameStatus: value as GameStatus,
+    }));
+  }
+
   function addTag() {
     const value = tagInput.trim();
 
@@ -219,7 +254,6 @@ export default function EditGameClient({ id }: { id: string }) {
     setTagInput("");
   }
 
-  // 回车添加标签
   function handleTagKeyDown(
     event: React.KeyboardEvent<HTMLInputElement>
   ) {
@@ -229,7 +263,6 @@ export default function EditGameClient({ id }: { id: string }) {
     }
   }
 
-  // 删除指定标签
   function removeTag(index: number) {
     setTags((current) => current.filter((_, i) => i !== index));
   }
@@ -402,6 +435,15 @@ export default function EditGameClient({ id }: { id: string }) {
       return;
     }
 
+    if (
+      !GAME_STATUSES.includes(
+        normalizeGameStatus(form.gameStatus)
+      )
+    ) {
+      alert("请选择有效的作品状态");
+      return;
+    }
+
     if (form.titleMode === "image" && !logoFile && !logoPreview) {
       alert("当前选择了图片标题模式，请先上传标题 PNG");
       return;
@@ -460,6 +502,10 @@ export default function EditGameClient({ id }: { id: string }) {
       const payload = {
         ...form,
         name: String(form.name).trim(),
+
+        // 明确提交作品状态
+        gameStatus: normalizeGameStatus(form.gameStatus),
+
         cover,
         tags: normalizedTags,
         history,
@@ -489,7 +535,16 @@ export default function EditGameClient({ id }: { id: string }) {
         throw new Error(data?.message || "保存游戏失败");
       }
 
-      alert("游戏信息、标签及详情页设置保存成功");
+      // 检查服务器返回的状态，避免误报保存成功
+      if (
+        data.game &&
+        normalizeGameStatus(data.game.gameStatus) !==
+          normalizeGameStatus(payload.gameStatus)
+      ) {
+        throw new Error("服务器返回的作品状态与所选状态不一致，请检查 API");
+      }
+
+      alert("游戏信息、作品状态、标签及详情页设置保存成功");
 
       router.push("/admin/games");
       router.refresh();
@@ -506,7 +561,7 @@ export default function EditGameClient({ id }: { id: string }) {
     }
   }
 
-  // 隐藏 / 显示
+  // 隐藏 / 显示：这是发布状态，不影响作品状态
   async function toggleStatus() {
     if (!form || loading) return;
 
@@ -626,7 +681,7 @@ export default function EditGameClient({ id }: { id: string }) {
         <h1>编辑游戏</h1>
 
         <p>
-          当前状态：<strong>{form.status}</strong>
+          发布状态：<strong>{form.status}</strong>
         </p>
 
         <div className="form-grid">
@@ -673,6 +728,26 @@ export default function EditGameClient({ id }: { id: string }) {
               value={form.category || ""}
               onChange={change}
             />
+          </label>
+
+          <label>
+            作品状态
+            <select
+              name="gameStatus"
+              value={normalizeGameStatus(form.gameStatus)}
+              onChange={changeGameStatus}
+              disabled={loading}
+              style={fieldStyle}
+            >
+              {GAME_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+            <small style={{ color: "#c9aeb2" }}>
+              这是游戏本身的开发进度，与上方的发布状态相互独立。
+            </small>
           </label>
 
           <label>
