@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -19,6 +18,8 @@ type ScreenshotItem = {
 
 type UploadKind = "cover" | "background" | "logo" | "screenshot";
 
+type GameStatus = "完结" | "更新中" | "Demo" | "弃坑" | "断更";
+
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const RAW_PREFIX = "https://raw.githubusercontent.com/";
 
@@ -37,6 +38,7 @@ const INITIAL_FORM = {
   symbol: "✦",
   tags: [] as string[],
   status: "已发布",
+  gameStatus: "更新中" as GameStatus,
 };
 
 function getToday() {
@@ -50,11 +52,7 @@ function getToday() {
 
 function normalizeTags(tags: string[]) {
   return Array.from(
-    new Set(
-      tags
-        .map((tag) => tag.trim())
-        .filter(Boolean)
-    )
+    new Set(tags.map((tag) => tag.trim()).filter(Boolean))
   );
 }
 
@@ -72,9 +70,7 @@ async function readResponse(res: Response) {
   const data = await res.json().catch(() => null);
 
   if (!res.ok || !data?.success) {
-    throw new Error(
-      data?.message || `请求失败，HTTP ${res.status}`
-    );
+    throw new Error(data?.message || `请求失败，HTTP ${res.status}`);
   }
 
   return data;
@@ -134,44 +130,31 @@ export default function NewGame() {
     }));
   }
 
-  // 添加标签：过滤空白，避免重复。
   function addTag() {
     const newTag = tagInput.trim();
 
-    if (!newTag) {
-      return;
-    }
+    if (!newTag) return;
 
     setForm((prev) => {
       const currentTags = normalizeTags(prev.tags);
 
       if (currentTags.includes(newTag)) {
-        return {
-          ...prev,
-          tags: currentTags,
-        };
+        return { ...prev, tags: currentTags };
       }
 
-      return {
-        ...prev,
-        tags: [...currentTags, newTag],
-      };
+      return { ...prev, tags: [...currentTags, newTag] };
     });
 
     setTagInput("");
   }
 
-  // 按 Enter 添加标签。
-  function handleTagKeyDown(
-    e: React.KeyboardEvent<HTMLInputElement>
-  ) {
+  function handleTagKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
       addTag();
     }
   }
 
-  // 删除指定标签。
   function removeTag(index: number) {
     setForm((prev) => ({
       ...prev,
@@ -379,7 +362,7 @@ export default function NewGame() {
       const today = getToday();
       const tags = normalizeTags(form.tags);
 
-      // 第一步：创建游戏基础记录，包含标签数组。
+      // 第一步：创建游戏基础记录。
       const createResponse = await fetch("/api/admin/games", {
         method: "POST",
         headers: {
@@ -408,7 +391,7 @@ export default function NewGame() {
 
       gameId = id;
 
-      // 第二步：上传图片。未选择的图片不会上传。
+      // 第二步：上传图片。
       let coverUrl = "";
       let backgroundUrl: string | null = null;
       let logoUrl: string | null = null;
@@ -421,11 +404,7 @@ export default function NewGame() {
 
       if (backgroundFile) {
         setProgress("正在上传详情背景……");
-        backgroundUrl = await uploadImage(
-          id,
-          backgroundFile,
-          "background"
-        );
+        backgroundUrl = await uploadImage(id, backgroundFile, "background");
       }
 
       if (logoFile) {
@@ -454,7 +433,7 @@ export default function NewGame() {
         }
       }
 
-      // 第三步：保存封面 URL 和全部详情设置。
+      // 第三步：保存封面 URL 和详情设置。
       setProgress("正在保存游戏详情设置……");
 
       const updateResponse = await fetch(`/api/admin/games/${id}`, {
@@ -535,8 +514,7 @@ export default function NewGame() {
         <h1>添加游戏</h1>
 
         <p>
-          填写基础信息和详情页设置。图片会上传到现有 GitHub
-          图片仓库。
+          填写基础信息和详情页设置。图片会上传到现有 GitHub 图片仓库。
         </p>
 
         <h2 style={sectionStyle}>基础信息</h2>
@@ -619,6 +597,7 @@ export default function NewGame() {
                 }))
               }
               style={inputStyle}
+              disabled={loading}
             >
               <option value="已发布">已发布</option>
               <option value="隐藏">隐藏</option>
@@ -626,9 +605,30 @@ export default function NewGame() {
               <option value="未通过">未通过</option>
             </select>
           </label>
+
+          <label>
+            作品状态
+            <select
+              name="gameStatus"
+              value={form.gameStatus}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  gameStatus: e.target.value as GameStatus,
+                }))
+              }
+              style={inputStyle}
+              disabled={loading}
+            >
+              <option value="更新中">更新中</option>
+              <option value="完结">完结</option>
+              <option value="Demo">Demo</option>
+              <option value="弃坑">弃坑</option>
+              <option value="断更">断更</option>
+            </select>
+          </label>
         </div>
 
-        {/* 自由标签编辑区域：不预设任何标签 */}
         <section style={sectionStyle}>
           <h2>游戏标签</h2>
 
@@ -720,11 +720,7 @@ export default function NewGame() {
             />
 
             {coverPreview && (
-              <img
-                src={coverPreview}
-                alt="封面预览"
-                style={previewStyle}
-              />
+              <img src={coverPreview} alt="封面预览" style={previewStyle} />
             )}
           </label>
 
@@ -805,19 +801,13 @@ export default function NewGame() {
             <select
               value={backgroundFit}
               onChange={(e) =>
-                setBackgroundFit(
-                  e.target.value as "cover" | "contain"
-                )
+                setBackgroundFit(e.target.value as "cover" | "contain")
               }
               disabled={loading}
               style={inputStyle}
             >
-              <option value="cover">
-                Cover：铺满区域，可能裁切
-              </option>
-              <option value="contain">
-                Contain：完整显示，可能留白
-              </option>
+              <option value="cover">Cover：铺满区域，可能裁切</option>
+              <option value="contain">Contain：完整显示，可能留白</option>
             </select>
           </label>
         </section>
@@ -926,9 +916,7 @@ export default function NewGame() {
                     <button
                       type="button"
                       onClick={() => moveScreenshot(index, 1)}
-                      disabled={
-                        loading || index === screenshots.length - 1
-                      }
+                      disabled={loading || index === screenshots.length - 1}
                     >
                       下移
                     </button>
@@ -1026,11 +1014,7 @@ export default function NewGame() {
         </section>
 
         <section style={sectionStyle}>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={loading}
-          >
+          <button type="button" onClick={submit} disabled={loading}>
             {loading ? "正在保存，请勿关闭页面……" : "发布游戏"}
           </button>
 
