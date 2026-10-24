@@ -1,3 +1,4 @@
+
 import { prisma } from "@/lib/prisma";
 import GamesClient from "./GamesClient";
 import { Prisma } from "@prisma/client";
@@ -63,6 +64,9 @@ export default async function GamesPage() {
         tags: true,
         downloads: true,
         createdAt: true,
+
+        // 作品状态，与发布审核状态 status 分开
+        gameStatus: true,
       },
       orderBy: {
         id: "asc",
@@ -83,6 +87,7 @@ export default async function GamesPage() {
     ...game,
     tags: parseTags(game.tags),
     createdAt: game.createdAt.toISOString(),
+    gameStatus: game.gameStatus || "更新中",
   }));
 
   return (
