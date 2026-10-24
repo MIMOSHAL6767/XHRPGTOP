@@ -56,7 +56,6 @@ function formatUploadDate(value: string): string {
   if (!value) return "日期未知";
 
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return "日期未知";
 
   return new Intl.DateTimeFormat("zh-CN", {
@@ -152,10 +151,7 @@ export default function GamesClient({
 
     normalizedGames.forEach((game) => {
       if (game.author) {
-        counts.set(
-          game.author,
-          (counts.get(game.author) ?? 0) + 1
-        );
+        counts.set(game.author, (counts.get(game.author) ?? 0) + 1);
       }
     });
 
@@ -250,7 +246,6 @@ export default function GamesClient({
     }
 
     window.addEventListener("popstate", handlePopState);
-
     return () => window.removeEventListener("popstate", handlePopState);
   }, [allTags, categories, urlInitialized]);
 
@@ -365,7 +360,13 @@ export default function GamesClient({
     Math.ceil(filteredGames.length / PAGE_SIZE)
   );
 
-  const safePage = Math.min(currentPage, pageCount);
+  const safePage = Math.min(Math.max(currentPage, 1), pageCount);
+
+  useEffect(() => {
+    if (currentPage !== safePage) {
+      setCurrentPage(safePage);
+    }
+  }, [currentPage, safePage]);
 
   const pageGames = useMemo(
     () =>
@@ -400,6 +401,16 @@ export default function GamesClient({
     setCurrentPage(1);
   }
 
+  function goToPage(page: number) {
+    const nextPage = Math.max(1, Math.min(page, pageCount));
+    setCurrentPage(nextPage);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }
+
   function filterButtonStyle(active: boolean) {
     return {
       border: `1px solid ${active ? RED : LINE}`,
@@ -421,6 +432,8 @@ export default function GamesClient({
     padding: 16,
     marginBottom: 14,
     borderRadius: 0,
+    boxSizing: "border-box" as const,
+    minWidth: 0,
   };
 
   const labelStyle = {
@@ -434,6 +447,9 @@ export default function GamesClient({
     active = false,
     disabled = false
   ) => ({
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
     minWidth: 38,
     height: 38,
     padding: "0 10px",
@@ -443,6 +459,9 @@ export default function GamesClient({
     cursor: disabled ? "not-allowed" : "pointer",
     borderRadius: 0,
     fontSize: 13,
+    lineHeight: 1,
+    boxSizing: "border-box" as const,
+    flex: "0 0 auto",
   });
 
   const visiblePages: (number | "ellipsis")[] = [];
@@ -501,25 +520,9 @@ export default function GamesClient({
         }}
       >
         <div className="games-heading">
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 30,
-              lineHeight: 1.4,
-              fontWeight: 800,
-            }}
-          >
-            游戏库
-          </h1>
+          <h1 className="library-page-heading">游戏库</h1>
 
-          <p
-            style={{
-              color: "#d0bfc2",
-              fontSize: 14,
-              lineHeight: 1.8,
-              margin: "8px 0 0",
-            }}
-          >
+          <p className="library-page-description">
             探索游戏、查找作者，发现更多喜灰 RPG 作品。
           </p>
         </div>
@@ -554,13 +557,7 @@ export default function GamesClient({
         <div style={sectionStyle}>
           <div style={labelStyle}>游戏分类</div>
 
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 8,
-            }}
-          >
+          <div className="library-filter-options">
             <button
               type="button"
               onClick={() => setSelectedCategory("全部")}
@@ -587,36 +584,15 @@ export default function GamesClient({
         </div>
 
         <div style={sectionStyle}>
-          <div
-            style={{
-              ...labelStyle,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="library-filter-heading" style={labelStyle}>
             <span>游戏标签</span>
-            <span
-              style={{
-                color: "#bca0a5",
-                fontSize: 12,
-                fontWeight: 400,
-              }}
-            >
+            <span className="library-filter-hint">
               可多选 · 满足任意一个已选标签即可
             </span>
           </div>
 
           {allTags.length > 0 ? (
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 8,
-              }}
-            >
+            <div className="library-filter-options">
               {allTags.map((tag) => {
                 const active = validSelectedTags.includes(tag);
 
@@ -641,41 +617,17 @@ export default function GamesClient({
               })}
             </div>
           ) : (
-            <p
-              style={{
-                color: "#bca0a5",
-                fontSize: 13,
-                margin: 0,
-              }}
-            >
+            <p className="library-empty-hint">
               当前已发布游戏还没有可用标签。
             </p>
           )}
 
           {validSelectedTags.length > 0 && (
-            <div
-              style={{
-                marginTop: 12,
-                display: "flex",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: 8,
-                fontSize: 12,
-                color: "#d5b9bd",
-              }}
-            >
+            <div className="library-selected-tags">
               <span>当前选中：</span>
 
               {validSelectedTags.map((tag) => (
-                <span
-                  key={tag}
-                  style={{
-                    padding: "3px 7px",
-                    border: `1px solid ${RED}`,
-                    color: TEXT,
-                    background: "rgba(139, 30, 45, 0.12)",
-                  }}
-                >
+                <span key={tag} className="library-selected-tag">
                   {tag}
                 </span>
               ))}
@@ -683,13 +635,7 @@ export default function GamesClient({
               <button
                 type="button"
                 onClick={() => setSelectedTags([])}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  color: RED_HOVER,
-                  cursor: "pointer",
-                  padding: "3px 0",
-                }}
+                className="library-clear-inline"
               >
                 清除标签
               </button>
@@ -698,37 +644,15 @@ export default function GamesClient({
         </div>
 
         <div style={sectionStyle}>
-          <div
-            style={{
-              ...labelStyle,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="library-filter-heading" style={labelStyle}>
             <span>游戏作者</span>
-
-            <span
-              style={{
-                color: "#bca0a5",
-                fontSize: 12,
-                fontWeight: 400,
-              }}
-            >
+            <span className="library-filter-hint">
               自动读取数据库 · 可多选
             </span>
           </div>
 
           {authors.length > 0 ? (
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 8,
-              }}
-            >
+            <div className="library-filter-options">
               {authors.map((author) => {
                 const active = validSelectedAuthors.includes(author);
 
@@ -753,64 +677,28 @@ export default function GamesClient({
               })}
             </div>
           ) : (
-            <p
-              style={{
-                color: "#bca0a5",
-                fontSize: 13,
-                margin: 0,
-              }}
-            >
+            <p className="library-empty-hint">
               当前没有可供筛选的作者。
             </p>
           )}
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 12,
-            margin: "24px 0 16px",
-          }}
-        >
-          <div style={{ fontSize: 15 }}>
+        <div className="library-results-toolbar">
+          <div className="library-results-count">
             找到{" "}
-            <strong style={{ color: RED }}>
-              {filteredGames.length}
-            </strong>{" "}
+            <strong>{filteredGames.length}</strong>{" "}
             款游戏
-            <span
-              style={{
-                color: "#bca0a5",
-                fontSize: 12,
-                marginLeft: 8,
-              }}
-            >
+            <span>
               第 {safePage} / {pageCount} 页
             </span>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="library-results-actions">
             <select
               aria-label="游戏排序"
               value={sortOrder}
               onChange={(event) => setSortOrder(event.target.value)}
-              style={{
-                padding: "9px 12px",
-                background: PANEL,
-                color: TEXT,
-                border: `1px solid ${LINE}`,
-                borderRadius: 0,
-                fontSize: 13,
-              }}
+              className="library-sort-select"
             >
               <option value="default">默认排序</option>
               <option value="latest">最新上传</option>
@@ -844,9 +732,9 @@ export default function GamesClient({
                   <Link
                     key={game.id}
                     href={`/game/${game.id}`}
-                    className="game-library-card"
+                    className="library-game-card"
                   >
-                    <div className="game-library-cover">
+                    <div className="library-game-cover">
                       <img
                         src={coverSrc}
                         alt={game.name}
@@ -869,57 +757,61 @@ export default function GamesClient({
                       />
 
                       <span
-                        className="game-status-label"
+                        className="library-game-status"
                         style={{ background: statusColor }}
                       >
                         {statusLabel}
                       </span>
                     </div>
 
-                    <div className="game-library-info">
-                      <div className="game-title-row">
+                    <div className="library-game-info">
+                      <div className="library-game-title-row">
                         <h2
                           title={game.name}
-                          className="game-title"
+                          className="library-game-title"
                         >
-                          {game.name}
+                          {game.name || "未命名游戏"}
                         </h2>
 
                         <time
                           dateTime={game.createdAt}
                           title={`上传日期：${formatUploadDate(game.createdAt)}`}
-                          className="game-upload-date"
+                          className="library-game-upload-date"
                         >
                           {formatUploadDate(game.createdAt)}
                         </time>
                       </div>
 
-                      <div className="game-author-row">
+                      <div className="library-game-author-row">
                         <span
                           title={`作者：${game.author || "未知"}`}
-                          className="game-author"
+                          className="library-game-author"
                         >
                           作者：{game.author || "未知"}
                         </span>
 
                         <span
                           title={`点击量：${game.downloads}`}
-                          className="game-downloads"
+                          className="library-game-downloads"
                         >
-                          点击量：{game.downloads.toLocaleString("zh-CN")}
+                          点击量：
+                          {game.downloads.toLocaleString("zh-CN")}
                         </span>
                       </div>
 
-                      <div className="game-meta-row">
-                        <div className="game-tags">
+                      <div className="library-game-meta-row">
+                        <div className="library-game-tags">
                           {game.tags.length > 0 ? (
                             game.tags.slice(0, 3).map((tag) => (
-                              <span key={tag} className="game-tag">
+                              <span
+                                key={tag}
+                                className="library-game-tag"
+                              >
                                 {tag}
                               </span>
                             ))
                           ) : (
-                            <span className="game-no-tags">
+                            <span className="library-game-no-tags">
                               暂无标签
                             </span>
                           )}
@@ -927,7 +819,7 @@ export default function GamesClient({
 
                         <span
                           title={game.category || "未分类"}
-                          className="game-category"
+                          className="library-game-category"
                         >
                           {game.category || "未分类"}
                         </span>
@@ -941,15 +833,12 @@ export default function GamesClient({
             {pageCount > 1 && (
               <nav
                 aria-label="游戏库分页"
-                className="games-pagination"
+                className="library-games-pagination"
               >
                 <button
                   type="button"
                   disabled={safePage === 1}
-                  onClick={() => {
-                    setCurrentPage((page) => Math.max(1, page - 1));
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
+                  onClick={() => goToPage(safePage - 1)}
                   style={pageButtonStyle(false, safePage === 1)}
                 >
                   上一页
@@ -960,10 +849,7 @@ export default function GamesClient({
                     <span
                       key={`ellipsis-${index}`}
                       aria-hidden="true"
-                      style={{
-                        color: MUTED,
-                        padding: "0 2px",
-                      }}
+                      className="library-pagination-ellipsis"
                     >
                       …
                     </span>
@@ -974,13 +860,7 @@ export default function GamesClient({
                       aria-current={
                         page === safePage ? "page" : undefined
                       }
-                      onClick={() => {
-                        setCurrentPage(page);
-                        window.scrollTo({
-                          top: 0,
-                          behavior: "smooth",
-                        });
-                      }}
+                      onClick={() => goToPage(page)}
                       style={pageButtonStyle(page === safePage)}
                     >
                       {page}
@@ -991,12 +871,7 @@ export default function GamesClient({
                 <button
                   type="button"
                   disabled={safePage === pageCount}
-                  onClick={() => {
-                    setCurrentPage((page) =>
-                      Math.min(pageCount, page + 1)
-                    );
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
+                  onClick={() => goToPage(safePage + 1)}
                   style={pageButtonStyle(
                     false,
                     safePage === pageCount
@@ -1008,12 +883,12 @@ export default function GamesClient({
             )}
           </>
         ) : (
-          <div className="games-empty">
-            <div style={{ fontSize: 18, marginBottom: 10 }}>
+          <div className="library-games-empty">
+            <div className="library-games-empty-title">
               没有找到符合条件的游戏
             </div>
 
-            <div style={{ fontSize: 13, marginBottom: 18 }}>
+            <div className="library-games-empty-description">
               试试取消某些作者或标签，或者清空筛选条件。
             </div>
 
@@ -1030,7 +905,16 @@ export default function GamesClient({
 
       <style jsx>{`
         .games-page {
+          width: 100%;
+          min-height: 100vh;
+          margin: 0;
+          padding: 0 0 60px;
+          color: ${TEXT};
           background: transparent !important;
+          box-sizing: border-box;
+          position: relative;
+          z-index: 1;
+          isolation: isolate;
         }
 
         .games-content {
@@ -1038,11 +922,12 @@ export default function GamesClient({
           z-index: 1;
           width: min(calc(100% - 32px), 1440px);
           max-width: 1440px;
-          margin-left: auto;
-          margin-right: auto;
+          margin: 0 auto;
+          box-sizing: border-box;
         }
 
         .games-heading {
+          display: block;
           margin-bottom: 28px;
           padding: 18px 20px;
           background: rgba(16, 9, 11, 0.45);
@@ -1050,67 +935,213 @@ export default function GamesClient({
           box-sizing: border-box;
         }
 
-        /* 桌面端四列等宽，铺满 1440px 内容区域 */
-        .xhrpg-games-grid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 20px;
-          width: 100%;
-          align-items: stretch;
+        .library-page-heading {
+          position: static !important;
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          color: ${TEXT} !important;
+          font-size: 30px !important;
+          font-weight: 800 !important;
+          line-height: 1.4 !important;
+          white-space: normal !important;
+          transform: none !important;
+        }
+
+        .library-page-description {
+          display: block;
+          margin: 8px 0 0;
+          color: #d0bfc2;
+          font-size: 14px;
+          line-height: 1.8;
+        }
+
+        .library-filter-options {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .library-filter-heading {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .library-filter-hint {
+          color: #bca0a5;
+          font-size: 12px;
+          font-weight: 400;
+        }
+
+        .library-empty-hint {
+          margin: 0;
+          color: #bca0a5;
+          font-size: 13px;
+        }
+
+        .library-selected-tags {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 12px;
+          color: #d5b9bd;
+          font-size: 12px;
+        }
+
+        .library-selected-tag {
+          padding: 3px 7px;
+          border: 1px solid ${RED};
+          color: ${TEXT};
+          background: rgba(139, 30, 45, 0.12);
+        }
+
+        .library-clear-inline {
+          padding: 3px 0;
+          border: none;
+          background: transparent;
+          color: ${RED_HOVER};
+          cursor: pointer;
+        }
+
+        .library-results-toolbar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 12px;
+          margin: 24px 0 16px;
+          min-width: 0;
+        }
+
+        .library-results-count {
+          color: ${TEXT};
+          font-size: 15px;
+        }
+
+        .library-results-count strong {
+          color: ${RED};
+        }
+
+        .library-results-count span {
+          margin-left: 8px;
+          color: #bca0a5;
+          font-size: 12px;
+        }
+
+        .library-results-actions {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .library-sort-select {
+          max-width: 100%;
+          padding: 9px 12px;
+          background: ${PANEL};
+          color: ${TEXT};
+          border: 1px solid ${LINE};
+          border-radius: 0 !important;
+          font-size: 13px;
           box-sizing: border-box;
         }
 
-        .game-library-card {
-          display: flex;
+        /* 游戏库独立网格，不使用首页卡片的 CSS 类 */
+        .xhrpg-games-grid {
+          display: grid !important;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          align-items: stretch;
+          gap: 20px;
+          width: 100%;
+          min-width: 0;
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        .library-game-card {
+          position: relative;
+          display: flex !important;
           flex-direction: column;
+          align-self: stretch;
           min-width: 0;
           width: 100%;
           height: 100%;
+          margin: 0;
+          padding: 0;
           overflow: hidden;
           box-sizing: border-box;
-          color: ${TEXT};
-          text-decoration: none;
+          color: ${TEXT} !important;
+          text-decoration: none !important;
           background: ${PANEL};
           border: 1px solid rgba(74, 32, 40, 0.85);
           border-radius: 0 !important;
+          box-shadow: none;
+          transform: none;
           transition:
             border-color 180ms ease,
             background-color 180ms ease;
         }
 
-        .game-library-card:hover {
+        .library-game-card:hover {
+          color: ${TEXT} !important;
           border-color: ${RED_HOVER};
           background: ${PANEL};
+          text-decoration: none !important;
         }
 
-        /* 封面保持黑底，图片完整展示，不裁切 */
-        .game-library-cover {
+        .library-game-cover {
           position: relative;
+          display: block;
           flex: 0 0 auto;
           width: 100%;
           aspect-ratio: 4 / 3;
+          margin: 0;
+          padding: 0;
           overflow: hidden;
-          background: #000000;
+          background: #000;
+          box-sizing: border-box;
         }
 
-        .game-library-cover img {
-          display: block;
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
+        .library-game-cover img {
+          position: static !important;
+          display: block !important;
+          width: 100% !important;
+          height: 100% !important;
+          max-width: none !important;
+          max-height: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          object-fit: contain !important;
+          object-position: center;
+          visibility: visible;
+          opacity: 1;
+          transform: none;
+          border: 0;
+          border-radius: 0 !important;
+          box-shadow: none;
           transition: transform 180ms ease;
         }
 
-        .game-library-card:hover .game-library-cover img {
+        .library-game-card:hover .library-game-cover img {
           transform: scale(1.015);
         }
 
-        .game-status-label {
+        .library-game-status {
           position: absolute;
           top: 0;
           right: 0;
+          z-index: 2;
+          display: block;
           padding: 7px 11px;
-          color: #ffffff;
+          color: #fff;
           border-left: 1px solid rgba(255, 255, 255, 0.35);
           border-bottom: 1px solid rgba(255, 255, 255, 0.35);
           font-size: 12px;
@@ -1119,45 +1150,75 @@ export default function GamesClient({
           letter-spacing: 0.3px;
         }
 
-        /* 信息区域使用网站统一的深色面板 */
-        .game-library-info {
+        .library-game-info {
+          position: relative;
+          display: block;
           flex: 1 1 auto;
           min-width: 0;
+          margin: 0;
           padding: 14px 15px 16px;
+          color: ${TEXT};
           background: ${PANEL};
           border-top: 1px solid ${LINE};
           box-sizing: border-box;
         }
 
-        .game-title-row {
+        .library-game-title-row {
+          position: static;
           display: flex;
           align-items: baseline;
           justify-content: space-between;
           gap: 8px;
           min-width: 0;
-          margin-bottom: 8px;
+          margin: 0 0 8px;
+          padding: 0;
         }
 
-        .game-title {
-          min-width: 0;
+        /* 独立标题类名 + 明确重置，防止首页全局标题样式覆盖 */
+        .library-game-title {
+          position: static !important;
+          inset: auto !important;
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          float: none !important;
           flex: 1 1 auto;
-          margin: 0;
-          font-size: 16px;
-          line-height: 1.5;
-          font-weight: 700;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+          min-width: 0;
+          max-width: 100%;
+          margin: 0 !important;
+          padding: 0 !important;
+          color: ${TEXT} !important;
+          background: transparent !important;
+          font-family: inherit;
+          font-size: 16px !important;
+          font-weight: 700 !important;
+          line-height: 1.5 !important;
+          text-align: left !important;
+          text-decoration: none !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          word-break: normal;
+          overflow-wrap: normal;
+          transform: none !important;
+          border: 0 !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
         }
 
-        .game-upload-date {
+        .library-game-upload-date {
+          position: static !important;
+          display: block;
           flex: 0 0 auto;
+          margin: 0;
+          padding: 0;
           color: #bba4a8;
           font-size: 11px;
+          line-height: 1.5;
           white-space: nowrap;
         }
 
-        .game-author-row {
+        .library-game-author-row {
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -1168,7 +1229,8 @@ export default function GamesClient({
           line-height: 1.8;
         }
 
-        .game-author {
+        .library-game-author {
+          display: block;
           flex: 1 1 auto;
           min-width: 0;
           overflow: hidden;
@@ -1176,22 +1238,24 @@ export default function GamesClient({
           white-space: nowrap;
         }
 
-        .game-downloads {
+        .library-game-downloads {
+          display: block;
           flex: 0 0 auto;
-          white-space: nowrap;
           color: #e8d9dc;
           font-size: 11px;
+          white-space: nowrap;
         }
 
-        .game-meta-row {
+        .library-game-meta-row {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
           gap: 8px;
+          min-width: 0;
           margin-top: 10px;
         }
 
-        .game-tags {
+        .library-game-tags {
           display: flex;
           flex: 1 1 auto;
           flex-wrap: wrap;
@@ -1199,52 +1263,108 @@ export default function GamesClient({
           min-width: 0;
         }
 
-        .game-tag {
-          border: 1px solid ${LINE};
+        .library-game-tag {
+          display: inline-block;
+          max-width: 100%;
+          padding: 3px 6px;
           color: #e8d9dc;
           background: rgba(139, 30, 45, 0.12);
-          padding: 3px 6px;
+          border: 1px solid ${LINE};
+          border-radius: 0 !important;
           font-size: 10px;
           line-height: 1.4;
-          border-radius: 0;
-          max-width: 100%;
           overflow-wrap: anywhere;
+          box-sizing: border-box;
         }
 
-        .game-no-tags {
+        .library-game-no-tags {
           color: #a99296;
           font-size: 10px;
         }
 
-        .game-category {
+        .library-game-category {
+          display: block;
           flex: 0 1 auto;
+          max-width: 45%;
           color: #c9b8bb;
           font-size: 11px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          max-width: 45%;
         }
 
-        .games-pagination {
-          display: flex;
+        /* 独立分页样式：不依赖全局 nav、button 或 pagination 类 */
+        .library-games-pagination {
+          position: relative !important;
+          z-index: 2;
+          display: flex !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          flex-direction: row;
           justify-content: center;
           align-items: center;
           flex-wrap: wrap;
           gap: 8px;
-          margin-top: 34px;
+          width: 100%;
+          min-height: 38px;
+          margin: 34px 0 0 !important;
+          padding: 0 !important;
+          overflow: visible;
+          box-sizing: border-box;
+          background: transparent;
+          border: 0;
+          border-radius: 0 !important;
+          box-shadow: none;
         }
 
-        .games-empty {
+        .library-games-pagination button {
+          position: static !important;
+          display: inline-flex !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          margin: 0;
+          border-radius: 0 !important;
+          transform: none !important;
+          white-space: nowrap;
+        }
+
+        .library-games-pagination button:disabled {
+          opacity: 0.55 !important;
+        }
+
+        .library-pagination-ellipsis {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 12px;
+          color: ${MUTED};
+          padding: 0 2px;
+        }
+
+        .library-games-empty {
+          display: block;
           padding: 50px 20px;
           text-align: center;
+          color: ${MUTED};
           background: rgba(22, 12, 15, 0.78);
           border: 1px solid rgba(74, 32, 40, 0.85);
-          color: ${MUTED};
-          border-radius: 0;
+          border-radius: 0 !important;
         }
 
-        /* 中等屏幕：每行三张卡片 */
+        .library-games-empty-title {
+          margin-bottom: 10px;
+          color: ${TEXT};
+          font-size: 18px;
+        }
+
+        .library-games-empty-description {
+          margin-bottom: 18px;
+          font-size: 13px;
+        }
+
         @media (max-width: 1100px) {
           .xhrpg-games-grid {
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1252,7 +1372,6 @@ export default function GamesClient({
           }
         }
 
-        /* 平板及手机：每行两张卡片 */
         @media (max-width: 720px) {
           .games-content {
             width: calc(100% - 24px) !important;
@@ -1264,7 +1383,7 @@ export default function GamesClient({
             padding: 14px 12px;
           }
 
-          .games-heading h1 {
+          .library-page-heading {
             font-size: 25px !important;
           }
 
@@ -1273,40 +1392,77 @@ export default function GamesClient({
             gap: 12px;
           }
 
-          .game-library-info {
+          .library-game-info {
             padding: 10px;
           }
 
-          .game-title {
-            font-size: 14px;
+          .library-game-title {
+            font-size: 14px !important;
           }
 
-          .game-upload-date {
+          .library-game-upload-date {
             font-size: 10px;
           }
 
-          .game-author-row {
+          .library-game-author-row {
             font-size: 11px;
           }
 
-          .game-downloads {
+          .library-game-downloads {
             font-size: 10px;
+          }
+
+          .library-results-toolbar {
+            align-items: flex-start;
+          }
+
+          .library-results-actions {
+            width: 100%;
+          }
+
+          .library-games-pagination {
+            gap: 6px;
+            margin-top: 26px !important;
+          }
+
+          .library-games-pagination button {
+            min-width: 34px;
+            height: 36px;
+            padding: 0 8px;
           }
         }
 
-        /* 窄屏手机：每行一张，避免信息挤压 */
         @media (max-width: 420px) {
           .xhrpg-games-grid {
             grid-template-columns: minmax(0, 1fr);
             gap: 14px;
           }
 
-          .game-library-info {
+          .library-game-info {
             padding: 12px 13px 14px;
           }
 
-          .game-title {
-            font-size: 16px;
+          .library-game-title {
+            font-size: 16px !important;
+          }
+
+          .library-game-title-row {
+            gap: 6px;
+          }
+
+          .library-game-upload-date {
+            font-size: 10px;
+          }
+
+          .library-games-pagination {
+            gap: 5px;
+          }
+
+          .library-games-pagination button {
+            min-width: 32px;
+            height: 34px;
+            padding: 0 7px;
+            font-size: 12px;
           }
         }
       `}</style>
