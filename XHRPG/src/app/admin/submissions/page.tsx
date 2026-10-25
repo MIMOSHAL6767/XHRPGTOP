@@ -23,18 +23,23 @@ type GameSubmission = {
   category: string;
   version: string;
   description?: string | null;
+
+  // 游戏资源链接
   cover?: string | null;
+  lanzou?: string | null;
+  pan123?: string | null;
+
+  // 投稿图片
   titleLogo?: string | null;
   detailBackground?: string | null;
   screenshots?: unknown;
+
+  // 审核信息
   status: string;
   gameStatus?: string | null;
   createdAt?: string | Date | null;
   updatedAt?: string | Date | null;
   submissionAssets?: SubmissionAssets | null;
-  lanzou?: string | null;
-  pan123?: string | null;
-  titleLogo?: string | null;
 };
 
 const panelStyle: React.CSSProperties = {
