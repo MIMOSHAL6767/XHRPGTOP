@@ -40,6 +40,7 @@ const ALLOWED_GAME_STATUSES = [
   "Demo",
   "弃坑",
   "断更",
+  "预告",
 ] as const;
 
 type GameStatus = (typeof ALLOWED_GAME_STATUSES)[number];
@@ -235,7 +236,7 @@ export async function PUT(
       input.screenshots !== undefined &&
       (
         !Array.isArray(input.screenshots) ||
-        input.screenshots.length > 100 ||
+        input.screenshots.length > 5 ||
         !input.screenshots.every(
           (url) =>
             typeof url === "string" &&
@@ -281,7 +282,7 @@ export async function PUT(
         {
           success: false,
           message:
-            "作品状态无效，可选：完结、更新中、Demo、弃坑、断更",
+            "作品状态无效，可选：完结、更新中、Demo、弃坑、断更、预告",
         },
         { status: 400 }
       );
