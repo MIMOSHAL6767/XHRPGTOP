@@ -46,6 +46,8 @@ type GameForm = {
   tags: string[];
 };
 
+type ImageKind = "cover" | "background" | "logo" | "screenshot";
+
 type ImageSetter = (file: File | null) => void;
 type PreviewSetter = (preview: string) => void;
 
@@ -64,6 +66,7 @@ const INITIAL_FORM: GameForm = {
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const MAX_SCREENSHOTS = 5;
+const MAX_TAGS = 30;
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 const inputStyle: React.CSSProperties = {
@@ -110,7 +113,11 @@ async function readResponse(response: Response) {
   return data;
 }
 
-function validateImage(file: File) {
+function validateImage(file: File, pngOnly = false) {
+  if (pngOnly && file.type !== "image/png") {
+    throw new Error("标题图片必须使用 PNG 格式，以保留透明背景");
+  }
+
   if (!IMAGE_TYPES.includes(file.type)) {
     throw new Error("只支持 PNG、JPG、WebP 图片");
   }
@@ -178,7 +185,6 @@ export default function PublicNewGamePage() {
   const [credential, setCredential] = useState("");
   const [createdGameName, setCreatedGameName] = useState("");
 
-  // 统一追踪当前页面创建的 blob 图片地址，防止预览图长期占用内存。
   const previewUrlsRef = useRef<Set<string>>(new Set());
 
   const createPreview = useCallback((file: File) => {
@@ -230,7 +236,6 @@ export default function PublicNewGamePage() {
       setAnswer("");
     } catch (error) {
       setQuestion(null);
-
       console.error("获取投稿验证题目失败:", error);
     } finally {
       setQuestionLoading(false);
@@ -266,17 +271,10 @@ export default function PublicNewGamePage() {
     if (!file) return;
 
     try {
-      if (pngOnly && file.type !== "image/png") {
-        throw new Error(
-          "标题图片必须使用 PNG 格式，以保留透明背景",
-        );
-      }
-
-      validateImage(file);
+      validateImage(file, pngOnly);
 
       const preview = createPreview(file);
 
-      // 只有在新图片验证成功后，才替换原图片。
       if (input.name === "cover") {
         releasePreview(coverPreview);
       } else if (input.name === "background") {
@@ -303,6 +301,11 @@ export default function PublicNewGamePage() {
 
     if (form.tags.includes(tag)) {
       setTagInput("");
+      return;
+    }
+
+    if (form.tags.length >= MAX_TAGS) {
+      alert(`最多只能添加 ${MAX_TAGS} 个标签`);
       return;
     }
 
@@ -346,7 +349,6 @@ export default function PublicNewGamePage() {
     );
   }
 
-  // 详情预览图最多 5 张，同时限制单张图片的格式和大小。
   function addScreenshots(
     event: React.ChangeEvent<HTMLInputElement>,
   ) {
@@ -370,7 +372,7 @@ export default function PublicNewGamePage() {
         );
       }
 
-      files.forEach(validateImage);
+      files.forEach((file) => validateImage(file));
 
       const newItems: ScreenshotItem[] = files.map((file) => ({
         file,
@@ -388,7 +390,6 @@ export default function PublicNewGamePage() {
           : "预览图选择失败",
       );
     } finally {
-      // 允许用户再次选择相同的文件。
       input.value = "";
     }
   }
@@ -441,6 +442,92 @@ export default function PublicNewGamePage() {
       );
   }
 
+  /**
+   * 上传一张图片到临时仓库。
+   * 这里绝不调用会直接写入正式图片仓库的 /api/upload。
+   *
+   * 注意：submission-image API 必须接受 file、kind、
+   * questionId、answer，并返回 { success: true, path }。
+   */
+  async function uploadTemporaryImage(
+    file: File,
+    kind: ImageKind,
+  ): Promise<string> {
+    validateImage(file, kind === "logo");
+
+    if (!question || !answer.trim()) {
+      throw new Error("验证题已失效，请重新获取验证题");
+    }
+
+    const imageForm = new FormData();
+
+    imageForm.append("file", file);
+    imageForm.append("kind", kind);
+    imageForm.append("questionId", String(question.id));
+    imageForm.append("answer", answer.trim());
+
+    const response = await fetch("/api/upload/submission-image", {
+      method: "POST",
+      body: imageForm,
+    });
+
+    const data = await readResponse(response);
+
+    if (typeof data.path !== "string" || !data.path.trim()) {
+      throw new Error(
+        `${getImageKindLabel(kind)}上传成功，但服务器没有返回临时图片路径`,
+      );
+    }
+
+    const path = data.path.trim();
+
+    // 临时图片路径必须与后端的 pending 路径校验规则一致。
+    if (!/^pending\/[0-9a-f-]{36}\/(?:cover|background|logo|screenshot)(?:-\d{1,3})?\.(?:png|jpg|webp)$/i.test(path)) {
+      throw new Error(
+        `${getImageKindLabel(kind)}返回的临时路径格式不正确，请检查上传 API`,
+      );
+    }
+
+    const filename = path.split("/").pop() || "";
+
+    if (kind === "cover" && !/^cover\.(png|jpg|webp)$/i.test(filename)) {
+      throw new Error("封面上传接口返回了错误的图片类型路径");
+    }
+
+    if (
+      kind === "background" &&
+      !/^background\.(png|jpg|webp)$/i.test(filename)
+    ) {
+      throw new Error("详情背景上传接口返回了错误的图片类型路径");
+    }
+
+    if (kind === "logo" && !/^logo\.png$/i.test(filename)) {
+      throw new Error("标题图片必须以 logo.png 的形式存入临时仓库");
+    }
+
+    if (
+      kind === "screenshot" &&
+      !/^screenshot(?:-\d{1,3})?\.(png|jpg|webp)$/i.test(filename)
+    ) {
+      throw new Error("预览图上传接口返回了错误的图片类型路径");
+    }
+
+    return path;
+  }
+
+  function getImageKindLabel(kind: ImageKind) {
+    switch (kind) {
+      case "cover":
+        return "游戏封面";
+      case "background":
+        return "详情背景";
+      case "logo":
+        return "标题图片";
+      case "screenshot":
+        return "详情预览图";
+    }
+  }
+
   async function submit(
     event: React.FormEvent<HTMLFormElement>,
   ) {
@@ -483,44 +570,65 @@ export default function PublicNewGamePage() {
       !form.lanzou.trim() &&
       !form.pan123.trim()
     ) {
-      alert(
-        "请至少填写蓝奏云或 123 云盘中的一个下载链接",
-      );
+      alert("请至少填写蓝奏云或 123 云盘中的一个下载链接");
+      return;
+    }
+
+    if (form.tags.length > MAX_TAGS) {
+      alert(`标签最多只能添加 ${MAX_TAGS} 个`);
       return;
     }
 
     setLoading(true);
 
     try {
-      // 当前接口仅正式接收封面，其他图片尚未上传到正式存储。
-      setProgress("正在上传封面到临时仓库……");
+      // 1. 封面必须上传成功。
+      setProgress("正在上传游戏封面到临时仓库……");
 
-      const imageForm = new FormData();
-
-      imageForm.append("file", coverFile);
-      imageForm.append("questionId", String(question.id));
-      imageForm.append("answer", answer.trim());
-
-      const imageResponse = await fetch(
-        "/api/upload/submission-image",
-        {
-          method: "POST",
-          body: imageForm,
-        },
+      const coverPath = await uploadTemporaryImage(
+        coverFile,
+        "cover",
       );
 
-      const imageData = await readResponse(imageResponse);
+      // 2. 详情背景：有选择才上传。
+      let backgroundPath: string | null = null;
 
-      if (
-        typeof imageData.path !== "string" ||
-        !imageData.path.trim()
-      ) {
-        throw new Error(
-          "临时封面上传成功，但服务器没有返回图片路径",
+      if (backgroundFile) {
+        setProgress("正在上传详情背景到临时仓库……");
+
+        backgroundPath = await uploadTemporaryImage(
+          backgroundFile,
+          "background",
         );
       }
 
-      setProgress("正在提交游戏资料……");
+      // 3. 标题 PNG：只有选择图片标题模式时才上传。
+      let logoPath: string | null = null;
+
+      if (titleMode === "image" && logoFile) {
+        setProgress("正在上传标题 PNG 到临时仓库……");
+
+        logoPath = await uploadTemporaryImage(logoFile, "logo");
+      }
+
+      // 4. 预览图逐张上传，保留用户调整后的顺序。
+      const screenshotPaths: string[] = [];
+
+      for (let i = 0; i < screenshots.length; i += 1) {
+        setProgress(
+          `正在上传详情预览图（${i + 1}/${screenshots.length}）……`,
+        );
+
+        const path = await uploadTemporaryImage(
+          screenshots[i].file,
+          "screenshot",
+        );
+
+        screenshotPaths.push(path);
+      }
+
+      // 5. 将真实临时路径提交给后端，而不是只传数量或布尔值。
+      setProgress("图片上传完成，正在提交游戏资料……");
 
       const payload = {
         name: normalizeText(form.name),
@@ -532,19 +640,30 @@ export default function PublicNewGamePage() {
         lanzou: normalizeText(form.lanzou),
         pan123: normalizeText(form.pan123),
         gameStatus: form.gameStatus,
-        coverPath: imageData.path,
+
+        // 兼容 submit-game 当前封面字段。
+        coverPath,
+
+        // 详情图片路径必须放在 assets 对象内。
+        assets: {
+          cover: coverPath,
+          background: backgroundPath,
+          logo: logoPath,
+          screenshots: screenshotPaths,
+        },
+
         questionId: question.id,
         answer: answer.trim(),
+
         tags: form.tags
           .map(normalizeText)
-          .filter(Boolean),
+          .filter(Boolean)
+          .slice(0, MAX_TAGS),
+
         titleMode,
         detailBackgroundOpacity: backgroundOpacity,
         detailBackgroundFit: backgroundFit,
         history: cleanHistory(),
-        screenshotsCount: screenshots.length,
-        hasDetailBackground: Boolean(backgroundFile),
-        hasTitleLogo: Boolean(logoFile),
       };
 
       const submitResponse = await fetch(
@@ -624,9 +743,7 @@ export default function PublicNewGamePage() {
               value={credential}
               rows={3}
               style={inputStyle}
-              onFocus={(event) =>
-                event.currentTarget.select()
-              }
+              onFocus={(event) => event.currentTarget.select()}
             />
 
             <button
@@ -639,9 +756,7 @@ export default function PublicNewGamePage() {
           </section>
 
           <p style={{ marginTop: 24 }}>
-            <Link href="/upload">
-              返回上传游戏页面
-            </Link>
+            <Link href="/upload">返回上传游戏页面</Link>
           </p>
         </div>
       </main>
@@ -662,9 +777,7 @@ export default function PublicNewGamePage() {
         </p>
 
         <form onSubmit={submit}>
-          <section
-            style={{ ...sectionStyle, marginTop: 20 }}
-          >
+          <section style={{ ...sectionStyle, marginTop: 20 }}>
             <h2>基础信息</h2>
 
             <div
@@ -788,9 +901,7 @@ export default function PublicNewGamePage() {
             >
               <input
                 value={tagInput}
-                onChange={(event) =>
-                  setTagInput(event.target.value)
-                }
+                onChange={(event) => setTagInput(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
@@ -871,11 +982,7 @@ export default function PublicNewGamePage() {
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={(event) =>
-                  chooseImage(
-                    event,
-                    setCoverFile,
-                    setCoverPreview,
-                  )
+                  chooseImage(event, setCoverFile, setCoverPreview)
                 }
                 required
                 disabled={loading}
@@ -964,9 +1071,7 @@ export default function PublicNewGamePage() {
           <section style={sectionStyle}>
             <h2>详情页背景设置</h2>
 
-            <p>
-              可为游戏详情页设置独立背景，审核通过后应用。
-            </p>
+            <p>可为游戏详情页设置独立背景，审核通过后应用。</p>
 
             <label style={labelStyle}>
               背景图片
@@ -1010,9 +1115,7 @@ export default function PublicNewGamePage() {
                 step={1}
                 value={backgroundOpacity}
                 onChange={(event) =>
-                  setBackgroundOpacity(
-                    Number(event.target.value),
-                  )
+                  setBackgroundOpacity(Number(event.target.value))
                 }
                 disabled={loading}
                 style={{ ...inputStyle, padding: 0 }}
@@ -1130,8 +1233,7 @@ export default function PublicNewGamePage() {
                 multiple
                 onChange={addScreenshots}
                 disabled={
-                  loading ||
-                  screenshots.length >= MAX_SCREENSHOTS
+                  loading || screenshots.length >= MAX_SCREENSHOTS
                 }
                 style={{ ...inputStyle, padding: 8 }}
               />
@@ -1193,9 +1295,7 @@ export default function PublicNewGamePage() {
                     >
                       <button
                         type="button"
-                        onClick={() =>
-                          moveScreenshot(index, -1)
-                        }
+                        onClick={() => moveScreenshot(index, -1)}
                         disabled={loading || index === 0}
                         style={buttonStyle}
                       >
@@ -1204,12 +1304,9 @@ export default function PublicNewGamePage() {
 
                       <button
                         type="button"
-                        onClick={() =>
-                          moveScreenshot(index, 1)
-                        }
+                        onClick={() => moveScreenshot(index, 1)}
                         disabled={
-                          loading ||
-                          index === screenshots.length - 1
+                          loading || index === screenshots.length - 1
                         }
                         style={buttonStyle}
                       >
@@ -1218,9 +1315,7 @@ export default function PublicNewGamePage() {
 
                       <button
                         type="button"
-                        onClick={() =>
-                          removeScreenshot(index)
-                        }
+                        onClick={() => removeScreenshot(index)}
                         disabled={loading}
                         style={buttonStyle}
                       >
@@ -1236,9 +1331,7 @@ export default function PublicNewGamePage() {
           <section style={sectionStyle}>
             <h2>版本历史</h2>
 
-            <p>
-              可填写已有历史版本的版本号、日期及下载链接。
-            </p>
+            <p>可填写已有历史版本的版本号、日期及下载链接。</p>
 
             {history.map((item, index) => (
               <div
@@ -1363,9 +1456,7 @@ export default function PublicNewGamePage() {
                   请输入答案 *
                   <input
                     value={answer}
-                    onChange={(event) =>
-                      setAnswer(event.target.value)
-                    }
+                    onChange={(event) => setAnswer(event.target.value)}
                     required
                     disabled={loading}
                     style={inputStyle}
@@ -1455,7 +1546,8 @@ export default function PublicNewGamePage() {
               marginTop: 18,
             }}
           >
-            注意：当前版本的投稿接口正式上传封面。详情背景、标题图和预览图目前仅支持前端选择与预览；标签、版本历史及其他详情设置是否保存，取决于后端投稿 API 是否接收并写入这些字段。需要这些功能实际生效时，还需要同步扩展对应的 API 和数据库保存逻辑。
+            所有投稿图片先上传到临时仓库。审核通过后，站长审核接口再将图片同步到正式图片仓库。
+            如果任意一张图片上传失败，本次投稿会停止提交。
           </p>
         </form>
       </div>
