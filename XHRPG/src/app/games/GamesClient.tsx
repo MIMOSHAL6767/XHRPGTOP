@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SiteHeader from "@/app/components/SiteHeader";
 
-type GameStatus = "完结" | "更新中" | "Demo" | "弃坑" | "断更";
+type GameStatus =
+  | "完结"
+  | "更新中"
+  | "Demo"
+  | "弃坑"
+  | "断更"
+  | "预告";
 
 type GameItem = {
   id: number;
@@ -98,6 +104,11 @@ function getStatusLabel(status?: string | null): GameStatus {
     case "制作中":
       return "更新中";
 
+    case "预告":
+    case "即将发布":
+    case "即将推出":
+      return "预告";
+
     default:
       return "更新中";
   }
@@ -115,6 +126,8 @@ function getStatusColor(status: GameStatus): string {
       return "#68616a";
     case "断更":
       return "#a83232";
+    case "预告":
+      return "#2563a6";
     default:
       return "#d97706";
   }
