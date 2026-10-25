@@ -20,7 +20,7 @@ const OPTIONAL_DOWNLOAD_STATUSES = ["弃坑", "断更", "预告"];
 
 const MAX_TAGS = 30;
 const MAX_HISTORY_ITEMS = 100;
-const MAX_SCREENSHOTS = 100;
+const MAX_SCREENSHOTS = 5;
 const MAX_TEXT_LENGTH = 5000;
 
 type AssetInput = {
@@ -419,7 +419,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (screenshotsRaw.length > MAX_SCREENSHOTS) {
-      return jsonError("详情预览图最多 100 张");
+      return jsonError("详情预览图最多 5 张");
     }
 
     const screenshotPaths: string[] = [];
