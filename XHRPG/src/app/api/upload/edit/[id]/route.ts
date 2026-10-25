@@ -153,7 +153,7 @@ function readHistory(
 
   const value = body.history;
 
-  if (!Array.isArray(value) || value.length > 100) {
+  if (!Array.isArray(value) || value.length > 5) {
     throw new Error("更新记录格式不正确。");
   }
 
@@ -238,11 +238,13 @@ function readOpacity(
 
   if (
     typeof value !== "number" ||
-    !Number.isFinite(value) ||
+    !Number.isInteger(value) ||
     value < 0 ||
-    value > 1
+    value > 100
   ) {
-    throw new Error("详情背景透明度必须在 0 到 1 之间。");
+    throw new Error(
+      "详情背景透明度必须为 0 到 100 的整数。"
+    );
   }
 
   return value;
@@ -419,7 +421,7 @@ export async function PUT(
     const gameStatus = readAllowedChoice(
       body,
       "gameStatus",
-      ["完结", "更新中", "Demo", "弃坑", "断更"]
+      ["完结", "更新中", "Demo", "弃坑", "断更", "预告"]
     );
 
     if (gameStatus !== undefined) {
@@ -429,7 +431,7 @@ export async function PUT(
     const titleMode = readAllowedChoice(
       body,
       "titleMode",
-      ["text", "logo"]
+      ["text", "image"]
     );
 
     if (titleMode !== undefined) {
