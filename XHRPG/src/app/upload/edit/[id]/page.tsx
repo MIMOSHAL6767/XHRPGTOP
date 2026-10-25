@@ -535,17 +535,14 @@ export default function SubmissionGameEditPage() {
 
               <div>
                 <label className={labelClass}>游戏分类</label>
-                <select
-                  className={inputClass}
-                  value={form.category}
-                  onChange={(e) => updateField("category", e.target.value)}
-                >
-                  <option>角色扮演</option>
-                  <option>动作冒险</option>
-                  <option>策略战棋</option>
-                  <option>恐怖悬疑</option>
-                  <option>模拟经营</option>
-                </select>
+<input
+  type="text"
+  className={inputClass}
+  value={form.category}
+  onChange={(e) => updateField("category", e.target.value)}
+  placeholder="请输入游戏分类，例如：角色扮演、解谜冒险、同人作品"
+  maxLength={100}
+/>
               </div>
 
               <div>
