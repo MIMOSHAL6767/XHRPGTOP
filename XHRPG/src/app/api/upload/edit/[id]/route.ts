@@ -69,6 +69,28 @@ async function authenticateGame(
   return { error: null, game };
 }
 
+/**
+ * 只有已发布和审核未通过的游戏允许投稿者编辑。
+ * 审核中、隐藏或其他状态均不允许投稿者继续编辑。
+ */
+function checkEditableStatus(status: string) {
+  if (status === "已发布" || status === "未通过") {
+    return null;
+  }
+
+  if (status === "审核中") {
+    return errorResponse(
+      "游戏正在审核中，暂时不能编辑。请等待审核完成。",
+      403
+    );
+  }
+
+  return errorResponse(
+    "当前游戏状态不允许投稿用户编辑。",
+    403
+  );
+}
+
 function isPlainObject(
   value: unknown
 ): value is Record<string, unknown> {
@@ -254,9 +276,15 @@ export async function GET(
       return auth.error!;
     }
 
+    const statusError = checkEditableStatus(auth.game.status);
+
+    if (statusError) {
+      return statusError;
+    }
+
     const game = auth.game;
 
-    // 不向客户端返回 submissionCredential 等内部字段。
+    // 不向客户端返回投稿凭证等内部字段。
     return NextResponse.json({
       success: true,
       game: {
@@ -305,13 +333,19 @@ export async function PUT(
       return auth.error!;
     }
 
+    const statusError = checkEditableStatus(auth.game.status);
+
+    if (statusError) {
+      return statusError;
+    }
+
     const body: unknown = await req.json().catch(() => null);
 
     if (!isPlainObject(body)) {
       return errorResponse("提交的数据格式不正确。", 400);
     }
 
-    // 明确拒绝尝试修改权限或审核字段。
+    // 明确拒绝尝试修改权限、审核状态或系统字段。
     const forbiddenFields = [
       "status",
       "submissionCredential",
@@ -354,16 +388,21 @@ export async function PUT(
       if (!name) {
         return errorResponse("游戏名称不能为空。", 400);
       }
+
       data.name = name;
     }
 
     if (en !== undefined) data.en = en || null;
+
     if (author !== undefined) {
       if (!author) {
         return errorResponse("作者不能为空。", 400);
       }
+
       data.author = author;
     }
+
+    // 分类作为普通文本接收，不限制为固定分类列表。
     if (category !== undefined) data.category = category;
     if (version !== undefined) data.version = version;
     if (description !== undefined) data.description = description;
@@ -372,6 +411,7 @@ export async function PUT(
     if (pan123 !== undefined) data.pan123 = pan123;
     if (symbol !== undefined) data.symbol = symbol;
     if (titleLogo !== undefined) data.titleLogo = titleLogo;
+
     if (detailBackground !== undefined) {
       data.detailBackground = detailBackground;
     }
@@ -430,9 +470,13 @@ export async function PUT(
       data.screenshots = screenshots;
     }
 
-    // 不接受客户端提供的 status。
-    // 用户提交修改后统一进入审核状态。
-    data.status = "审核中";
+    // 仅已发布或未通过状态能到达这里。
+    // 已发布游戏保存后保持发布状态；
+    // 未通过游戏修改后重新进入审核。
+    data.status =
+      auth.game.status === "已发布"
+        ? "已发布"
+        : "审核中";
 
     const updated = await prisma.game.update({
       where: { id: auth.game.id },
@@ -446,7 +490,10 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      message: "修改已保存，等待站长审核。",
+      message:
+        updated.status === "已发布"
+          ? "游戏资料已更新。"
+          : "修改已保存，等待站长审核。",
       game: updated,
     });
   } catch (error) {
