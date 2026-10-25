@@ -41,6 +41,14 @@ const MUSIC_EXTENSIONS: Record<string, string> = {
   "audio/vnd.wav": "wav",
 };
 
+const REPLACEABLE_IMAGE_KINDS: UploadKind[] = [
+  "cover",
+  "background",
+  "logo",
+  "screenshot",
+  "homeHeader",
+];
+
 function errorResponse(message: string, status: number) {
   return NextResponse.json(
     { success: false, message, error: message },
@@ -113,6 +121,175 @@ function validMusic(bytes: Buffer, ext: string): boolean {
   return false;
 }
 
+function getGitHubConfig() {
+  const token =
+    process.env.GITHUB_IMAGE_TOKEN ||
+    process.env.GITHUB_TOKEN;
+
+  const owner =
+    process.env.GITHUB_IMAGE_OWNER ||
+    process.env.GITHUB_OWNER;
+
+  const repo =
+    process.env.GITHUB_IMAGE_REPO ||
+    process.env.GITHUB_REPO;
+
+  const branch =
+    process.env.GITHUB_IMAGE_BRANCH ||
+    process.env.GITHUB_BRANCH ||
+    "main";
+
+  if (!token || !owner || !repo) {
+    return null;
+  }
+
+  const headers = {
+    Accept: "application/vnd.github+json",
+    Authorization: `Bearer ${token}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+
+  return {
+    token,
+    owner,
+    repo,
+    branch,
+    headers,
+  };
+}
+
+function getGitHubContentsUrl(
+  owner: string,
+  repo: string,
+  repoPath: string
+) {
+  return (
+    `https://api.github.com/repos/` +
+    `${encodeURIComponent(owner)}/` +
+    `${encodeURIComponent(repo)}/contents/` +
+    repoPath
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/")
+  );
+}
+
+/**
+ * 删除同一资源的旧图片扩展名文件。
+ *
+ * 只会尝试删除同目录、同文件名主体的 PNG/JPG/WebP。
+ * 例如 games1.png 替换成 games1.jpg 后，会尝试删除 games1.png。
+ * 删除失败只记录日志，不影响新图片的上传结果。
+ */
+async function deleteReplacedImageExtensions(args: {
+  owner: string;
+  repo: string;
+  branch: string;
+  headers: Record<string, string>;
+  directory: string;
+  filename: string;
+  currentExtension: string;
+}) {
+  const {
+    owner,
+    repo,
+    branch,
+    headers,
+    directory,
+    filename,
+    currentExtension,
+  } = args;
+
+  const lastDot = filename.lastIndexOf(".");
+  const filenameWithoutExt =
+    lastDot >= 0 ? filename.slice(0, lastDot) : filename;
+
+  const oldExtensions = ["png", "jpg", "webp"].filter(
+    (extension) => extension !== currentExtension
+  );
+
+  for (const oldExt of oldExtensions) {
+    const oldPath =
+      `${directory}/${filenameWithoutExt}.${oldExt}`;
+
+    const oldApiUrl = getGitHubContentsUrl(
+      owner,
+      repo,
+      oldPath
+    );
+
+    try {
+      const oldResponse = await fetch(
+        `${oldApiUrl}?ref=${encodeURIComponent(branch)}`,
+        {
+          headers,
+          cache: "no-store",
+        }
+      );
+
+      if (oldResponse.status === 404) {
+        continue;
+      }
+
+      if (!oldResponse.ok) {
+        console.error(
+          "查询旧图片失败:",
+          oldPath,
+          oldResponse.status
+        );
+        continue;
+      }
+
+      const oldFile: unknown = await oldResponse.json();
+
+      if (
+        typeof oldFile !== "object" ||
+        oldFile === null ||
+        !("sha" in oldFile) ||
+        typeof oldFile.sha !== "string"
+      ) {
+        console.error("旧图片缺少有效 SHA:", oldPath);
+        continue;
+      }
+
+      const deleteResponse = await fetch(oldApiUrl, {
+        method: "DELETE",
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: `Remove replaced image: ${oldPath}`,
+          sha: oldFile.sha,
+          branch,
+        }),
+        cache: "no-store",
+      });
+
+      if (!deleteResponse.ok) {
+        const deleteResult = await deleteResponse
+          .json()
+          .catch(() => null);
+
+        console.error(
+          "删除旧图片失败:",
+          oldPath,
+          deleteResponse.status,
+          deleteResult?.message
+        );
+      }
+    } catch (error) {
+      console.error(
+        "清理旧图片时发生异常:",
+        oldPath,
+        error instanceof Error
+          ? error.message
+          : "未知错误"
+      );
+    }
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -155,7 +332,7 @@ export async function POST(req: Request) {
 
     const isOwner = await isSiteOwner();
 
-    // 普通投稿用户只能上传自己凭证对应游戏的图片。
+    // 普通投稿用户只能上传自己游戏的图片。
     if (
       !isOwner &&
       !["cover", "background", "logo", "screenshot"].includes(kind)
@@ -205,7 +382,6 @@ export async function POST(req: Request) {
     }
 
     // 网站级资源不需要游戏 ID。
-    // 游戏图片：站长使用 id，投稿用户使用 credential。
     const needsGameId =
       kind !== "homeHeader" &&
       kind !== "siteBackground" &&
@@ -260,6 +436,7 @@ export async function POST(req: Request) {
           },
           select: {
             id: true,
+            status: true,
           },
         });
 
@@ -267,6 +444,19 @@ export async function POST(req: Request) {
           return errorResponse(
             "投稿凭证无效或已失效，请检查凭证",
             401
+          );
+        }
+
+        // 与资料编辑 API 使用相同的状态规则。
+        if (
+          game.status !== "已发布" &&
+          game.status !== "未通过"
+        ) {
+          return errorResponse(
+            game.status === "审核中"
+              ? "游戏正在审核中，暂时不能替换图片。"
+              : "当前游戏状态不允许投稿用户上传图片。",
+            403
           );
         }
 
@@ -361,48 +551,29 @@ export async function POST(req: Request) {
 
     const repoPath = `${directory}/${filename}`;
 
-    // 先读取并验证 GitHub 配置，再构造 API URL。
-    // 修复原代码 owner、repo 使用在声明之前的问题。
-    const token =
-      process.env.GITHUB_IMAGE_TOKEN ||
-      process.env.GITHUB_TOKEN;
+    const github = getGitHubConfig();
 
-    const owner =
-      process.env.GITHUB_IMAGE_OWNER ||
-      process.env.GITHUB_OWNER;
-
-    const repo =
-      process.env.GITHUB_IMAGE_REPO ||
-      process.env.GITHUB_REPO;
-
-    const branch =
-      process.env.GITHUB_IMAGE_BRANCH ||
-      process.env.GITHUB_BRANCH ||
-      "main";
-
-    if (!token || !owner || !repo) {
+    if (!github) {
       return errorResponse(
         "GitHub 文件存储服务未配置",
         500
       );
     }
 
-    const apiUrl =
-      `https://api.github.com/repos/` +
-      `${encodeURIComponent(owner)}/` +
-      `${encodeURIComponent(repo)}/contents/` +
+    const {
+      owner,
+      repo,
+      branch,
+      headers,
+    } = github;
+
+    const apiUrl = getGitHubContentsUrl(
+      owner,
+      repo,
       repoPath
-        .split("/")
-        .map(encodeURIComponent)
-        .join("/");
+    );
 
-    const headers = {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${token}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-    };
-
-    // 固定名称文件允许覆盖；随机命名文件通常不会覆盖已有文件。
+    // 读取同名文件，取得 SHA 后才能覆盖。
     let sha: string | undefined;
 
     const existingResponse = await fetch(
@@ -414,9 +585,14 @@ export async function POST(req: Request) {
     );
 
     if (existingResponse.ok) {
-      const existing = await existingResponse.json();
+      const existing: unknown = await existingResponse.json();
 
-      if (typeof existing.sha === "string") {
+      if (
+        typeof existing === "object" &&
+        existing !== null &&
+        "sha" in existing &&
+        typeof existing.sha === "string"
+      ) {
         sha = existing.sha;
       }
     } else if (existingResponse.status !== 404) {
@@ -489,6 +665,23 @@ export async function POST(req: Request) {
         "GitHub 未确认文件已保存",
         502
       );
+    }
+
+    // 新图片已确认上传成功后，再清理同用途的旧扩展名文件。
+    // 仅处理固定命名的图片，不删除随机命名资源。
+    if (
+      REPLACEABLE_IMAGE_KINDS.includes(kind) &&
+      ["png", "jpg", "webp"].includes(ext)
+    ) {
+      await deleteReplacedImageExtensions({
+        owner,
+        repo,
+        branch,
+        headers,
+        directory,
+        filename,
+        currentExtension: ext,
+      });
     }
 
     const url =
