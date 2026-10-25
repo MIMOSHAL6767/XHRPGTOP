@@ -17,7 +17,7 @@ const footerContents: Record<string, { title: string; content: string }> = {
   about: {
     title: "关于本站",
     content:
-      "喜灰RPG资源站（XHRPG）是一个专注于喜羊羊与灰太狼同人 RPG 游戏的资源索引站，旨在整理、展示相关游戏信息，为玩家提供便捷的查找入口。",
+      "喜灰RPG档案馆（XHRPG Archive）致力于搜集并整理所有曾在网络上公开发布的喜灰RPG并提供下载链接，旨在为所有喜灰RPG爱好者提供最全面，最详细的资源共享平台，保证查找和下载完全免费。注意：大部分游戏不支持手机模拟器游玩。",
   },
   contact: {
     title: "联系站长",
