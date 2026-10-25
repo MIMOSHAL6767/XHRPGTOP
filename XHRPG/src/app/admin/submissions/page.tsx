@@ -32,7 +32,6 @@ type GameSubmission = {
   createdAt?: string | Date | null;
   updatedAt?: string | Date | null;
   submissionAssets?: SubmissionAssets | null;
-  cover?: string | null;
   lanzou?: string | null;
   pan123?: string | null;
   titleLogo?: string | null;
