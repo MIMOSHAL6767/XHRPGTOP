@@ -47,10 +47,12 @@ function validPendingPath(value: unknown, kind: string) {
 
   const escapedKind = kind.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  return new RegExp(
-    `^pending/[0-9a-f-]{36}/${escapedKind}\\.(png|jpg|webp)$`,
-    "i"
-  ).test(value);
+  const pattern =
+    kind === "screenshot"
+      ? "^pending/[0-9a-f-]{36}/screenshot(?:-\\d{1,3})?\\.(png|jpg|webp)$"
+      : `^pending/[0-9a-f-]{36}/${escapedKind}\\.(png|jpg|webp)$`;
+
+  return new RegExp(pattern, "i").test(value);
 }
 
 function rawImageUrl(owner: string, repo: string, branch: string, path: string) {
@@ -297,7 +299,7 @@ export async function PUT(
     }
 
     if (
-      screenshotPaths.length > 100 ||
+      screenshotPaths.length > 5 ||
       !screenshotPaths.every(
         (path) =>
           validPendingPath(path, "screenshot")
