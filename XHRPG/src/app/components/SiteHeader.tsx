@@ -8,8 +8,6 @@ type SiteHeaderProps = {
   headerImage?: string | null;
   searchValue?: string;
   onSearchChange?: (value: string) => void;
-
-  // 新增：是否隐藏搜索框
   hideSearch?: boolean;
 };
 
@@ -83,6 +81,25 @@ export default function SiteHeader({
     }
 
     return navLinkStyle;
+  }
+
+  // 上传入口：未选中时保持红底白字，选中时使用白底红字
+  function getUploadStyle(): React.CSSProperties {
+    if (isActive("/upload")) {
+      return {
+        ...navLinkStyle,
+        color: "#e73550",
+        background: "#ffffff",
+        border: "1px solid #ffffff",
+      };
+    }
+
+    return {
+      ...navLinkStyle,
+      color: "#ffffff",
+      background: "#8b1e2d",
+      border: "1px solid #ffffff",
+    };
   }
 
   return (
@@ -264,18 +281,15 @@ export default function SiteHeader({
               大事记
             </Link>
 
-            <button
-              type="button"
-              disabled
-              title="上传功能暂未开放"
-              style={{
-                ...navLinkStyle,
-                opacity: 0.55,
-                cursor: "not-allowed",
-              }}
+            {/* 开放上传入口 */}
+            <Link
+              href="/upload"
+              aria-current={isActive("/upload") ? "page" : undefined}
+              style={getUploadStyle()}
+              title="投稿或编辑游戏"
             >
-              上传
-            </button>
+              上传游戏
+            </Link>
           </nav>
 
           {/* 搜索框与用户信息 */}
@@ -296,7 +310,7 @@ export default function SiteHeader({
               transform: "translateY(14px)",
             }}
           >
-            {/* 新增：hideSearch 为 true 时不显示搜索框 */}
+            {/* 搜索框 */}
             {!hideSearch && (
               <input
                 aria-label="搜索游戏"
