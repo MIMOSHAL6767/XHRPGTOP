@@ -83,7 +83,6 @@ function validGif(bytes: Buffer): boolean {
 
 function validMusic(bytes: Buffer, ext: string): boolean {
   if (ext === "mp3") {
-    // 支持带 ID3 标签的 MP3，以及没有 ID3 标签的 MPEG 音频帧。
     const hasId3 =
       bytes.length >= 3 &&
       bytes.toString("ascii", 0, 3) === "ID3";
@@ -121,8 +120,7 @@ export async function POST(req: Request) {
     const file = formData.get("file");
     const id = formData.get("id");
 
-    // 兼容两种前端字段名称：
-    // 旧接口使用 kind，部分组件使用 type。
+    // 兼容 kind 和旧组件使用的 type 字段。
     const rawKind = formData.get("kind");
     const rawType = formData.get("type");
     const suppliedKind = rawKind ?? rawType;
@@ -157,8 +155,7 @@ export async function POST(req: Request) {
 
     const isOwner = await isSiteOwner();
 
-    // 投稿用户只能上传与游戏有关的图片，
-    // 不允许上传或覆盖网站级资源。
+    // 普通投稿用户只能上传自己凭证对应游戏的图片。
     if (
       !isOwner &&
       !["cover", "background", "logo", "screenshot"].includes(kind)
@@ -208,9 +205,7 @@ export async function POST(req: Request) {
     }
 
     // 网站级资源不需要游戏 ID。
-    // 游戏图片的 ID：
-    // 站长从表单 id 字段获取；
-    // 投稿用户通过专属凭证从数据库查询。
+    // 游戏图片：站长使用 id，投稿用户使用 credential。
     const needsGameId =
       kind !== "homeHeader" &&
       kind !== "siteBackground" &&
@@ -221,7 +216,6 @@ export async function POST(req: Request) {
 
     if (needsGameId) {
       if (isOwner) {
-        // 站长保留原有上传方式：使用游戏 ID。
         if (
           typeof id !== "string" ||
           !/^[1-9]\d*$/.test(id)
@@ -247,7 +241,6 @@ export async function POST(req: Request) {
           );
         }
       } else {
-        // 投稿用户只需要提供专属凭证，不需要输入游戏 ID。
         const credential = formData.get("credential");
 
         if (
@@ -260,7 +253,7 @@ export async function POST(req: Request) {
           );
         }
 
-        // 由凭证定位游戏，不能信任客户端传入的游戏 ID。
+        // 通过凭证定位游戏，不信任客户端传来的游戏 ID。
         const game = await prisma.game.findFirst({
           where: {
             submissionCredential: credential,
@@ -296,7 +289,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 预览图编号校验。
+    // 校验游戏详情预览图编号。
     const rawSlot = formData.get("slot");
     let slot = 0;
 
@@ -368,23 +361,19 @@ export async function POST(req: Request) {
 
     const repoPath = `${directory}/${filename}`;
 
-    const apiUrl =
-      `https://api.github.com/repos/` +
-      `${encodeURIComponent(owner ?? "")}/` +
-      `${encodeURIComponent(repo ?? "")}/contents/` +
-      repoPath
-        .split("/")
-        .map(encodeURIComponent)
-        .join("/");
-
+    // 先读取并验证 GitHub 配置，再构造 API URL。
+    // 修复原代码 owner、repo 使用在声明之前的问题。
     const token =
-      process.env.GITHUB_IMAGE_TOKEN || process.env.GITHUB_TOKEN;
+      process.env.GITHUB_IMAGE_TOKEN ||
+      process.env.GITHUB_TOKEN;
 
     const owner =
-      process.env.GITHUB_IMAGE_OWNER || process.env.GITHUB_OWNER;
+      process.env.GITHUB_IMAGE_OWNER ||
+      process.env.GITHUB_OWNER;
 
     const repo =
-      process.env.GITHUB_IMAGE_REPO || process.env.GITHUB_REPO;
+      process.env.GITHUB_IMAGE_REPO ||
+      process.env.GITHUB_REPO;
 
     const branch =
       process.env.GITHUB_IMAGE_BRANCH ||
@@ -392,8 +381,20 @@ export async function POST(req: Request) {
       "main";
 
     if (!token || !owner || !repo) {
-      return errorResponse("GitHub 文件存储服务未配置", 500);
+      return errorResponse(
+        "GitHub 文件存储服务未配置",
+        500
+      );
     }
+
+    const apiUrl =
+      `https://api.github.com/repos/` +
+      `${encodeURIComponent(owner)}/` +
+      `${encodeURIComponent(repo)}/contents/` +
+      repoPath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
 
     const headers = {
       Accept: "application/vnd.github+json",
@@ -401,8 +402,7 @@ export async function POST(req: Request) {
       "X-GitHub-Api-Version": "2022-11-28",
     };
 
-    // 随机文件名避免覆盖已有 GIF、音乐或背景文件。
-    // 固定名称的游戏图片继续支持覆盖。
+    // 固定名称文件允许覆盖；随机命名文件通常不会覆盖已有文件。
     let sha: string | undefined;
 
     const existingResponse = await fetch(
@@ -415,7 +415,10 @@ export async function POST(req: Request) {
 
     if (existingResponse.ok) {
       const existing = await existingResponse.json();
-      sha = existing.sha;
+
+      if (typeof existing.sha === "string") {
+        sha = existing.sha;
+      }
     } else if (existingResponse.status !== 404) {
       console.error(
         "GitHub 文件查询失败:",
@@ -439,7 +442,9 @@ export async function POST(req: Request) {
       branch,
     };
 
-    if (sha) payload.sha = sha;
+    if (sha) {
+      payload.sha = sha;
+    }
 
     const uploadResponse = await fetch(apiUrl, {
       method: "PUT",
@@ -512,6 +517,9 @@ export async function POST(req: Request) {
       error instanceof Error ? error.message : "未知错误"
     );
 
-    return errorResponse("文件上传失败，请检查服务日志", 500);
+    return errorResponse(
+      "文件上传失败，请检查服务日志",
+      500
+    );
   }
 }
