@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
@@ -16,20 +17,33 @@ const ALLOWED_KINDS = [
 
 type ImageKind = (typeof ALLOWED_KINDS)[number];
 
+type DetectedImage = {
+  extension: "png" | "jpg" | "webp";
+  mime: "image/png" | "image/jpeg" | "image/webp";
+};
+
 function jsonError(message: string, status = 400) {
   return NextResponse.json(
-    { success: false, message },
+    {
+      success: false,
+      message,
+    },
     { status },
   );
 }
 
 function normalizeAnswer(value: unknown) {
-  return String(value ?? "").trim().replace(/\s+/g, "").toLowerCase();
+  return String(value ?? "")
+    .trim()
+    .replace(/\s+/g, "")
+    .toLowerCase();
 }
 
-function detectImage(
-  bytes: Buffer,
-): { extension: "png" | "jpg" | "webp"; mime: string } | null {
+/**
+ * 根据文件实际内容识别图片格式。
+ * 不单纯相信浏览器提交的 MIME 类型或文件扩展名。
+ */
+function detectImage(bytes: Buffer): DetectedImage | null {
   // PNG 文件签名
   if (
     bytes.length >= 8 &&
@@ -42,7 +56,10 @@ function detectImage(
     bytes[6] === 0x1a &&
     bytes[7] === 0x0a
   ) {
-    return { extension: "png", mime: "image/png" };
+    return {
+      extension: "png",
+      mime: "image/png",
+    };
   }
 
   // JPEG 文件签名
@@ -52,7 +69,10 @@ function detectImage(
     bytes[1] === 0xd8 &&
     bytes[2] === 0xff
   ) {
-    return { extension: "jpg", mime: "image/jpeg" };
+    return {
+      extension: "jpg",
+      mime: "image/jpeg",
+    };
   }
 
   // WebP 文件签名：RIFF....WEBP
@@ -61,19 +81,46 @@ function detectImage(
     bytes.toString("ascii", 0, 4) === "RIFF" &&
     bytes.toString("ascii", 8, 12) === "WEBP"
   ) {
-    return { extension: "webp", mime: "image/webp" };
+    return {
+      extension: "webp",
+      mime: "image/webp",
+    };
   }
 
   return null;
 }
 
+function isImageKind(value: string): value is ImageKind {
+  return ALLOWED_KINDS.some((kind) => kind === value);
+}
+
+/**
+ * 投稿图片临时上传接口
+ *
+ * 必需的 FormData 字段：
+ * - file：图片文件
+ * - kind：cover / background / logo / screenshot
+ * - questionId：验证题 ID
+ * - answer：验证题答案
+ *
+ * 成功返回：
+ * {
+ *   success: true,
+ *   uploadId: string,
+ *   kind: string,
+ *   path: string,
+ *   filename: string
+ * }
+ */
 export async function POST(request: NextRequest) {
   try {
+    // 1. 检查 GitHub 临时仓库配置
     const owner = process.env.GITHUB_OWNER;
     const repo = process.env.GITHUB_TEMP_REPO;
     const branch = process.env.GITHUB_TEMP_BRANCH || "main";
     const token =
-      process.env.GITHUB_TOKEN || process.env.GITHUB_IMAGE_TOKEN;
+      process.env.GITHUB_TOKEN ||
+      process.env.GITHUB_IMAGE_TOKEN;
 
     if (!owner || !repo || !token) {
       console.error("投稿临时仓库环境变量缺失");
@@ -84,6 +131,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 2. 解析上传表单
     let formData: FormData;
 
     try {
@@ -93,38 +141,53 @@ export async function POST(request: NextRequest) {
     }
 
     const file = formData.get("file");
-    const kindValue = String(formData.get("kind") || "cover");
-    const questionIdValue = String(formData.get("questionId") || "");
-    const answerValue = String(formData.get("answer") || "");
+    const kindValue = String(formData.get("kind") ?? "").trim();
+    const questionIdValue = String(
+      formData.get("questionId") ?? "",
+    ).trim();
+    const answerValue = String(
+      formData.get("answer") ?? "",
+    );
 
     if (!(file instanceof File)) {
       return jsonError("请选择要上传的图片");
     }
 
-    if (!ALLOWED_KINDS.includes(kindValue as ImageKind)) {
-      return jsonError("不支持的图片用途");
+    // 不允许遗漏 kind 后自动将文件当成封面。
+    if (!kindValue) {
+      return jsonError("缺少图片用途参数");
     }
 
-    const kind = kindValue as ImageKind;
+    if (!isImageKind(kindValue)) {
+      return jsonError(
+        "不支持的图片用途，请使用 cover、background、logo 或 screenshot",
+      );
+    }
 
+    const kind: ImageKind = kindValue;
+
+    // 3. 检查验证题参数
     if (!questionIdValue || !answerValue.trim()) {
       return jsonError("请先完成验证题");
     }
 
     const questionId = Number(questionIdValue);
 
-    if (!Number.isSafeInteger(questionId) || questionId <= 0) {
+    if (
+      !Number.isSafeInteger(questionId) ||
+      questionId <= 0
+    ) {
       return jsonError("验证题无效，请刷新后重试");
     }
 
+    // 4. 检查图片大小
     if (file.size <= 0 || file.size > MAX_FILE_SIZE) {
-      return jsonError("图片大小必须大于 0 且不能超过 5 MB");
+      return jsonError(
+        "图片大小必须大于 0 且不能超过 5 MB",
+      );
     }
 
-    if (kind === "logo" && file.type !== "image/png") {
-      return jsonError("标题图片必须使用 PNG 格式");
-    }
-
+    // 5. 验证题答案
     const question = await prisma.verifyQuestion.findFirst({
       where: {
         id: questionId,
@@ -138,23 +201,45 @@ export async function POST(request: NextRequest) {
 
     if (
       !question ||
-      normalizeAnswer(question.answer) !== normalizeAnswer(answerValue)
+      normalizeAnswer(question.answer) !==
+        normalizeAnswer(answerValue)
     ) {
-      return jsonError("验证答案错误，请重新获取题目", 403);
+      return jsonError(
+        "验证答案错误，请重新获取题目",
+        403,
+      );
     }
 
+    // 6. 读取图片实际内容
     const bytes = Buffer.from(await file.arrayBuffer());
+
+    // 同时检查实际读取的字节数，避免只依赖表单中的文件大小。
+    if (
+      bytes.length <= 0 ||
+      bytes.length > MAX_FILE_SIZE
+    ) {
+      return jsonError(
+        "图片大小必须大于 0 且不能超过 5 MB",
+      );
+    }
+
     const detected = detectImage(bytes);
 
     if (!detected) {
-      return jsonError("文件内容不是有效的 PNG、JPG 或 WebP 图片");
+      return jsonError(
+        "文件内容不是有效的 PNG、JPG 或 WebP 图片",
+      );
     }
 
-    // 避免仅凭浏览器传入的 MIME 类型判断文件格式。
-    if (kind === "logo" && detected.extension !== "png") {
-      return jsonError("标题图片必须是 PNG 文件");
+    // 7. 标题图片只能使用真正的 PNG 文件
+    if (
+      kind === "logo" &&
+      detected.extension !== "png"
+    ) {
+      return jsonError("标题图片必须使用 PNG 格式");
     }
 
+    // 8. 为每次上传生成独立目录，避免同类图片相互覆盖。
     const uploadId = randomUUID();
     const filename = `${kind}.${detected.extension}`;
     const path = `pending/${uploadId}/${filename}`;
@@ -164,24 +249,30 @@ export async function POST(request: NextRequest) {
       .map((segment) => encodeURIComponent(segment))
       .join("/");
 
-    const githubResponse = await fetch(
-      `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: `Upload pending submission image: ${uploadId}/${filename}`,
-          content: bytes.toString("base64"),
-          branch,
-        }),
-        cache: "no-store",
+    const githubUrl =
+      `https://api.github.com/repos/` +
+      `${encodeURIComponent(owner)}/` +
+      `${encodeURIComponent(repo)}/contents/` +
+      encodedPath;
+
+    // 9. 上传到 GitHub 临时仓库，而不是正式图片仓库
+    const githubResponse = await fetch(githubUrl, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        message:
+          `Upload pending submission image: ` +
+          `${uploadId}/${filename}`,
+        content: bytes.toString("base64"),
+        branch,
+      }),
+      cache: "no-store",
+    });
 
     if (!githubResponse.ok) {
       const errorText = await githubResponse.text();
@@ -189,11 +280,16 @@ export async function POST(request: NextRequest) {
       console.error("投稿图片上传 GitHub 失败:", {
         status: githubResponse.status,
         response: errorText.slice(0, 1000),
+        kind,
       });
 
-      return jsonError("图片上传失败，请稍后重试", 502);
+      return jsonError(
+        "图片上传失败，请稍后重试",
+        502,
+      );
     }
 
+    // 10. 返回临时图片路径，由投稿接口统一保存。
     return NextResponse.json({
       success: true,
       uploadId,
@@ -204,6 +300,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("投稿图片上传接口异常:", error);
 
-    return jsonError("图片上传服务发生错误，请稍后重试", 500);
+    return jsonError(
+      "图片上传服务发生错误，请稍后重试",
+      500,
+    );
   }
 }
