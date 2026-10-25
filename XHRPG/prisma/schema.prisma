@@ -166,6 +166,7 @@ model Game {
   // 投稿凭证：普通投稿者凭此编辑自己的游戏
   submissionCredential String? @unique
   submissionCoverPath  String?
+  submissionAssets Json?
 }
 
 // =====================
