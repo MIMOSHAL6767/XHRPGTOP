@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -64,6 +63,7 @@ const INITIAL_FORM: GameForm = {
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_SCREENSHOTS = 5;
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 const inputStyle: React.CSSProperties = {
@@ -346,6 +346,7 @@ export default function PublicNewGamePage() {
     );
   }
 
+  // 详情预览图最多 5 张，同时限制单张图片的格式和大小。
   function addScreenshots(
     event: React.ChangeEvent<HTMLInputElement>,
   ) {
@@ -355,13 +356,23 @@ export default function PublicNewGamePage() {
     if (!files.length) return;
 
     try {
-      if (screenshots.length + files.length > 100) {
-        throw new Error("详情预览图最多 100 张");
+      const remaining = MAX_SCREENSHOTS - screenshots.length;
+
+      if (remaining <= 0) {
+        throw new Error(
+          `详情预览图最多只能添加 ${MAX_SCREENSHOTS} 张。`,
+        );
+      }
+
+      if (files.length > remaining) {
+        throw new Error(
+          `详情预览图最多 ${MAX_SCREENSHOTS} 张，你还可以添加 ${remaining} 张。`,
+        );
       }
 
       files.forEach(validateImage);
 
-      const newItems = files.map((file) => ({
+      const newItems: ScreenshotItem[] = files.map((file) => ({
         file,
         preview: createPreview(file),
       }));
@@ -377,6 +388,7 @@ export default function PublicNewGamePage() {
           : "预览图选择失败",
       );
     } finally {
+      // 允许用户再次选择相同的文件。
       input.value = "";
     }
   }
@@ -453,6 +465,11 @@ export default function PublicNewGamePage() {
 
     if (titleMode === "image" && !logoFile) {
       alert("标题模式选择了 PNG 图片，请上传标题图片");
+      return;
+    }
+
+    if (screenshots.length > MAX_SCREENSHOTS) {
+      alert(`详情预览图最多只能上传 ${MAX_SCREENSHOTS} 张。`);
       return;
     }
 
@@ -1091,7 +1108,18 @@ export default function PublicNewGamePage() {
             <h2>详情页预览图</h2>
 
             <p>
-              可以一次选择多张图片，按列表顺序展示，最多 100 张。
+              可以一次选择多张图片，按列表顺序展示，最多{" "}
+              {MAX_SCREENSHOTS} 张。支持 PNG、JPG、WebP，单张图片最大 5 MB。
+            </p>
+
+            <p
+              style={{
+                fontSize: 14,
+                color: "#e7b76a",
+                marginTop: 8,
+              }}
+            >
+              已添加 {screenshots.length}/{MAX_SCREENSHOTS} 张
             </p>
 
             <label style={labelStyle}>
@@ -1101,10 +1129,19 @@ export default function PublicNewGamePage() {
                 accept="image/png,image/jpeg,image/webp"
                 multiple
                 onChange={addScreenshots}
-                disabled={loading || screenshots.length >= 100}
+                disabled={
+                  loading ||
+                  screenshots.length >= MAX_SCREENSHOTS
+                }
                 style={{ ...inputStyle, padding: 8 }}
               />
             </label>
+
+            {screenshots.length >= MAX_SCREENSHOTS && (
+              <p style={{ fontSize: 13, opacity: 0.75 }}>
+                已达到预览图数量上限。如需更换图片，请先删除已有图片。
+              </p>
+            )}
 
             {screenshots.length > 0 && (
               <div
