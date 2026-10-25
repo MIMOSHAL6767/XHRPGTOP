@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -14,16 +13,25 @@ export default function UploadPage() {
 
     async function loadHeader() {
       try {
-        const response = await fetch("/", {
+        const response = await fetch("/api/upload", {
           cache: "no-store",
         });
 
-        if (!response.ok || cancelled) return;
+        if (!response.ok) {
+          throw new Error(`读取首页头图失败，HTTP ${response.status}`);
+        }
 
-        // 头图由全站 SiteHeader 的既有设置负责显示。
-        // 这里不重复请求数据库，也不修改后台配置。
+        const data = await response.json();
+
+        if (cancelled) return;
+
+        if (data.success && typeof data.imageUrl === "string") {
+          setHeaderImage(data.imageUrl);
+        } else {
+          setHeaderImage(null);
+        }
       } catch (error) {
-        console.error("加载上传页面失败：", error);
+        console.error("加载首页头图失败：", error);
       }
     }
 
@@ -89,6 +97,7 @@ export default function UploadPage() {
         >
           <Link
             href="/upload/new"
+            className="upload-entry-card"
             style={{
               minHeight: 260,
               padding: "clamp(20px, 4vw, 40px)",
@@ -104,14 +113,6 @@ export default function UploadPage() {
               border: "1px solid #8b1e2d",
               borderRadius: 0,
               transition: "background 160ms ease, border-color 160ms ease",
-            }}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.background = "#261016";
-              event.currentTarget.style.borderColor = "#e5484d";
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.background = "#160c0f";
-              event.currentTarget.style.borderColor = "#8b1e2d";
             }}
           >
             <span
@@ -152,6 +153,7 @@ export default function UploadPage() {
 
           <Link
             href="/upload/edit"
+            className="upload-entry-card"
             style={{
               minHeight: 260,
               padding: "clamp(20px, 4vw, 40px)",
@@ -167,14 +169,6 @@ export default function UploadPage() {
               border: "1px solid #8b1e2d",
               borderRadius: 0,
               transition: "background 160ms ease, border-color 160ms ease",
-            }}
-            onMouseEnter={(event) => {
-              event.currentTarget.style.background = "#261016";
-              event.currentTarget.style.borderColor = "#e5484d";
-            }}
-            onMouseLeave={(event) => {
-              event.currentTarget.style.background = "#160c0f";
-              event.currentTarget.style.borderColor = "#8b1e2d";
             }}
           >
             <span
@@ -217,6 +211,11 @@ export default function UploadPage() {
       <FloatingWidget />
 
       <style jsx>{`
+        .upload-entry-card:hover {
+          background: #261016 !important;
+          border-color: #e5484d !important;
+        }
+
         @media (max-width: 640px) {
           .upload-entry-grid {
             grid-template-columns: minmax(0, 1fr) !important;
