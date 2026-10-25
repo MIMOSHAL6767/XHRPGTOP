@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -149,6 +150,19 @@ function normalizeText(value: string) {
   return value.trim();
 }
 
+function getImageKindLabel(kind: ImageKind) {
+  switch (kind) {
+    case "cover":
+      return "游戏封面";
+    case "background":
+      return "详情背景";
+    case "logo":
+      return "标题图片";
+    case "screenshot":
+      return "详情预览图";
+  }
+}
+
 export default function PublicNewGamePage() {
   const [form, setForm] = useState<GameForm>(INITIAL_FORM);
 
@@ -289,7 +303,6 @@ export default function PublicNewGamePage() {
       alert(
         error instanceof Error ? error.message : "图片格式错误",
       );
-
       input.value = "";
     }
   }
@@ -443,11 +456,8 @@ export default function PublicNewGamePage() {
   }
 
   /**
-   * 上传一张图片到临时仓库。
-   * 这里绝不调用会直接写入正式图片仓库的 /api/upload。
-   *
-   * 注意：submission-image API 必须接受 file、kind、
-   * questionId、answer，并返回 { success: true, path }。
+   * 将图片上传到临时仓库。
+   * 不使用直接写入正式仓库的 /api/upload。
    */
   async function uploadTemporaryImage(
     file: File,
@@ -481,8 +491,12 @@ export default function PublicNewGamePage() {
 
     const path = data.path.trim();
 
-    // 临时图片路径必须与后端的 pending 路径校验规则一致。
-    if (!/^pending\/[0-9a-f-]{36}\/(?:cover|background|logo|screenshot)(?:-\d{1,3})?\.(?:png|jpg|webp)$/i.test(path)) {
+    // 要求临时路径格式为 pending/UUID/文件名。
+    if (
+      !/^pending\/[0-9a-f-]{36}\/(?:cover|background|logo|screenshot)(?:-\d{1,3})?\.(?:png|jpg|webp)$/i.test(
+        path,
+      )
+    ) {
       throw new Error(
         `${getImageKindLabel(kind)}返回的临时路径格式不正确，请检查上传 API`,
       );
@@ -490,15 +504,18 @@ export default function PublicNewGamePage() {
 
     const filename = path.split("/").pop() || "";
 
-    if (kind === "cover" && !/^cover\.(png|jpg|webp)$/i.test(filename)) {
-      throw new Error("封面上传接口返回了错误的图片类型路径");
+    if (
+      kind === "cover" &&
+      !/^cover\.(png|jpg|webp)$/i.test(filename)
+    ) {
+      throw new Error("封面上传接口返回了错误的图片路径");
     }
 
     if (
       kind === "background" &&
       !/^background\.(png|jpg|webp)$/i.test(filename)
     ) {
-      throw new Error("详情背景上传接口返回了错误的图片类型路径");
+      throw new Error("详情背景上传接口返回了错误的图片路径");
     }
 
     if (kind === "logo" && !/^logo\.png$/i.test(filename)) {
@@ -507,25 +524,14 @@ export default function PublicNewGamePage() {
 
     if (
       kind === "screenshot" &&
-      !/^screenshot(?:-\d{1,3})?\.(png|jpg|webp)$/i.test(filename)
+      !/^screenshot(?:-\d{1,3})?\.(png|jpg|webp)$/i.test(
+        filename,
+      )
     ) {
-      throw new Error("预览图上传接口返回了错误的图片类型路径");
+      throw new Error("预览图上传接口返回了错误的图片路径");
     }
 
     return path;
-  }
-
-  function getImageKindLabel(kind: ImageKind) {
-    switch (kind) {
-      case "cover":
-        return "游戏封面";
-      case "background":
-        return "详情背景";
-      case "logo":
-        return "标题图片";
-      case "screenshot":
-        return "详情预览图";
-    }
   }
 
   async function submit(
@@ -582,7 +588,7 @@ export default function PublicNewGamePage() {
     setLoading(true);
 
     try {
-      // 1. 封面必须上传成功。
+      // 1. 上传封面
       setProgress("正在上传游戏封面到临时仓库……");
 
       const coverPath = await uploadTemporaryImage(
@@ -590,7 +596,7 @@ export default function PublicNewGamePage() {
         "cover",
       );
 
-      // 2. 详情背景：有选择才上传。
+      // 2. 上传详情背景
       let backgroundPath: string | null = null;
 
       if (backgroundFile) {
@@ -602,7 +608,7 @@ export default function PublicNewGamePage() {
         );
       }
 
-      // 3. 标题 PNG：只有选择图片标题模式时才上传。
+      // 3. 上传标题 PNG
       let logoPath: string | null = null;
 
       if (titleMode === "image" && logoFile) {
@@ -611,7 +617,7 @@ export default function PublicNewGamePage() {
         logoPath = await uploadTemporaryImage(logoFile, "logo");
       }
 
-      // 4. 预览图逐张上传，保留用户调整后的顺序。
+      // 4. 逐张上传预览图，保持页面中设置的顺序
       const screenshotPaths: string[] = [];
 
       for (let i = 0; i < screenshots.length; i += 1) {
@@ -627,7 +633,7 @@ export default function PublicNewGamePage() {
         screenshotPaths.push(path);
       }
 
-      // 5. 将真实临时路径提交给后端，而不是只传数量或布尔值。
+      // 5. 图片全部上传成功后，提交游戏资料
       setProgress("图片上传完成，正在提交游戏资料……");
 
       const payload = {
@@ -641,10 +647,8 @@ export default function PublicNewGamePage() {
         pan123: normalizeText(form.pan123),
         gameStatus: form.gameStatus,
 
-        // 兼容 submit-game 当前封面字段。
         coverPath,
 
-        // 详情图片路径必须放在 assets 对象内。
         assets: {
           cover: coverPath,
           background: backgroundPath,
