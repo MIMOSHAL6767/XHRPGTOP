@@ -18,6 +18,11 @@ const GAME_STATUSES = [
 
 const OPTIONAL_DOWNLOAD_STATUSES = ["弃坑", "断更", "预告"];
 
+const MAX_TAGS = 30;
+const MAX_HISTORY_ITEMS = 100;
+const MAX_SCREENSHOTS = 100;
+const MAX_TEXT_LENGTH = 5000;
+
 type AssetInput = {
   cover?: unknown;
   background?: unknown;
@@ -25,15 +30,31 @@ type AssetInput = {
   screenshots?: unknown;
 };
 
+type HistoryInput = {
+  version?: unknown;
+  date?: unknown;
+  lanzou?: unknown;
+  pan123?: unknown;
+};
+
+type SubmissionBody = Record<string, unknown>;
+
 function jsonError(message: string, status = 400) {
   return NextResponse.json(
-    { success: false, message },
+    {
+      success: false,
+      message,
+    },
     { status },
   );
 }
 
 function cleanText(value: unknown, maxLength: number) {
-  return String(value ?? "").trim().slice(0, maxLength);
+  if (typeof value !== "string" && typeof value !== "number") {
+    return "";
+  }
+
+  return String(value).trim().slice(0, maxLength);
 }
 
 function normalizeAnswer(value: unknown) {
@@ -48,16 +69,29 @@ function isValidHttpUrl(value: string) {
 
   try {
     const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
+
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      Boolean(url.hostname)
+    );
   } catch {
     return false;
   }
 }
 
+/**
+ * 临时图片路径格式：
+ * pending/<UUID>/cover.png
+ * pending/<UUID>/background.jpg
+ * pending/<UUID>/logo.png
+ * pending/<UUID>/screenshot-1.webp
+ *
+ * 截图文件名允许带序号，避免多张截图互相覆盖。
+ */
 function isPendingImagePath(value: unknown): value is string {
   if (typeof value !== "string") return false;
 
-  return /^pending\/[0-9a-f-]{36}\/(cover|background|logo|screenshot)\.(png|jpg|webp)$/i.test(
+  return /^pending\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(?:cover|background|logo|screenshot(?:-\d{1,3})?)\.(?:png|jpg|webp)$/i.test(
     value,
   );
 }
@@ -72,6 +106,27 @@ function cleanAssetPath(value: unknown): string | null {
   return path;
 }
 
+function isScreenshotPath(path: string) {
+  return /\/screenshot(?:-\d{1,3})?\.(?:png|jpg|webp)$/i.test(
+    path,
+  );
+}
+
+function isPngPath(path: string) {
+  return /\.png$/i.test(path);
+}
+
+/**
+ * 查询 GitHub 临时图片仓库中的文件是否存在。
+ *
+ * 需要配置：
+ * GITHUB_OWNER
+ * GITHUB_TEMP_REPO
+ * GITHUB_TOKEN 或 GITHUB_IMAGE_TOKEN
+ *
+ * 可选：
+ * GITHUB_TEMP_BRANCH
+ */
 async function checkTempImageExists(path: string) {
   const owner = process.env.GITHUB_OWNER;
   const repo = process.env.GITHUB_TEMP_REPO;
@@ -98,52 +153,139 @@ async function checkTempImageExists(path: string) {
         "X-GitHub-Api-Version": "2022-11-28",
       },
       cache: "no-store",
+      signal: AbortSignal.timeout(10000),
     },
   );
 
-  return response.ok;
+  if (response.status === 404) {
+    return false;
+  }
+
+  if (!response.ok) {
+    console.error(
+      "检查临时图片失败:",
+      response.status,
+      await response.text().catch(() => ""),
+    );
+
+    throw new Error("无法验证临时图片，请稍后重试");
+  }
+
+  const result: unknown = await response.json().catch(() => null);
+
+  if (
+    !result ||
+    typeof result !== "object" ||
+    Array.isArray(result)
+  ) {
+    return false;
+  }
+
+  const file = result as {
+    type?: unknown;
+    path?: unknown;
+  };
+
+  return file.type === "file" && file.path === path;
+}
+
+function parseAssets(value: unknown): AssetInput {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  ) {
+    return {};
+  }
+
+  return value as AssetInput;
+}
+
+function parseTags(value: unknown) {
+  if (!Array.isArray(value)) return [];
+
+  const tags = value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim().slice(0, 40))
+    .filter(Boolean);
+
+  return Array.from(new Set(tags)).slice(0, MAX_TAGS);
+}
+
+function parseHistory(value: unknown): HistoryInput[] | null {
+  if (value === undefined || value === null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    return null;
+  }
+
+  if (value.length > MAX_HISTORY_ITEMS) {
+    return null;
+  }
+
+  return value.filter(
+    (item): item is HistoryInput =>
+      Boolean(item) &&
+      typeof item === "object" &&
+      !Array.isArray(item),
+  );
+}
+
+function getCurrentDate() {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: unknown = await request.json().catch(() => null);
 
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
+    if (
+      !body ||
+      typeof body !== "object" ||
+      Array.isArray(body)
+    ) {
       return jsonError("提交的数据格式不正确");
     }
 
-    const data = body as Record<string, unknown>;
+    const data = body as SubmissionBody;
 
+    // 基础资料
     const name = cleanText(data.name, 120);
     const en = cleanText(data.en, 120);
     const author = cleanText(data.author, 120);
     const category = cleanText(data.category, 40);
     const version = cleanText(data.version, 80);
-    const description = cleanText(data.description, 5000);
+    const description = cleanText(
+      data.description,
+      MAX_TEXT_LENGTH,
+    );
     const lanzou = cleanText(data.lanzou, 1000);
     const pan123 = cleanText(data.pan123, 1000);
-    const gameStatus = cleanText(data.gameStatus || "更新中", 30);
+    const gameStatus = cleanText(
+      data.gameStatus || "更新中",
+      30,
+    );
 
+    // 人机验证资料
     const questionId = Number(data.questionId);
     const answer = cleanText(data.answer, 200);
 
-    const incomingAssets: AssetInput =
-      data.assets &&
-      typeof data.assets === "object" &&
-      !Array.isArray(data.assets)
-        ? (data.assets as AssetInput)
-        : {};
+    // 兼容现有前端 coverPath 和扩展后的 assets 对象。
+    const incomingAssets = parseAssets(data.assets);
 
     const coverPath = cleanAssetPath(
       data.coverPath ?? incomingAssets.cover,
     );
 
-    // 基础信息校验。
+    // 基础信息校验
     if (!name || !author || !version || !category) {
-      return jsonError("请填写游戏名称、作者、版本和游戏分类");
+      return jsonError(
+        "请填写游戏名称、作者、版本和游戏分类",
+      );
     }
 
-    // 分类由投稿者自行填写，不再限制为固定分类。
     if (category.length > 40) {
       return jsonError("游戏分类不能超过 40 个字符");
     }
@@ -157,7 +299,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (!coverPath) {
-      return jsonError("封面路径无效，请重新上传封面");
+      return jsonError(
+        "封面路径无效，请重新上传封面",
+      );
     }
 
     if (
@@ -165,15 +309,23 @@ export async function POST(request: NextRequest) {
       !lanzou &&
       !pan123
     ) {
-      return jsonError("当前作品状态至少需要填写一个下载链接");
+      return jsonError(
+        "当前作品状态至少需要填写一个下载链接",
+      );
     }
 
     if (!isValidHttpUrl(lanzou) || !isValidHttpUrl(pan123)) {
-      return jsonError("下载链接必须是有效的 HTTP 或 HTTPS 地址");
+      return jsonError(
+        "下载链接必须是有效的 HTTP 或 HTTPS 地址",
+      );
     }
 
-    // 人机验证。
-    if (!questionId || !Number.isSafeInteger(questionId) || !answer) {
+    // 人机验证
+    if (
+      !Number.isSafeInteger(questionId) ||
+      questionId <= 0 ||
+      !answer
+    ) {
       return jsonError("请完成验证题");
     }
 
@@ -190,25 +342,83 @@ export async function POST(request: NextRequest) {
 
     if (
       !question ||
-      normalizeAnswer(question.answer) !== normalizeAnswer(answer)
+      normalizeAnswer(question.answer) !==
+        normalizeAnswer(answer)
     ) {
-      return jsonError("验证答案错误，请重新获取题目", 403);
+      return jsonError(
+        "验证答案错误，请重新获取题目",
+        403,
+      );
     }
 
-    // 解析投稿图片路径。
-    const backgroundPath = incomingAssets.background
-      ? cleanAssetPath(incomingAssets.background)
-      : null;
+    // 解析详情背景
+    let backgroundPath: string | null = null;
 
-    const logoPath = incomingAssets.logo
-      ? cleanAssetPath(incomingAssets.logo)
-      : null;
+    if (
+      incomingAssets.background !== undefined &&
+      incomingAssets.background !== null &&
+      incomingAssets.background !== ""
+    ) {
+      backgroundPath = cleanAssetPath(
+        incomingAssets.background,
+      );
 
-    const screenshotsRaw = Array.isArray(incomingAssets.screenshots)
-      ? incomingAssets.screenshots
-      : [];
+      if (
+        !backgroundPath ||
+        !/\/background\.(?:png|jpg|webp)$/i.test(
+          backgroundPath,
+        )
+      ) {
+        return jsonError(
+          "详情背景路径无效，请重新上传",
+        );
+      }
+    }
 
-    if (screenshotsRaw.length > 100) {
+    // 解析标题图片
+    let logoPath: string | null = null;
+
+    if (
+      incomingAssets.logo !== undefined &&
+      incomingAssets.logo !== null &&
+      incomingAssets.logo !== ""
+    ) {
+      logoPath = cleanAssetPath(incomingAssets.logo);
+
+      if (
+        !logoPath ||
+        !/\/logo\.png$/i.test(logoPath)
+      ) {
+        return jsonError(
+          "标题图片路径无效，必须使用 PNG 格式",
+        );
+      }
+    }
+
+    // 标题模式
+    const requestedTitleMode =
+      data.titleMode === "image" ? "image" : "text";
+
+    if (requestedTitleMode === "image" && !logoPath) {
+      return jsonError(
+        "标题模式选择了图片，请先上传标题 PNG 图片",
+      );
+    }
+
+    const titleMode = requestedTitleMode;
+
+    // 解析详情截图
+    const screenshotsRaw =
+      incomingAssets.screenshots === undefined ||
+      incomingAssets.screenshots === null
+        ? []
+        : incomingAssets.screenshots;
+
+    if (!Array.isArray(screenshotsRaw)) {
+      return jsonError("详情预览图数据格式不正确");
+    }
+
+    if (screenshotsRaw.length > MAX_SCREENSHOTS) {
       return jsonError("详情预览图最多 100 张");
     }
 
@@ -217,26 +427,22 @@ export async function POST(request: NextRequest) {
     for (const item of screenshotsRaw) {
       const path = cleanAssetPath(item);
 
-      if (!path || !/\/screenshot\.(png|jpg|webp)$/i.test(path)) {
-        return jsonError("详情预览图路径无效，请重新上传");
+      if (!path || !isScreenshotPath(path)) {
+        return jsonError(
+          "详情预览图路径无效，请重新上传",
+        );
+      }
+
+      if (screenshotPaths.includes(path)) {
+        return jsonError(
+          "详情预览图中存在重复路径，请重新检查",
+        );
       }
 
       screenshotPaths.push(path);
     }
 
-    if (incomingAssets.background && !backgroundPath) {
-      return jsonError("详情背景路径无效，请重新上传");
-    }
-
-    if (incomingAssets.logo && !logoPath) {
-      return jsonError("标题图片路径无效，请重新上传");
-    }
-
-    if (logoPath && !/\.png$/i.test(logoPath)) {
-      return jsonError("标题图片必须是 PNG 格式");
-    }
-
-    // 检查临时仓库中的图片是否真实存在。
+    // 校验所有待审核图片路径。
     const pathsToCheck = [
       coverPath,
       ...(backgroundPath ? [backgroundPath] : []),
@@ -244,7 +450,10 @@ export async function POST(request: NextRequest) {
       ...screenshotPaths,
     ];
 
-    for (const path of pathsToCheck) {
+    // 避免相同路径被重复请求检查。
+    const uniquePaths = Array.from(new Set(pathsToCheck));
+
+    for (const path of uniquePaths) {
       const exists = await checkTempImageExists(path);
 
       if (!exists) {
@@ -255,49 +464,37 @@ export async function POST(request: NextRequest) {
     }
 
     // 标签去重，最多 30 个。
-    const tagsRaw = Array.isArray(data.tags) ? data.tags : [];
+    const tags = parseTags(data.tags);
 
-    const tags = Array.from(
-      new Set(
-        tagsRaw
-          .filter(
-            (item): item is string => typeof item === "string",
-          )
-          .map((item) => item.trim().slice(0, 40))
-          .filter(Boolean),
-      ),
-    ).slice(0, 30);
-
-    // 标题显示模式。
-    const titleMode =
-      data.titleMode === "image" && logoPath ? "image" : "text";
-
-    // 详情背景设置。
+    // 详情背景透明度：统一存储为 0–100 的整数。
     const opacityValue = Number(
       data.detailBackgroundOpacity ?? 35,
     );
 
-    const detailBackgroundOpacity = Number.isFinite(opacityValue)
-      ? Math.min(100, Math.max(0, Math.round(opacityValue)))
+    const detailBackgroundOpacity = Number.isFinite(
+      opacityValue,
+    )
+      ? Math.min(
+          100,
+          Math.max(0, Math.round(opacityValue)),
+        )
       : 35;
 
     const detailBackgroundFit =
-      data.detailBackgroundFit === "contain" ? "contain" : "cover";
+      data.detailBackgroundFit === "contain"
+        ? "contain"
+        : "cover";
 
-    // 版本历史。
-    const historyRaw = Array.isArray(data.history) ? data.history : [];
+    // 解析版本历史
+    const historyRaw = parseHistory(data.history);
 
-    if (historyRaw.length > 100) {
-      return jsonError("版本历史最多 100 条");
+    if (historyRaw === null) {
+      return jsonError(
+        "版本历史格式错误，最多允许 100 条",
+      );
     }
 
     const history = historyRaw
-      .filter(
-        (item): item is Record<string, unknown> =>
-          Boolean(item) &&
-          typeof item === "object" &&
-          !Array.isArray(item),
-      )
       .map((item) => ({
         version: cleanText(item.version, 80),
         date: cleanText(item.date, 40),
@@ -323,8 +520,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 将临时仓库路径保存到投稿记录。
-    // 审核通过时，需要由站长审核逻辑同步到正式图片仓库。
+    // 将临时图片路径保存在 submissionAssets。
+    // 这些路径不能直接作为正式发布游戏的图片 URL。
     const submissionAssets: Prisma.InputJsonObject = {
       cover: coverPath,
       background: backgroundPath,
@@ -343,11 +540,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
-      return jsonError("这张封面已经用于一份投稿，请重新上传封面");
+      return jsonError(
+        "这张封面已经用于一份投稿，请重新上传封面",
+      );
     }
 
+    // 生成 48 位十六进制专属编辑凭证。
     const credential = randomBytes(24).toString("hex");
-    const currentDate = new Date().toISOString().slice(0, 10);
+    const currentDate = getCurrentDate();
 
     const game = await prisma.game.create({
       data: {
@@ -357,15 +557,21 @@ export async function POST(request: NextRequest) {
         category,
         version,
         description,
+
+        // 审核通过并同步正式封面前，不直接公开临时路径。
         cover: "",
+
         lanzou,
         pan123,
+
         downloads: 0,
         date: currentDate,
         updateDate: currentDate,
+
         history: history as Prisma.InputJsonValue,
         status: "审核中",
         gameStatus,
+
         symbol: "",
         tags: tags as Prisma.InputJsonValue,
 
@@ -376,8 +582,7 @@ export async function POST(request: NextRequest) {
         detailBackgroundOpacity,
         detailBackgroundFit,
 
-        // 这里保存的是临时仓库路径，不是正式图片 URL。
-        // 不应将临时路径直接作为已发布游戏的 screenshots 使用。
+        // 正式截图字段暂时不存放临时仓库路径。
         screenshots: [] as Prisma.InputJsonArray,
 
         submissionCredential: credential,
@@ -402,6 +607,26 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("提交游戏投稿失败:", error);
 
-    return jsonError("投稿提交失败，请检查资料后重试", 500);
+    if (
+      error instanceof Error &&
+      error.message === "投稿临时仓库环境变量缺失"
+    ) {
+      return jsonError(
+        "投稿图片仓库尚未正确配置，请联系站长",
+        500,
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "无法验证临时图片，请稍后重试"
+    ) {
+      return jsonError(error.message, 502);
+    }
+
+    return jsonError(
+      "投稿提交失败，请检查资料后重试",
+      500,
+    );
   }
 }
