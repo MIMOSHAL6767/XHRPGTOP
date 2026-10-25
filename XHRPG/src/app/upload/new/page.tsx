@@ -1,12 +1,38 @@
+
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-type Question = { id: number; question: string };
-type GameStatus = "更新中" | "完结" | "Demo" | "弃坑" | "断更" | "预告";
-type HistoryItem = { version: string; date: string; lanzou: string; pan123: string };
-type ScreenshotItem = { file: File; preview: string };
+type Question = {
+  id: number;
+  question: string;
+};
+
+type GameStatus =
+  | "更新中"
+  | "完结"
+  | "Demo"
+  | "弃坑"
+  | "断更"
+  | "预告";
+
+type HistoryItem = {
+  version: string;
+  date: string;
+  lanzou: string;
+  pan123: string;
+};
+
+type ScreenshotItem = {
+  file: File;
+  preview: string;
+};
 
 type GameForm = {
   name: string;
@@ -20,6 +46,9 @@ type GameForm = {
   gameStatus: GameStatus;
   tags: string[];
 };
+
+type ImageSetter = (file: File | null) => void;
+type PreviewSetter = (preview: string) => void;
 
 const INITIAL_FORM: GameForm = {
   name: "",
@@ -100,23 +129,41 @@ function today() {
   )}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
+function createHistoryItem(): HistoryItem {
+  return {
+    version: "",
+    date: today(),
+    lanzou: "",
+    pan123: "",
+  };
+}
+
+function normalizeText(value: string) {
+  return value.trim();
+}
+
 export default function PublicNewGamePage() {
   const [form, setForm] = useState<GameForm>(INITIAL_FORM);
 
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState("");
 
-  const [backgroundFile, setBackgroundFile] = useState<File | null>(null);
+  const [backgroundFile, setBackgroundFile] =
+    useState<File | null>(null);
   const [backgroundPreview, setBackgroundPreview] = useState("");
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState("");
 
-  const [titleMode, setTitleMode] = useState<"text" | "image">("text");
-  const [backgroundOpacity, setBackgroundOpacity] = useState(35);
-  const [backgroundFit, setBackgroundFit] = useState<"cover" | "contain">(
-    "cover",
+  const [titleMode, setTitleMode] = useState<"text" | "image">(
+    "text",
   );
+
+  const [backgroundOpacity, setBackgroundOpacity] = useState(35);
+
+  const [backgroundFit, setBackgroundFit] = useState<
+    "cover" | "contain"
+  >("cover");
 
   const [screenshots, setScreenshots] = useState<ScreenshotItem[]>([]);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -131,20 +178,59 @@ export default function PublicNewGamePage() {
   const [credential, setCredential] = useState("");
   const [createdGameName, setCreatedGameName] = useState("");
 
+  // 统一追踪当前页面创建的 blob 图片地址，防止预览图长期占用内存。
+  const previewUrlsRef = useRef<Set<string>>(new Set());
+
+  const createPreview = useCallback((file: File) => {
+    const url = URL.createObjectURL(file);
+    previewUrlsRef.current.add(url);
+    return url;
+  }, []);
+
+  const releasePreview = useCallback((url: string) => {
+    if (!url.startsWith("blob:")) return;
+    if (!previewUrlsRef.current.has(url)) return;
+
+    URL.revokeObjectURL(url);
+    previewUrlsRef.current.delete(url);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      previewUrlsRef.current.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+
+      previewUrlsRef.current.clear();
+    };
+  }, []);
+
   const loadQuestion = useCallback(async () => {
     setQuestionLoading(true);
 
     try {
-      const response = await fetch("/api/upload/verification-question", {
-        cache: "no-store",
-      });
+      const response = await fetch(
+        "/api/upload/verification-question",
+        {
+          cache: "no-store",
+        },
+      );
 
       const data = await readResponse(response);
+
+      if (
+        !data.question ||
+        typeof data.question.id !== "number" ||
+        typeof data.question.question !== "string"
+      ) {
+        throw new Error("服务器返回的验证题目格式不正确");
+      }
 
       setQuestion(data.question);
       setAnswer("");
     } catch (error) {
       setQuestion(null);
+
       console.error("获取投稿验证题目失败:", error);
     } finally {
       setQuestionLoading(false);
@@ -162,38 +248,56 @@ export default function PublicNewGamePage() {
   ) {
     const { name, value } = event.target;
 
-    setForm(
-      (previous) => ({ ...previous, [name]: value }) as GameForm,
-    );
+    setForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }) as GameForm);
   }
 
   function chooseImage(
     event: React.ChangeEvent<HTMLInputElement>,
-    setter: (file: File | null) => void,
-    previewSetter: (preview: string) => void,
+    setter: ImageSetter,
+    previewSetter: PreviewSetter,
     pngOnly = false,
   ) {
-    const file = event.target.files?.[0];
+    const input = event.currentTarget;
+    const file = input.files?.[0];
 
     if (!file) return;
 
     try {
       if (pngOnly && file.type !== "image/png") {
-        throw new Error("标题图片必须使用 PNG 格式，以保留透明背景");
+        throw new Error(
+          "标题图片必须使用 PNG 格式，以保留透明背景",
+        );
       }
 
       validateImage(file);
 
+      const preview = createPreview(file);
+
+      // 只有在新图片验证成功后，才替换原图片。
+      if (input.name === "cover") {
+        releasePreview(coverPreview);
+      } else if (input.name === "background") {
+        releasePreview(backgroundPreview);
+      } else if (input.name === "logo") {
+        releasePreview(logoPreview);
+      }
+
       setter(file);
-      previewSetter(URL.createObjectURL(file));
+      previewSetter(preview);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "图片格式错误");
-      event.target.value = "";
+      alert(
+        error instanceof Error ? error.message : "图片格式错误",
+      );
+
+      input.value = "";
     }
   }
 
   function addTag() {
-    const tag = tagInput.trim();
+    const tag = normalizeText(tagInput);
 
     if (!tag) return;
 
@@ -210,15 +314,17 @@ export default function PublicNewGamePage() {
     setTagInput("");
   }
 
+  function removeTag(index: number) {
+    setForm((previous) => ({
+      ...previous,
+      tags: previous.tags.filter((_, i) => i !== index),
+    }));
+  }
+
   function addHistory() {
     setHistory((previous) => [
       ...previous,
-      {
-        version: "",
-        date: today(),
-        lanzou: "",
-        pan123: "",
-      },
+      createHistoryItem(),
     ]);
   }
 
@@ -234,8 +340,17 @@ export default function PublicNewGamePage() {
     );
   }
 
-  function addScreenshots(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files || []);
+  function removeHistory(index: number) {
+    setHistory((previous) =>
+      previous.filter((_, i) => i !== index),
+    );
+  }
+
+  function addScreenshots(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const input = event.currentTarget;
+    const files = Array.from(input.files || []);
 
     if (!files.length) return;
 
@@ -246,18 +361,24 @@ export default function PublicNewGamePage() {
 
       files.forEach(validateImage);
 
+      const newItems = files.map((file) => ({
+        file,
+        preview: createPreview(file),
+      }));
+
       setScreenshots((previous) => [
         ...previous,
-        ...files.map((file) => ({
-          file,
-          preview: URL.createObjectURL(file),
-        })),
+        ...newItems,
       ]);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "预览图选择失败");
+      alert(
+        error instanceof Error
+          ? error.message
+          : "预览图选择失败",
+      );
+    } finally {
+      input.value = "";
     }
-
-    event.target.value = "";
   }
 
   function moveScreenshot(index: number, direction: -1 | 1) {
@@ -270,25 +391,47 @@ export default function PublicNewGamePage() {
 
       const next = [...previous];
 
-      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      [next[index], next[nextIndex]] = [
+        next[nextIndex],
+        next[index],
+      ];
 
       return next;
     });
   }
 
   function removeScreenshot(index: number) {
-    setScreenshots((previous) => {
-      const target = previous[index];
+    const target = screenshots[index];
 
-      if (target?.preview.startsWith("blob:")) {
-        URL.revokeObjectURL(target.preview);
-      }
+    if (target) {
+      releasePreview(target.preview);
+    }
 
-      return previous.filter((_, i) => i !== index);
-    });
+    setScreenshots((previous) =>
+      previous.filter((_, i) => i !== index),
+    );
   }
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  function cleanHistory() {
+    return history
+      .map((item) => ({
+        version: normalizeText(item.version),
+        date: normalizeText(item.date),
+        lanzou: normalizeText(item.lanzou),
+        pan123: normalizeText(item.pan123),
+      }))
+      .filter(
+        (item) =>
+          item.version ||
+          item.date ||
+          item.lanzou ||
+          item.pan123,
+      );
+  }
+
+  async function submit(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     if (loading || credential) return;
@@ -297,9 +440,9 @@ export default function PublicNewGamePage() {
       !form.name.trim() ||
       !form.author.trim() ||
       !form.version.trim() ||
-      !form.category
+      !form.category.trim()
     ) {
-      alert("请填写游戏名称、作者、版本并选择分类");
+      alert("请填写游戏名称、作者、版本并填写分类");
       return;
     }
 
@@ -323,15 +466,16 @@ export default function PublicNewGamePage() {
       !form.lanzou.trim() &&
       !form.pan123.trim()
     ) {
-      alert("请至少填写蓝奏云或 123 云盘中的一个下载链接");
+      alert(
+        "请至少填写蓝奏云或 123 云盘中的一个下载链接",
+      );
       return;
     }
 
     setLoading(true);
 
     try {
-      // 当前接口仅负责上传封面。
-      // 背景图、标题图、预览图的上传将在下一步扩展 API 时接入。
+      // 当前接口仅正式接收封面，其他图片尚未上传到正式存储。
       setProgress("正在上传封面到临时仓库……");
 
       const imageForm = new FormData();
@@ -350,11 +494,41 @@ export default function PublicNewGamePage() {
 
       const imageData = await readResponse(imageResponse);
 
-      if (typeof imageData.path !== "string") {
-        throw new Error("临时封面上传成功，但没有返回图片路径");
+      if (
+        typeof imageData.path !== "string" ||
+        !imageData.path.trim()
+      ) {
+        throw new Error(
+          "临时封面上传成功，但服务器没有返回图片路径",
+        );
       }
 
       setProgress("正在提交游戏资料……");
+
+      const payload = {
+        name: normalizeText(form.name),
+        en: normalizeText(form.en),
+        author: normalizeText(form.author),
+        category: normalizeText(form.category),
+        version: normalizeText(form.version),
+        description: form.description.trim(),
+        lanzou: normalizeText(form.lanzou),
+        pan123: normalizeText(form.pan123),
+        gameStatus: form.gameStatus,
+        coverPath: imageData.path,
+        questionId: question.id,
+        answer: answer.trim(),
+        tags: form.tags
+          .map(normalizeText)
+          .filter(Boolean),
+        titleMode,
+        detailBackgroundOpacity: backgroundOpacity,
+        detailBackgroundFit: backgroundFit,
+        history: cleanHistory(),
+        screenshotsCount: screenshots.length,
+        hasDetailBackground: Boolean(backgroundFile),
+        hasTitleLogo: Boolean(logoFile),
+      };
 
       const submitResponse = await fetch(
         "/api/upload/submit-game",
@@ -363,28 +537,7 @@ export default function PublicNewGamePage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            name: form.name.trim(),
-            en: form.en.trim(),
-            author: form.author.trim(),
-            category: form.category,
-            version: form.version.trim(),
-            description: form.description.trim(),
-            lanzou: form.lanzou.trim(),
-            pan123: form.pan123.trim(),
-            gameStatus: form.gameStatus,
-            coverPath: imageData.path,
-            questionId: question.id,
-            answer: answer.trim(),
-            tags: form.tags,
-            titleMode,
-            detailBackgroundOpacity: backgroundOpacity,
-            detailBackgroundFit: backgroundFit,
-            history,
-            screenshotsCount: screenshots.length,
-            hasDetailBackground: Boolean(backgroundFile),
-            hasTitleLogo: Boolean(logoFile),
-          }),
+          body: JSON.stringify(payload),
         },
       );
 
@@ -392,19 +545,21 @@ export default function PublicNewGamePage() {
 
       if (
         typeof submitData.credential !== "string" ||
-        !submitData.credential
+        !submitData.credential.trim()
       ) {
         throw new Error("服务器没有返回编辑凭证");
       }
 
       setCredential(submitData.credential);
-      setCreatedGameName(form.name.trim());
+      setCreatedGameName(normalizeText(form.name));
       setProgress("");
     } catch (error) {
       console.error("用户投稿失败:", error);
 
       alert(
-        error instanceof Error ? error.message : "投稿失败，请稍后重试",
+        error instanceof Error
+          ? error.message
+          : "投稿失败，请稍后重试",
       );
     } finally {
       setLoading(false);
@@ -435,13 +590,16 @@ export default function PublicNewGamePage() {
             <strong>审核中</strong>。
           </p>
 
-          <p>审核通过后，游戏才会显示在网站公开游戏库中。</p>
+          <p>
+            审核通过后，游戏才会显示在网站公开游戏库中。
+          </p>
 
           <section style={sectionStyle}>
             <h2>你的专属编辑凭证</h2>
 
             <p style={{ color: "#e7b76a" }}>
               请立即保存凭证。后续编辑这份投稿需要使用它。
+              请勿将凭证公开分享给他人。
             </p>
 
             <textarea
@@ -449,7 +607,9 @@ export default function PublicNewGamePage() {
               value={credential}
               rows={3}
               style={inputStyle}
-              onFocus={(event) => event.currentTarget.select()}
+              onFocus={(event) =>
+                event.currentTarget.select()
+              }
             />
 
             <button
@@ -462,7 +622,9 @@ export default function PublicNewGamePage() {
           </section>
 
           <p style={{ marginTop: 24 }}>
-            <Link href="/upload">返回上传游戏页面</Link>
+            <Link href="/upload">
+              返回上传游戏页面
+            </Link>
           </p>
         </div>
       </main>
@@ -478,18 +640,22 @@ export default function PublicNewGamePage() {
         <h1>新建游戏投稿</h1>
 
         <p>
-          请填写游戏资料并完成验证。提交后需要等待站长审核，审核通过后才会公开展示。
+          请填写游戏资料并完成验证。提交后需要等待站长审核，
+          审核通过后才会公开展示。
         </p>
 
         <form onSubmit={submit}>
-          <section style={{ ...sectionStyle, marginTop: 20 }}>
+          <section
+            style={{ ...sectionStyle, marginTop: 20 }}
+          >
             <h2>基础信息</h2>
 
             <div
               className="form-grid"
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(240px, 1fr))",
                 gap: 16,
                 marginTop: 16,
               }}
@@ -545,23 +711,30 @@ export default function PublicNewGamePage() {
                 />
               </label>
 
-<label style={labelStyle}>
-  游戏分类 *
-  <input
-    name="category"
-    type="text"
-    value={form.category}
-    onChange={change}
-    maxLength={40}
-    required
-    disabled={loading}
-    placeholder="请填写游戏分类，例如：角色扮演、解谜探索"
-    style={inputStyle}
-  />
-  <small style={{ display: "block", marginTop: 6, opacity: 0.7 }}>
-    可以自行填写分类，方便为不同类型的同人游戏建立索引。
-  </small>
-</label>
+              <label style={labelStyle}>
+                游戏分类 *
+                <input
+                  name="category"
+                  type="text"
+                  value={form.category}
+                  onChange={change}
+                  maxLength={40}
+                  required
+                  disabled={loading}
+                  placeholder="例如：角色扮演、解谜探索"
+                  style={inputStyle}
+                />
+
+                <small
+                  style={{
+                    display: "block",
+                    marginTop: 6,
+                    opacity: 0.7,
+                  }}
+                >
+                  可以自行填写分类，方便为不同类型的同人游戏建立索引。
+                </small>
+              </label>
 
               <label style={labelStyle}>
                 作品状态 *
@@ -582,7 +755,8 @@ export default function PublicNewGamePage() {
               </label>
             </div>
           </section>
-                    <section style={sectionStyle}>
+
+          <section style={sectionStyle}>
             <h2>游戏标签</h2>
 
             <p>输入标签后点击添加。标签可以帮助玩家检索游戏。</p>
@@ -597,7 +771,9 @@ export default function PublicNewGamePage() {
             >
               <input
                 value={tagInput}
-                onChange={(event) => setTagInput(event.target.value)}
+                onChange={(event) =>
+                  setTagInput(event.target.value)
+                }
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
@@ -606,6 +782,7 @@ export default function PublicNewGamePage() {
                 }}
                 placeholder="输入标签，例如：恐怖"
                 disabled={loading}
+                maxLength={40}
                 style={{
                   ...inputStyle,
                   flex: "1 1 220px",
@@ -650,12 +827,8 @@ export default function PublicNewGamePage() {
                     <button
                       type="button"
                       aria-label={`删除标签 ${tag}`}
-                      onClick={() =>
-                        setForm((previous) => ({
-                          ...previous,
-                          tags: previous.tags.filter((_, i) => i !== index),
-                        }))
-                      }
+                      onClick={() => removeTag(index)}
+                      disabled={loading}
                       style={{
                         border: 0,
                         background: "transparent",
@@ -677,10 +850,15 @@ export default function PublicNewGamePage() {
             <label style={labelStyle}>
               游戏封面 *
               <input
+                name="cover"
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={(event) =>
-                  chooseImage(event, setCoverFile, setCoverPreview)
+                  chooseImage(
+                    event,
+                    setCoverFile,
+                    setCoverPreview,
+                  )
                 }
                 required
                 disabled={loading}
@@ -688,7 +866,8 @@ export default function PublicNewGamePage() {
               />
 
               <small>
-                支持 PNG、JPG、WebP，最大 5 MB。封面会先存入临时仓库，审核通过后再同步到正式仓库。
+                支持 PNG、JPG、WebP，最大 5 MB。
+                封面会先存入临时仓库，审核通过后再同步到正式仓库。
               </small>
 
               {coverPreview && (
@@ -714,7 +893,8 @@ export default function PublicNewGamePage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(240px, 1fr))",
                 gap: 16,
               }}
             >
@@ -746,7 +926,8 @@ export default function PublicNewGamePage() {
             </div>
 
             <p style={{ fontSize: 14, opacity: 0.8 }}>
-              更新中、完结、Demo 等正常状态至少填写一个下载链接。弃坑、断更、预告可以暂时不填写。
+              更新中、完结、Demo 等正常状态至少填写一个下载链接。
+              弃坑、断更、预告可以暂时不填写。
             </p>
 
             <label style={labelStyle}>
@@ -766,11 +947,14 @@ export default function PublicNewGamePage() {
           <section style={sectionStyle}>
             <h2>详情页背景设置</h2>
 
-            <p>可为游戏详情页设置独立背景，审核通过后应用。</p>
+            <p>
+              可为游戏详情页设置独立背景，审核通过后应用。
+            </p>
 
             <label style={labelStyle}>
               背景图片
               <input
+                name="background"
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={(event) =>
@@ -809,11 +993,14 @@ export default function PublicNewGamePage() {
                 step={1}
                 value={backgroundOpacity}
                 onChange={(event) =>
-                  setBackgroundOpacity(Number(event.target.value))
+                  setBackgroundOpacity(
+                    Number(event.target.value),
+                  )
                 }
                 disabled={loading}
                 style={{ ...inputStyle, padding: 0 }}
               />
+
               <small>数值范围 0–100。</small>
             </label>
 
@@ -829,8 +1016,12 @@ export default function PublicNewGamePage() {
                 disabled={loading}
                 style={inputStyle}
               >
-                <option value="cover">Cover：铺满区域，可能裁切</option>
-                <option value="contain">Contain：完整显示，可能留白</option>
+                <option value="cover">
+                  Cover：铺满区域，可能裁切
+                </option>
+                <option value="contain">
+                  Contain：完整显示，可能留白
+                </option>
               </select>
             </label>
           </section>
@@ -843,7 +1034,9 @@ export default function PublicNewGamePage() {
               <select
                 value={titleMode}
                 onChange={(event) =>
-                  setTitleMode(event.target.value as "text" | "image")
+                  setTitleMode(
+                    event.target.value as "text" | "image",
+                  )
                 }
                 disabled={loading}
                 style={inputStyle}
@@ -857,6 +1050,7 @@ export default function PublicNewGamePage() {
               <label style={labelStyle}>
                 标题 PNG 图片 *
                 <input
+                  name="logo"
                   type="file"
                   accept="image/png"
                   onChange={(event) =>
@@ -871,7 +1065,9 @@ export default function PublicNewGamePage() {
                   style={{ ...inputStyle, padding: 8 }}
                 />
 
-                <small>必须使用 PNG 格式，以便保留透明背景。</small>
+                <small>
+                  必须使用 PNG 格式，以便保留透明背景。
+                </small>
 
                 {logoPreview && (
                   <img
@@ -894,7 +1090,9 @@ export default function PublicNewGamePage() {
           <section style={sectionStyle}>
             <h2>详情页预览图</h2>
 
-            <p>可以一次选择多张图片，按列表顺序展示，最多 100 张。</p>
+            <p>
+              可以一次选择多张图片，按列表顺序展示，最多 100 张。
+            </p>
 
             <label style={labelStyle}>
               选择预览图
@@ -912,7 +1110,8 @@ export default function PublicNewGamePage() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+                  gridTemplateColumns:
+                    "repeat(auto-fill, minmax(160px, 1fr))",
                   gap: 16,
                   marginTop: 18,
                 }}
@@ -957,7 +1156,9 @@ export default function PublicNewGamePage() {
                     >
                       <button
                         type="button"
-                        onClick={() => moveScreenshot(index, -1)}
+                        onClick={() =>
+                          moveScreenshot(index, -1)
+                        }
                         disabled={loading || index === 0}
                         style={buttonStyle}
                       >
@@ -966,9 +1167,12 @@ export default function PublicNewGamePage() {
 
                       <button
                         type="button"
-                        onClick={() => moveScreenshot(index, 1)}
+                        onClick={() =>
+                          moveScreenshot(index, 1)
+                        }
                         disabled={
-                          loading || index === screenshots.length - 1
+                          loading ||
+                          index === screenshots.length - 1
                         }
                         style={buttonStyle}
                       >
@@ -977,7 +1181,9 @@ export default function PublicNewGamePage() {
 
                       <button
                         type="button"
-                        onClick={() => removeScreenshot(index)}
+                        onClick={() =>
+                          removeScreenshot(index)
+                        }
                         disabled={loading}
                         style={buttonStyle}
                       >
@@ -993,7 +1199,9 @@ export default function PublicNewGamePage() {
           <section style={sectionStyle}>
             <h2>版本历史</h2>
 
-            <p>可填写已有历史版本的版本号、日期及下载链接。</p>
+            <p>
+              可填写已有历史版本的版本号、日期及下载链接。
+            </p>
 
             {history.map((item, index) => (
               <div
@@ -1019,7 +1227,11 @@ export default function PublicNewGamePage() {
                     <input
                       value={item.version}
                       onChange={(event) =>
-                        changeHistory(index, "version", event.target.value)
+                        changeHistory(
+                          index,
+                          "version",
+                          event.target.value,
+                        )
                       }
                       disabled={loading}
                       style={inputStyle}
@@ -1032,7 +1244,11 @@ export default function PublicNewGamePage() {
                       type="date"
                       value={item.date}
                       onChange={(event) =>
-                        changeHistory(index, "date", event.target.value)
+                        changeHistory(
+                          index,
+                          "date",
+                          event.target.value,
+                        )
                       }
                       disabled={loading}
                       style={inputStyle}
@@ -1045,7 +1261,11 @@ export default function PublicNewGamePage() {
                       type="url"
                       value={item.lanzou}
                       onChange={(event) =>
-                        changeHistory(index, "lanzou", event.target.value)
+                        changeHistory(
+                          index,
+                          "lanzou",
+                          event.target.value,
+                        )
                       }
                       disabled={loading}
                       style={inputStyle}
@@ -1059,7 +1279,11 @@ export default function PublicNewGamePage() {
                       type="url"
                       value={item.pan123}
                       onChange={(event) =>
-                        changeHistory(index, "pan123", event.target.value)
+                        changeHistory(
+                          index,
+                          "pan123",
+                          event.target.value,
+                        )
                       }
                       disabled={loading}
                       style={inputStyle}
@@ -1070,11 +1294,7 @@ export default function PublicNewGamePage() {
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setHistory((previous) =>
-                      previous.filter((_, i) => i !== index),
-                    )
-                  }
+                  onClick={() => removeHistory(index)}
                   disabled={loading}
                   style={buttonStyle}
                 >
@@ -1106,7 +1326,9 @@ export default function PublicNewGamePage() {
                   请输入答案 *
                   <input
                     value={answer}
-                    onChange={(event) => setAnswer(event.target.value)}
+                    onChange={(event) =>
+                      setAnswer(event.target.value)
+                    }
                     required
                     disabled={loading}
                     style={inputStyle}
@@ -1131,7 +1353,7 @@ export default function PublicNewGamePage() {
                 <button
                   type="button"
                   onClick={loadQuestion}
-                  disabled={questionLoading}
+                  disabled={questionLoading || loading}
                   style={buttonStyle}
                 >
                   重新获取题目
@@ -1170,6 +1392,7 @@ export default function PublicNewGamePage() {
                 ...buttonStyle,
                 padding: "12px 24px",
                 cursor: loading ? "wait" : "pointer",
+                opacity: loading ? 0.7 : 1,
               }}
             >
               {loading ? "正在提交……" : "提交审核"}
@@ -1188,8 +1411,14 @@ export default function PublicNewGamePage() {
             </Link>
           </div>
 
-          <p style={{ fontSize: 13, opacity: 0.72, marginTop: 18 }}>
-            注意：当前版本已完成上述前端表单与预览交互；标题图、背景图、预览图、标签和版本历史的正式上传及数据库保存，需要下一步扩展投稿 API 后才会真正生效。
+          <p
+            style={{
+              fontSize: 13,
+              opacity: 0.72,
+              marginTop: 18,
+            }}
+          >
+            注意：当前版本的投稿接口正式上传封面。详情背景、标题图和预览图目前仅支持前端选择与预览；标签、版本历史及其他详情设置是否保存，取决于后端投稿 API 是否接收并写入这些字段。需要这些功能实际生效时，还需要同步扩展对应的 API 和数据库保存逻辑。
           </p>
         </form>
       </div>
