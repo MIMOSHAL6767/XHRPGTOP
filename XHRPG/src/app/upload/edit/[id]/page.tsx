@@ -1,10 +1,10 @@
 "use client";
 
+import type { ChangeEvent, FormEvent } from "react";
 import {
-  ChangeEvent,
-  FormEvent,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import Link from "next/link";
@@ -46,6 +46,8 @@ type ScreenshotItem = {
   preview?: string;
 };
 
+type UploadKind = "cover" | "background" | "logo" | "screenshot";
+
 const GAME_STATUSES = ["完结", "更新中", "Demo", "弃坑", "断更"];
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
@@ -77,7 +79,8 @@ const initialForm: GameForm = {
 const inputClass =
   "mt-2 block w-full min-w-0 border border-[#4a2028] bg-[#10090b] px-3 py-2.5 text-sm text-[#f8eeee] outline-none focus:border-[#e5484d] disabled:opacity-50";
 
-const labelClass = "block min-w-0 text-sm font-medium text-[#f0dfe2]";
+const labelClass =
+  "block min-w-0 text-sm font-medium text-[#f0dfe2]";
 
 const buttonClass =
   "border border-[#a52a3a] bg-[#8b1e2d] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#a52a3a] disabled:cursor-not-allowed disabled:opacity-50";
@@ -120,19 +123,29 @@ function parseTags(value: unknown): string[] {
       const parsed: unknown = JSON.parse(value);
 
       if (Array.isArray(parsed)) {
-        return parsed
-          .filter((item): item is string => typeof item === "string")
-          .map((item) => item.trim())
-          .filter(Boolean);
+        return Array.from(
+          new Set(
+            parsed
+              .filter(
+                (item): item is string => typeof item === "string"
+              )
+              .map((item) => item.trim())
+              .filter(Boolean)
+          )
+        );
       }
     } catch {
-      // 兼容旧数据：标签以逗号或换行分隔。
+      // 兼容旧数据：标签可能以逗号或换行分隔。
     }
 
-    return value
-      .split(/[,，、\n]/)
-      .map((item) => item.trim())
-      .filter(Boolean);
+    return Array.from(
+      new Set(
+        value
+          .split(/[,，、\n]/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    );
   }
 
   return [];
@@ -143,7 +156,9 @@ function parseScreenshots(value: unknown): string[] {
 
   return value
     .map((item) => {
-      if (typeof item === "string") return item.trim();
+      if (typeof item === "string") {
+        return item.trim();
+      }
 
       if (
         item &&
@@ -165,7 +180,9 @@ function parseHistory(value: unknown): HistoryItem[] {
   return value
     .filter(
       (item): item is Record<string, unknown> =>
-        item !== null && typeof item === "object" && !Array.isArray(item)
+        item !== null &&
+        typeof item === "object" &&
+        !Array.isArray(item)
     )
     .map((item) => ({
       version: toStringValue(item.version),
@@ -214,9 +231,41 @@ export default function SubmissionGameEditPage() {
   const [screenshots, setScreenshots] = useState<ScreenshotItem[]>([]);
   const [tagInput, setTagInput] = useState("");
 
+  // 统一记录本组件创建的 blob 预览地址。
+  // 只在替换、删除对应预览或组件卸载时撤销，避免预览提前失效。
+  const previewUrlsRef = useRef<Set<string>>(new Set());
+
+  const createPreview = useCallback((file: File): string => {
+    const preview = URL.createObjectURL(file);
+    previewUrlsRef.current.add(preview);
+    return preview;
+  }, []);
+
+  const releasePreview = useCallback((url: string) => {
+    if (!url.startsWith("blob:")) return;
+
+    if (previewUrlsRef.current.has(url)) {
+      URL.revokeObjectURL(url);
+      previewUrlsRef.current.delete(url);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      previewUrlsRef.current.forEach((url) => {
+        URL.revokeObjectURL(url);
+      });
+
+      previewUrlsRef.current.clear();
+    };
+  }, []);
+
   const updateField = useCallback(
     <K extends keyof GameForm>(key: K, value: GameForm[K]) => {
-      setForm((current) => ({ ...current, [key]: value }));
+      setForm((current) => ({
+        ...current,
+        [key]: value,
+      }));
     },
     []
   );
@@ -232,10 +281,16 @@ export default function SubmissionGameEditPage() {
       `xhrpg_submission_credential_${id}`
     );
 
-    if (!storedCredential || !/^[a-f0-9]{48}$/i.test(storedCredential)) {
+    if (
+      !storedCredential ||
+      !/^[a-f0-9]{48}$/i.test(storedCredential)
+    ) {
       router.replace("/upload/edit");
       return;
     }
+
+    // 明确将凭证收窄为 string，避免 HeadersInit 类型错误。
+    const validCredential: string = storedCredential;
 
     let cancelled = false;
 
@@ -247,15 +302,17 @@ export default function SubmissionGameEditPage() {
         const response = await fetch(`/api/upload/edit/${id}`, {
           method: "GET",
           headers: {
-            "x-submission-credential": storedCredential,
+            "x-submission-credential": validCredential,
           },
           cache: "no-store",
         });
 
-        const result = await response.json();
+        const result = await response.json().catch(() => null);
 
-        if (!response.ok || !result.success || !result.game) {
-          throw new Error(result.message || "无法读取游戏信息。");
+        if (!response.ok || !result?.success || !result?.game) {
+          throw new Error(
+            result?.message || "无法读取游戏信息，请检查投稿凭证。"
+          );
         }
 
         if (cancelled) return;
@@ -265,7 +322,7 @@ export default function SubmissionGameEditPage() {
         const history = parseHistory(game.history);
         const screenshotUrls = parseScreenshots(game.screenshots);
 
-        setCredential(storedCredential);
+        setCredential(validCredential);
 
         setForm({
           name: toStringValue(game.name),
@@ -279,7 +336,10 @@ export default function SubmissionGameEditPage() {
           pan123: toStringValue(game.pan123),
           symbol: toStringValue(game.symbol),
           gameStatus: normalizeGameStatus(game.gameStatus),
-          titleMode: toStringValue(game.titleMode) || "text",
+          titleMode:
+            game.titleMode === "logo" || game.titleMode === "image"
+              ? "logo"
+              : "text",
           titleLogo: toStringValue(game.titleLogo),
           detailBackground: toStringValue(game.detailBackground),
           detailBackgroundOpacity: Math.min(
@@ -302,7 +362,9 @@ export default function SubmissionGameEditPage() {
         setLogoPreview(toStringValue(game.titleLogo));
 
         setScreenshots(
-          screenshotUrls.map((url) => ({ url }))
+          screenshotUrls.map((url) => ({
+            url,
+          }))
         );
       } catch (loadError) {
         if (!cancelled) {
@@ -313,7 +375,9 @@ export default function SubmissionGameEditPage() {
           );
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
@@ -324,21 +388,6 @@ export default function SubmissionGameEditPage() {
     };
   }, [id, router]);
 
-  // 撤销本页面创建的本地图片预览地址。
-  useEffect(() => {
-    return () => {
-      screenshots.forEach((item) => {
-        if (item.preview?.startsWith("blob:")) {
-          URL.revokeObjectURL(item.preview);
-        }
-      });
-
-      if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
-      if (backgroundPreview.startsWith("blob:")) URL.revokeObjectURL(backgroundPreview);
-      if (logoPreview.startsWith("blob:")) URL.revokeObjectURL(logoPreview);
-    };
-  }, [screenshots, coverPreview, backgroundPreview, logoPreview]);
-
   function selectImage(
     event: ChangeEvent<HTMLInputElement>,
     kind: "cover" | "background" | "logo"
@@ -347,7 +396,6 @@ export default function SubmissionGameEditPage() {
     event.target.value = "";
 
     if (!file) return;
-
     if (!validateImage(file)) return;
 
     if (kind === "logo" && file.type.toLowerCase() !== "image/png") {
@@ -355,15 +403,18 @@ export default function SubmissionGameEditPage() {
       return;
     }
 
-    const preview = URL.createObjectURL(file);
+    const preview = createPreview(file);
 
     if (kind === "cover") {
+      releasePreview(coverPreview);
       setCoverFile(file);
       setCoverPreview(preview);
     } else if (kind === "background") {
+      releasePreview(backgroundPreview);
       setBackgroundFile(file);
       setBackgroundPreview(preview);
     } else {
+      releasePreview(logoPreview);
       setLogoFile(file);
       setLogoPreview(preview);
     }
@@ -393,6 +444,7 @@ export default function SubmissionGameEditPage() {
     updateField("tagsText", [...tags, value].join(", "));
     setTagInput("");
     setError("");
+    setMessage("");
   }
 
   function removeTag(tagToRemove: string) {
@@ -405,6 +457,9 @@ export default function SubmissionGameEditPage() {
       "tagsText",
       tags.filter((tag) => tag !== tagToRemove).join(", ")
     );
+
+    setError("");
+    setMessage("");
   }
 
   function changeHistory(
@@ -414,8 +469,13 @@ export default function SubmissionGameEditPage() {
   ) {
     updateField(
       "history",
-      form.history.map((item, i) =>
-        i === index ? { ...item, [key]: value } : item
+      form.history.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              [key]: value,
+            }
+          : item
       )
     );
   }
@@ -428,15 +488,26 @@ export default function SubmissionGameEditPage() {
 
     updateField("history", [
       ...form.history,
-      { version: "", date: "", lanzou: "", pan123: "" },
+      {
+        version: "",
+        date: "",
+        lanzou: "",
+        pan123: "",
+      },
     ]);
+
+    setError("");
+    setMessage("");
   }
 
   function removeHistory(index: number) {
     updateField(
       "history",
-      form.history.filter((_, i) => i !== index)
+      form.history.filter((_, itemIndex) => itemIndex !== index)
     );
+
+    setError("");
+    setMessage("");
   }
 
   function addScreenshots(event: ChangeEvent<HTMLInputElement>) {
@@ -447,47 +518,61 @@ export default function SubmissionGameEditPage() {
 
     const validFiles = files.filter(validateImage);
 
+    if (!validFiles.length) return;
+
     if (screenshots.length + validFiles.length > 100) {
       setError("详情预览图最多支持 100 张。");
       return;
     }
 
-    setScreenshots((current) => [
-      ...current,
-      ...validFiles.map((file) => ({
-        url: "",
-        file,
-        preview: URL.createObjectURL(file),
-      })),
-    ]);
+    const newItems: ScreenshotItem[] = validFiles.map((file) => ({
+      url: "",
+      file,
+      preview: createPreview(file),
+    }));
 
+    setScreenshots((current) => [...current, ...newItems]);
     setError("");
     setMessage("");
   }
 
   function removeScreenshot(index: number) {
+    const item = screenshots[index];
+
+    if (item?.preview) {
+      releasePreview(item.preview);
+    }
+
     setScreenshots((current) =>
-      current.filter((_, i) => i !== index)
+      current.filter((_, itemIndex) => itemIndex !== index)
     );
+
+    setError("");
+    setMessage("");
   }
 
   function moveScreenshot(index: number, direction: -1 | 1) {
     setScreenshots((current) => {
       const target = index + direction;
 
-      if (target < 0 || target >= current.length) return current;
+      if (target < 0 || target >= current.length) {
+        return current;
+      }
 
       const next = [...current];
       [next[index], next[target]] = [next[target], next[index]];
 
       return next;
     });
+
+    setError("");
+    setMessage("");
   }
 
-  // 普通投稿用户必须携带投稿凭证；游戏 ID 由当前编辑接口校验。
+  // 投稿用户上传图片时携带 credential，不使用站长后台的上传权限。
   async function uploadImage(
     file: File,
-    kind: "cover" | "background" | "logo" | "screenshot",
+    kind: UploadKind,
     slot?: number
   ): Promise<string> {
     const data = new FormData();
@@ -507,9 +592,10 @@ export default function SubmissionGameEditPage() {
 
     const result = await response.json().catch(() => null);
 
-    if (!response.ok || !result?.success || !result.url) {
+    if (!response.ok || !result?.success || !result?.url) {
       throw new Error(
-        result?.message || `${kind} 图片上传失败（HTTP ${response.status}）。`
+        result?.message ||
+          `${kind} 图片上传失败（HTTP ${response.status}）。`
       );
     }
 
@@ -517,7 +603,9 @@ export default function SubmissionGameEditPage() {
       typeof result.url !== "string" ||
       !result.url.startsWith("https://raw.githubusercontent.com/")
     ) {
-      throw new Error("上传接口没有返回有效的 GitHub Raw 图片地址。");
+      throw new Error(
+        "上传接口没有返回有效的 GitHub Raw 图片地址。"
+      );
     }
 
     return result.url;
@@ -526,8 +614,10 @@ export default function SubmissionGameEditPage() {
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!credential) {
-      setError("投稿凭证无效，请重新验证。");
+    if (saving) return;
+
+    if (!credential || !/^[a-f0-9]{48}$/i.test(credential)) {
+      setError("投稿凭证无效，请返回投稿编辑入口重新验证。");
       return;
     }
 
@@ -546,7 +636,11 @@ export default function SubmissionGameEditPage() {
       return;
     }
 
-    if (form.titleMode === "logo" && !logoFile && !logoPreview) {
+    if (
+      form.titleMode === "logo" &&
+      !logoFile &&
+      !logoPreview
+    ) {
       setError("当前选择了图片标题模式，请先上传标题 PNG。");
       return;
     }
@@ -556,11 +650,11 @@ export default function SubmissionGameEditPage() {
     setMessage("");
 
     try {
-      // 1. 上传新封面（如果用户选择了新文件）。
+      // 1. 上传新封面。
       let cover = form.cover;
 
       if (coverFile) {
-        setUploading("cover");
+        setUploading("正在上传游戏封面……");
         cover = await uploadImage(coverFile, "cover");
       }
 
@@ -568,26 +662,31 @@ export default function SubmissionGameEditPage() {
       let detailBackground = form.detailBackground;
 
       if (backgroundFile) {
-        setUploading("background");
-        detailBackground = await uploadImage(backgroundFile, "background");
+        setUploading("正在上传详情背景……");
+        detailBackground = await uploadImage(
+          backgroundFile,
+          "background"
+        );
       }
 
       // 3. 上传标题图片。
       let titleLogo = form.titleLogo;
 
       if (logoFile) {
-        setUploading("logo");
+        setUploading("正在上传标题图片……");
         titleLogo = await uploadImage(logoFile, "logo");
       }
 
-      // 4. 上传新增的预览图，保留原有图片及排序。
+      // 4. 按照当前排序处理预览图。
       const screenshotUrls: string[] = [];
 
       for (let index = 0; index < screenshots.length; index++) {
         const item = screenshots[index];
 
         if (item.file) {
-          setUploading(`screenshot-${index + 1}`);
+          setUploading(
+            `正在上传详情预览图 ${index + 1}/${screenshots.length}……`
+          );
 
           const url = await uploadImage(
             item.file,
@@ -636,7 +735,7 @@ export default function SubmissionGameEditPage() {
         screenshots: screenshotUrls,
       };
 
-      setUploading("saving");
+      setUploading("正在保存游戏资料……");
 
       const response = await fetch(`/api/upload/edit/${id}`, {
         method: "PUT",
@@ -653,10 +752,49 @@ export default function SubmissionGameEditPage() {
         throw new Error(result?.message || "保存游戏资料失败。");
       }
 
-      setMessage(result.message || "修改已保存，等待站长审核。");
+      // 保存成功后，切换为已上传的远程图片地址。
+      if (coverFile) {
+        releasePreview(coverPreview);
+        setCoverPreview(cover);
+      }
+
+      if (backgroundFile) {
+        releasePreview(backgroundPreview);
+        setBackgroundPreview(detailBackground);
+      }
+
+      if (logoFile) {
+        releasePreview(logoPreview);
+        setLogoPreview(titleLogo);
+      }
+
+      screenshots.forEach((item) => {
+        if (item.preview) {
+          releasePreview(item.preview);
+        }
+      });
+
+      setScreenshots(
+        screenshotUrls.map((url) => ({
+          url,
+        }))
+      );
+
+      setForm((current) => ({
+        ...current,
+        cover,
+        detailBackground,
+        titleLogo,
+        screenshots: screenshotUrls,
+      }));
+
       setCoverFile(null);
       setBackgroundFile(null);
       setLogoFile(null);
+
+      setMessage(
+        result.message || "修改已保存，等待站长审核。"
+      );
 
       window.setTimeout(() => {
         router.push("/upload");
@@ -681,7 +819,11 @@ export default function SubmissionGameEditPage() {
           <p className="text-sm tracking-widest text-[#c77783]">
             XHRPG · SUBMISSION
           </p>
-          <h1 className="mt-3 text-2xl font-bold">正在加载游戏资料……</h1>
+
+          <h1 className="mt-3 text-2xl font-bold">
+            正在加载游戏资料……
+          </h1>
+
           <p className="mt-3 text-sm text-[#c7b5b8]">
             正在验证投稿凭证并读取对应游戏，请稍候。
           </p>
@@ -694,10 +836,17 @@ export default function SubmissionGameEditPage() {
     return (
       <main className="min-h-screen bg-[#10090b] px-4 py-12 text-[#f8eeee]">
         <div className="mx-auto max-w-xl border border-[#4a2028] bg-[#160c0f] p-6 sm:p-8">
-          <h1 className="text-xl font-bold">无法进入编辑页面</h1>
-          <p role="alert" className="mt-4 text-sm leading-7 text-[#ffb8c1]">
+          <h1 className="text-xl font-bold">
+            无法进入编辑页面
+          </h1>
+
+          <p
+            role="alert"
+            className="mt-4 text-sm leading-7 text-[#ffb8c1]"
+          >
             {error}
           </p>
+
           <Link
             href="/upload/edit"
             className="mt-6 inline-block text-sm text-[#e8a2ac] hover:text-white"
@@ -709,10 +858,14 @@ export default function SubmissionGameEditPage() {
     );
   }
 
-  const normalizedTags = form.tagsText
-    .split(/[,，、\n]/)
-    .map((tag) => tag.trim())
-    .filter(Boolean);
+  const normalizedTags = Array.from(
+    new Set(
+      form.tagsText
+        .split(/[,，、\n]/)
+        .map((tag) => tag.trim())
+        .filter(Boolean)
+    )
+  );
 
   return (
     <main className="min-h-screen bg-[#10090b] px-3 py-6 text-[#f8eeee] sm:px-5 sm:py-10">
@@ -723,16 +876,21 @@ export default function SubmissionGameEditPage() {
               <p className="text-xs tracking-[0.22em] text-[#c77783]">
                 XHRPG · GAME SUBMISSION
               </p>
+
               <h1 className="mt-3 text-2xl font-bold sm:text-3xl">
                 编辑游戏投稿
               </h1>
+
               <p className="mt-3 max-w-2xl text-sm leading-7 text-[#c7b5b8]">
                 修改游戏信息、图片资源和历史版本。保存后将按照投稿审核流程处理。
               </p>
             </div>
 
             <div className="shrink-0 border border-[#4a2028] px-4 py-3">
-              <p className="text-xs text-[#9e858a]">当前审核状态</p>
+              <p className="text-xs text-[#9e858a]">
+                当前审核状态
+              </p>
+
               <p className="mt-1 text-sm font-semibold text-[#e8a2ac]">
                 {form.status}
               </p>
@@ -774,10 +932,13 @@ export default function SubmissionGameEditPage() {
         )}
 
         <form onSubmit={handleSave}>
-          {/* 基本信息 */}
+          {/* 01 / 基本信息 */}
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
-              <h2 className="text-lg font-bold">01 / 基本信息</h2>
+              <h2 className="text-lg font-bold">
+                01 / 基本信息
+              </h2>
+
               <p className="mt-2 text-xs leading-6 text-[#9e858a]">
                 填写游戏名称、作者、分类、开发进度和下载地址。
               </p>
@@ -792,6 +953,7 @@ export default function SubmissionGameEditPage() {
                   onChange={(e) => updateField("name", e.target.value)}
                   maxLength={200}
                   required
+                  disabled={saving}
                 />
               </label>
 
@@ -802,6 +964,7 @@ export default function SubmissionGameEditPage() {
                   value={form.en}
                   onChange={(e) => updateField("en", e.target.value)}
                   maxLength={200}
+                  disabled={saving}
                 />
               </label>
 
@@ -813,6 +976,7 @@ export default function SubmissionGameEditPage() {
                   onChange={(e) => updateField("author", e.target.value)}
                   maxLength={200}
                   required
+                  disabled={saving}
                 />
               </label>
 
@@ -823,6 +987,7 @@ export default function SubmissionGameEditPage() {
                   value={form.version}
                   onChange={(e) => updateField("version", e.target.value)}
                   maxLength={100}
+                  disabled={saving}
                 />
               </label>
 
@@ -831,9 +996,12 @@ export default function SubmissionGameEditPage() {
                 <input
                   className={inputClass}
                   value={form.category}
-                  onChange={(e) => updateField("category", e.target.value)}
+                  onChange={(e) =>
+                    updateField("category", e.target.value)
+                  }
                   placeholder="例如：角色扮演、解谜冒险"
                   maxLength={100}
+                  disabled={saving}
                 />
               </label>
 
@@ -842,7 +1010,10 @@ export default function SubmissionGameEditPage() {
                 <select
                   className={inputClass}
                   value={form.gameStatus}
-                  onChange={(e) => updateField("gameStatus", e.target.value)}
+                  onChange={(e) =>
+                    updateField("gameStatus", e.target.value)
+                  }
+                  disabled={saving}
                 >
                   {GAME_STATUSES.map((status) => (
                     <option key={status} value={status}>
@@ -859,6 +1030,7 @@ export default function SubmissionGameEditPage() {
                   value={form.lanzou}
                   onChange={(e) => updateField("lanzou", e.target.value)}
                   maxLength={2000}
+                  disabled={saving}
                 />
               </label>
 
@@ -869,6 +1041,7 @@ export default function SubmissionGameEditPage() {
                   value={form.pan123}
                   onChange={(e) => updateField("pan123", e.target.value)}
                   maxLength={2000}
+                  disabled={saving}
                 />
               </label>
 
@@ -879,6 +1052,7 @@ export default function SubmissionGameEditPage() {
                   value={form.symbol}
                   onChange={(e) => updateField("symbol", e.target.value)}
                   maxLength={200}
+                  disabled={saving}
                 />
               </label>
             </div>
@@ -894,14 +1068,18 @@ export default function SubmissionGameEditPage() {
                 rows={7}
                 maxLength={30000}
                 placeholder="介绍游戏的故事、玩法、制作情况等。"
+                disabled={saving}
               />
             </label>
           </section>
 
-          {/* 标签 */}
+          {/* 02 / 游戏标签 */}
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
-              <h2 className="text-lg font-bold">02 / 游戏标签</h2>
+              <h2 className="text-lg font-bold">
+                02 / 游戏标签
+              </h2>
+
               <p className="mt-2 text-xs leading-6 text-[#9e858a]">
                 输入标签后点击添加，也可以在标签列表中删除。标签修改会在保存资料时生效。
               </p>
@@ -934,12 +1112,13 @@ export default function SubmissionGameEditPage() {
 
             {normalizedTags.length > 0 ? (
               <div className="mt-4 flex flex-wrap gap-2">
-                {Array.from(new Set(normalizedTags)).map((tag, index) => (
+                {normalizedTags.map((tag) => (
                   <span
-                    key={`${tag}-${index}`}
+                    key={tag}
                     className="inline-flex max-w-full items-center gap-2 border border-[#4a2028] bg-[#10090b] px-3 py-2 text-sm"
                   >
                     <span className="break-all">{tag}</span>
+
                     <button
                       type="button"
                       onClick={() => removeTag(tag)}
@@ -959,23 +1138,27 @@ export default function SubmissionGameEditPage() {
             )}
 
             <p className="mt-3 text-xs text-[#9e858a]">
-              当前共 {Array.from(new Set(normalizedTags)).length} 个标签。
+              当前共 {normalizedTags.length} 个标签。
             </p>
           </section>
 
-          {/* 图片资源 */}
+          {/* 03 / 图片资源 */}
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
-              <h2 className="text-lg font-bold">03 / 图片资源</h2>
+              <h2 className="text-lg font-bold">
+                03 / 图片资源
+              </h2>
+
               <p className="mt-2 text-xs leading-6 text-[#9e858a]">
                 支持 PNG、JPG、WebP，单张图片最大 5 MB。新选择的图片会在保存时上传。
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-              {/* 封面 */}
+              {/* 游戏封面 */}
               <div className="min-w-0 border border-[#4a2028] p-4">
                 <h3 className="font-semibold">游戏封面</h3>
+
                 <div className="mt-3 flex min-h-48 items-center justify-center border border-[#4a2028] bg-[#10090b] p-3">
                   {coverPreview ? (
                     <img
@@ -984,9 +1167,12 @@ export default function SubmissionGameEditPage() {
                       className="max-h-64 max-w-full object-contain"
                     />
                   ) : (
-                    <span className="text-sm text-[#9e858a]">暂无封面</span>
+                    <span className="text-sm text-[#9e858a]">
+                      暂无封面
+                    </span>
                   )}
                 </div>
+
                 <label className="mt-4 block text-sm text-[#c7b5b8]">
                   选择新封面
                   <input
@@ -997,6 +1183,7 @@ export default function SubmissionGameEditPage() {
                     onChange={(e) => selectImage(e, "cover")}
                   />
                 </label>
+
                 {coverFile && (
                   <p className="mt-2 break-all text-xs text-[#e8a2ac]">
                     待上传：{coverFile.name}
@@ -1004,9 +1191,10 @@ export default function SubmissionGameEditPage() {
                 )}
               </div>
 
-              {/* 背景 */}
+              {/* 详情背景 */}
               <div className="min-w-0 border border-[#4a2028] p-4">
                 <h3 className="font-semibold">详情背景</h3>
+
                 <div className="mt-3 flex min-h-48 items-center justify-center border border-[#4a2028] bg-[#10090b] p-3">
                   {backgroundPreview ? (
                     <img
@@ -1015,9 +1203,12 @@ export default function SubmissionGameEditPage() {
                       className="max-h-64 max-w-full object-contain"
                     />
                   ) : (
-                    <span className="text-sm text-[#9e858a]">暂无背景</span>
+                    <span className="text-sm text-[#9e858a]">
+                      暂无背景
+                    </span>
                   )}
                 </div>
+
                 <label className="mt-4 block text-sm text-[#c7b5b8]">
                   选择新背景
                   <input
@@ -1028,6 +1219,7 @@ export default function SubmissionGameEditPage() {
                     onChange={(e) => selectImage(e, "background")}
                   />
                 </label>
+
                 {backgroundFile && (
                   <p className="mt-2 break-all text-xs text-[#e8a2ac]">
                     待上传：{backgroundFile.name}
@@ -1038,6 +1230,7 @@ export default function SubmissionGameEditPage() {
               {/* 标题图片 */}
               <div className="min-w-0 border border-[#4a2028] p-4">
                 <h3 className="font-semibold">标题图片</h3>
+
                 <div className="mt-3 flex min-h-48 items-center justify-center border border-[#4a2028] bg-[#10090b] p-3">
                   {logoPreview ? (
                     <img
@@ -1046,9 +1239,12 @@ export default function SubmissionGameEditPage() {
                       className="max-h-48 max-w-full object-contain"
                     />
                   ) : (
-                    <span className="text-sm text-[#9e858a]">暂无标题图片</span>
+                    <span className="text-sm text-[#9e858a]">
+                      暂无标题图片
+                    </span>
                   )}
                 </div>
+
                 <label className="mt-4 block text-sm text-[#c7b5b8]">
                   选择标题 PNG
                   <input
@@ -1059,6 +1255,7 @@ export default function SubmissionGameEditPage() {
                     onChange={(e) => selectImage(e, "logo")}
                   />
                 </label>
+
                 {logoFile && (
                   <p className="mt-2 break-all text-xs text-[#e8a2ac]">
                     待上传：{logoFile.name}
@@ -1068,10 +1265,13 @@ export default function SubmissionGameEditPage() {
             </div>
           </section>
 
-          {/* 详情页显示设置 */}
+          {/* 04 / 详情页显示设置 */}
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
-              <h2 className="text-lg font-bold">04 / 详情页显示设置</h2>
+              <h2 className="text-lg font-bold">
+                04 / 详情页显示设置
+              </h2>
+
               <p className="mt-2 text-xs leading-6 text-[#9e858a]">
                 设置详情页标题样式、背景适配方式和背景显示强度。
               </p>
@@ -1083,7 +1283,10 @@ export default function SubmissionGameEditPage() {
                 <select
                   className={inputClass}
                   value={form.titleMode}
-                  onChange={(e) => updateField("titleMode", e.target.value)}
+                  onChange={(e) =>
+                    updateField("titleMode", e.target.value)
+                  }
+                  disabled={saving}
                 >
                   <option value="text">文字标题</option>
                   <option value="logo">图片标题</option>
@@ -1098,15 +1301,21 @@ export default function SubmissionGameEditPage() {
                   onChange={(e) =>
                     updateField("detailBackgroundFit", e.target.value)
                   }
+                  disabled={saving}
                 >
-                  <option value="cover">Cover：铺满区域，可能裁切</option>
-                  <option value="contain">Contain：完整显示，可能留空</option>
+                  <option value="cover">
+                    Cover：铺满区域，可能裁切
+                  </option>
+                  <option value="contain">
+                    Contain：完整显示，可能留空
+                  </option>
                 </select>
               </label>
 
               <div className="sm:col-span-2">
                 <label className={labelClass}>
                   背景显示强度：{form.detailBackgroundOpacity}%
+
                   <input
                     type="range"
                     min={0}
@@ -1119,9 +1328,11 @@ export default function SubmissionGameEditPage() {
                         Number(e.target.value)
                       )
                     }
+                    disabled={saving}
                     className="mt-4 block w-full accent-[#a52a3a]"
                   />
                 </label>
+
                 <div className="mt-2 flex justify-between text-xs text-[#9e858a]">
                   <span>0% · 最淡</span>
                   <span>100% · 最强</span>
@@ -1136,22 +1347,33 @@ export default function SubmissionGameEditPage() {
             )}
           </section>
 
-          {/* 详情预览图 */}
+          {/* 05 / 详情预览图 */}
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-lg font-bold">05 / 详情预览图</h2>
+                <h2 className="text-lg font-bold">
+                  05 / 详情预览图
+                </h2>
+
                 <span className="text-xs text-[#c77783]">
                   {screenshots.length} / 100 张
                 </span>
               </div>
+
               <p className="mt-2 text-xs leading-6 text-[#9e858a]">
                 可一次选择多张图片，删除图片或调整顺序。保存后会更新游戏资料中的预览图列表。
               </p>
             </div>
 
-            <label className="inline-flex cursor-pointer items-center border border-[#a52a3a] bg-[#8b1e2d] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#a52a3a]">
+            <label
+              className={`inline-flex items-center border border-[#a52a3a] bg-[#8b1e2d] px-4 py-2.5 text-sm font-semibold text-white ${
+                saving || screenshots.length >= 100
+                  ? "cursor-not-allowed opacity-50"
+                  : "cursor-pointer hover:bg-[#a52a3a]"
+              }`}
+            >
               ＋ 添加预览图片
+
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
@@ -1177,6 +1399,7 @@ export default function SubmissionGameEditPage() {
                       <span className="text-sm font-semibold">
                         第 {index + 1} 张
                       </span>
+
                       {item.file && (
                         <span className="text-xs text-[#e8a2ac]">
                           待上传
@@ -1209,14 +1432,18 @@ export default function SubmissionGameEditPage() {
                       >
                         ↑ 上移
                       </button>
+
                       <button
                         type="button"
                         className={secondaryButtonClass}
-                        disabled={index === screenshots.length - 1 || saving}
+                        disabled={
+                          index === screenshots.length - 1 || saving
+                        }
                         onClick={() => moveScreenshot(index, 1)}
                       >
                         ↓ 下移
                       </button>
+
                       <button
                         type="button"
                         className="border border-[#8b1e2d] px-3 py-2 text-sm text-[#ff9aa9] hover:bg-[#2a1015] disabled:opacity-40"
@@ -1236,11 +1463,14 @@ export default function SubmissionGameEditPage() {
             </p>
           </section>
 
-          {/* 历史版本 */}
+          {/* 06 / 历史版本 */}
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-lg font-bold">06 / 历史版本</h2>
+                <h2 className="text-lg font-bold">
+                  06 / 历史版本
+                </h2>
+
                 <button
                   type="button"
                   className={secondaryButtonClass}
@@ -1250,6 +1480,7 @@ export default function SubmissionGameEditPage() {
                   ＋ 添加历史版本
                 </button>
               </div>
+
               <p className="mt-2 text-xs leading-6 text-[#9e858a]">
                 每条记录可分别填写版本号、日期和对应的下载地址。
               </p>
@@ -1257,7 +1488,10 @@ export default function SubmissionGameEditPage() {
 
             {form.history.length === 0 ? (
               <div className="border border-dashed border-[#4a2028] p-6 text-center">
-                <p className="text-sm text-[#9e858a]">暂无历史版本记录。</p>
+                <p className="text-sm text-[#9e858a]">
+                  暂无历史版本记录。
+                </p>
+
                 <button
                   type="button"
                   className={`${buttonClass} mt-4`}
@@ -1278,6 +1512,7 @@ export default function SubmissionGameEditPage() {
                       <h3 className="font-semibold">
                         历史版本 #{index + 1}
                       </h3>
+
                       <button
                         type="button"
                         className="text-sm text-[#ff8194] hover:text-white"
@@ -1295,9 +1530,14 @@ export default function SubmissionGameEditPage() {
                           className={inputClass}
                           value={item.version || ""}
                           onChange={(e) =>
-                            changeHistory(index, "version", e.target.value)
+                            changeHistory(
+                              index,
+                              "version",
+                              e.target.value
+                            )
                           }
                           maxLength={100}
+                          disabled={saving}
                         />
                       </label>
 
@@ -1307,10 +1547,15 @@ export default function SubmissionGameEditPage() {
                           className={inputClass}
                           value={item.date || ""}
                           onChange={(e) =>
-                            changeHistory(index, "date", e.target.value)
+                            changeHistory(
+                              index,
+                              "date",
+                              e.target.value
+                            )
                           }
                           placeholder="例如：2026-10-25"
                           maxLength={100}
+                          disabled={saving}
                         />
                       </label>
 
@@ -1320,9 +1565,14 @@ export default function SubmissionGameEditPage() {
                           className={inputClass}
                           value={item.lanzou || ""}
                           onChange={(e) =>
-                            changeHistory(index, "lanzou", e.target.value)
+                            changeHistory(
+                              index,
+                              "lanzou",
+                              e.target.value
+                            )
                           }
                           maxLength={2000}
+                          disabled={saving}
                         />
                       </label>
 
@@ -1332,9 +1582,14 @@ export default function SubmissionGameEditPage() {
                           className={inputClass}
                           value={item.pan123 || ""}
                           onChange={(e) =>
-                            changeHistory(index, "pan123", e.target.value)
+                            changeHistory(
+                              index,
+                              "pan123",
+                              e.target.value
+                            )
                           }
                           maxLength={2000}
+                          disabled={saving}
                         />
                       </label>
                     </div>
@@ -1351,11 +1606,10 @@ export default function SubmissionGameEditPage() {
                 <p className="text-sm font-semibold">
                   {saving ? "正在处理修改……" : "确认资料无误后保存"}
                 </p>
+
                 <p className="mt-1 text-xs leading-5 text-[#9e858a]">
                   {saving
-                    ? uploading
-                      ? `当前步骤：${uploading}`
-                      : "正在保存游戏资料"
+                    ? uploading || "正在保存游戏资料……"
                     : "保存后按投稿审核流程处理，原有游戏不会因编辑操作而被永久删除。"}
                 </p>
               </div>
@@ -1363,7 +1617,10 @@ export default function SubmissionGameEditPage() {
               <div className="flex flex-wrap gap-2">
                 <Link
                   href="/upload"
-                  className="inline-flex items-center justify-center border border-[#4a2028] px-4 py-2.5 text-sm text-[#e5cfd3] hover:bg-[#241015]"
+                  aria-disabled={saving}
+                  className={`inline-flex items-center justify-center border border-[#4a2028] px-4 py-2.5 text-sm text-[#e5cfd3] hover:bg-[#241015] ${
+                    saving ? "pointer-events-none opacity-50" : ""
+                  }`}
                 >
                   返回投稿中心
                 </Link>
@@ -1373,7 +1630,9 @@ export default function SubmissionGameEditPage() {
                   className={buttonClass}
                   disabled={saving || !credential}
                 >
-                  {saving ? "正在上传并保存……" : "保存修改并提交审核"}
+                  {saving
+                    ? "正在上传并保存……"
+                    : "保存修改并提交审核"}
                 </button>
               </div>
             </div>
