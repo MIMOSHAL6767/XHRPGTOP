@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -114,35 +115,14 @@ function validMusic(bytes: Buffer, ext: string): boolean {
 }
 
 export async function POST(req: Request) {
-  if (!(await isSiteOwner())) {
-    return errorResponse("无权上传文件，请使用站长账号登录", 401);
-  }
-
   try {
-    const token =
-      process.env.GITHUB_IMAGE_TOKEN || process.env.GITHUB_TOKEN;
-
-    const owner =
-      process.env.GITHUB_IMAGE_OWNER || process.env.GITHUB_OWNER;
-
-    const repo =
-      process.env.GITHUB_IMAGE_REPO || process.env.GITHUB_REPO;
-
-    const branch =
-      process.env.GITHUB_IMAGE_BRANCH ||
-      process.env.GITHUB_BRANCH ||
-      "main";
-
-    if (!token || !owner || !repo) {
-      return errorResponse("GitHub 文件存储服务未配置", 500);
-    }
-
     const formData = await req.formData();
+
     const file = formData.get("file");
     const id = formData.get("id");
 
     // 兼容两种前端字段名称：
-    // 旧接口使用 kind，悬浮组件前端使用 type。
+    // 旧接口使用 kind，部分组件使用 type。
     const rawKind = formData.get("kind");
     const rawType = formData.get("type");
     const suppliedKind = rawKind ?? rawType;
@@ -173,6 +153,17 @@ export async function POST(req: Request) {
 
     if (!(file instanceof File)) {
       return errorResponse("缺少上传文件", 400);
+    }
+
+    const isOwner = await isSiteOwner();
+
+    // 投稿用户只能上传与游戏有关的图片，
+    // 不允许上传或覆盖网站级资源。
+    if (
+      !isOwner &&
+      !["cover", "background", "logo", "screenshot"].includes(kind)
+    ) {
+      return errorResponse("无权上传此类文件", 403);
     }
 
     const isGif = kind === "floatingGif";
@@ -216,8 +207,10 @@ export async function POST(req: Request) {
       );
     }
 
-    // 普通游戏图片仍然校验游戏 ID。
-    // 首页头图、网站背景、悬浮 GIF 和音乐不需要游戏 ID。
+    // 网站级资源不需要游戏 ID。
+    // 游戏图片的 ID：
+    // 站长从表单 id 字段获取；
+    // 投稿用户通过专属凭证从数据库查询。
     const needsGameId =
       kind !== "homeHeader" &&
       kind !== "siteBackground" &&
@@ -227,26 +220,64 @@ export async function POST(req: Request) {
     let gameId: number | null = null;
 
     if (needsGameId) {
-      if (
-        typeof id !== "string" ||
-        !/^[1-9]\d*$/.test(id)
-      ) {
-        return errorResponse("缺少有效的游戏 ID", 400);
-      }
+      if (isOwner) {
+        // 站长保留原有上传方式：使用游戏 ID。
+        if (
+          typeof id !== "string" ||
+          !/^[1-9]\d*$/.test(id)
+        ) {
+          return errorResponse("缺少有效的游戏 ID", 400);
+        }
 
-      gameId = Number(id);
+        gameId = Number(id);
 
-      if (!Number.isSafeInteger(gameId)) {
-        return errorResponse("游戏 ID 无效", 400);
-      }
+        if (!Number.isSafeInteger(gameId)) {
+          return errorResponse("游戏 ID 无效", 400);
+        }
 
-      const game = await prisma.game.findUnique({
-        where: { id: gameId },
-        select: { id: true },
-      });
+        const game = await prisma.game.findUnique({
+          where: { id: gameId },
+          select: { id: true },
+        });
 
-      if (!game) {
-        return errorResponse("游戏记录不存在，请先创建游戏", 404);
+        if (!game) {
+          return errorResponse(
+            "游戏记录不存在，请先创建游戏",
+            404
+          );
+        }
+      } else {
+        // 投稿用户只需要提供专属凭证，不需要输入游戏 ID。
+        const credential = formData.get("credential");
+
+        if (
+          typeof credential !== "string" ||
+          !/^[a-f0-9]{48}$/i.test(credential)
+        ) {
+          return errorResponse(
+            "缺少有效的投稿凭证，请重新验证身份",
+            401
+          );
+        }
+
+        // 由凭证定位游戏，不能信任客户端传入的游戏 ID。
+        const game = await prisma.game.findFirst({
+          where: {
+            submissionCredential: credential,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (!game) {
+          return errorResponse(
+            "投稿凭证无效或已失效，请检查凭证",
+            401
+          );
+        }
+
+        gameId = game.id;
       }
     }
 
@@ -339,12 +370,30 @@ export async function POST(req: Request) {
 
     const apiUrl =
       `https://api.github.com/repos/` +
-      `${encodeURIComponent(owner)}/` +
-      `${encodeURIComponent(repo)}/contents/` +
+      `${encodeURIComponent(owner ?? "")}/` +
+      `${encodeURIComponent(repo ?? "")}/contents/` +
       repoPath
         .split("/")
         .map(encodeURIComponent)
         .join("/");
+
+    const token =
+      process.env.GITHUB_IMAGE_TOKEN || process.env.GITHUB_TOKEN;
+
+    const owner =
+      process.env.GITHUB_IMAGE_OWNER || process.env.GITHUB_OWNER;
+
+    const repo =
+      process.env.GITHUB_IMAGE_REPO || process.env.GITHUB_REPO;
+
+    const branch =
+      process.env.GITHUB_IMAGE_BRANCH ||
+      process.env.GITHUB_BRANCH ||
+      "main";
+
+    if (!token || !owner || !repo) {
+      return errorResponse("GitHub 文件存储服务未配置", 500);
+    }
 
     const headers = {
       Accept: "application/vnd.github+json",
@@ -353,7 +402,7 @@ export async function POST(req: Request) {
     };
 
     // 随机文件名避免覆盖已有 GIF、音乐或背景文件。
-    // 原有固定名称的游戏图片继续支持覆盖。
+    // 固定名称的游戏图片继续支持覆盖。
     let sha: string | undefined;
 
     const existingResponse = await fetch(
