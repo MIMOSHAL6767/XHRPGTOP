@@ -32,6 +32,10 @@ type GameSubmission = {
   createdAt?: string | Date | null;
   updatedAt?: string | Date | null;
   submissionAssets?: SubmissionAssets | null;
+  cover?: string | null;
+  lanzou?: string | null;
+  pan123?: string | null;
+  titleLogo?: string | null;
 };
 
 const panelStyle: React.CSSProperties = {
@@ -549,7 +553,150 @@ export default function SubmissionReviewPage() {
                       {selected.description?.trim() || "投稿未填写游戏介绍。"}
                     </div>
                   </div>
+                  {/* 游戏下载链接 */}
+                  <div style={{ marginTop: 24 }}>
+                    <h3
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        marginBottom: 12,
+                      }}
+                    >
+                      游戏资源与下载链接
+                    </h3>
 
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: 12,
+                      }}
+                    >
+                      {[
+                        {
+                          name: "蓝奏云下载",
+                          url: selected.lanzou,
+                          description: "投稿人提供的蓝奏云游戏资源",
+                        },
+                        {
+                          name: "123 云盘下载",
+                          url: selected.pan123,
+                          description: "投稿人提供的 123 云盘游戏资源",
+                        },
+                      ].map((item) => {
+                        const url =
+                          typeof item.url === "string"
+                            ? item.url.trim()
+                            : "";
+
+                        const validUrl = (() => {
+                          try {
+                            const parsed = new URL(url);
+                            return (
+                              (parsed.protocol === "https:" ||
+                                parsed.protocol === "http:") &&
+                              Boolean(parsed.hostname)
+                            );
+                          } catch {
+                            return false;
+                          }
+                        })();
+
+                        return (
+                          <div
+                            key={item.name}
+                            style={{
+                              border: "1px solid #4a2028",
+                              background: "#10090b",
+                              padding: 16,
+                              minWidth: 0,
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: 8,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <strong>{item.name}</strong>
+
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  color: validUrl ? "#a9ddb5" : "#c49a9f",
+                                }}
+                              >
+                                {validUrl ? "已提供" : "未提供"}
+                              </span>
+                            </div>
+
+                            <p
+                              style={{
+                                fontSize: 13,
+                                color: "#bca5a8",
+                                lineHeight: 1.7,
+                                marginTop: 8,
+                              }}
+                            >
+                              {item.description}
+                            </p>
+
+                            {validUrl ? (
+                              <>
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    color: "#bca5a8",
+                                    overflowWrap: "anywhere",
+                                    marginTop: 10,
+                                    lineHeight: 1.7,
+                                  }}
+                                >
+                                  {url}
+                                </div>
+
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    display: "inline-block",
+                                    marginTop: 12,
+                                    padding: "10px 14px",
+                                    background: "#8b1e2d",
+                                    border: "1px solid #a52a3a",
+                                    color: "#fff5f6",
+                                    textDecoration: "none",
+                                    fontSize: 13,
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  打开下载页面 ↗
+                                </a>
+                              </>
+                            ) : (
+                              <div
+                                style={{
+                                  marginTop: 12,
+                                  padding: 10,
+                                  border: "1px dashed #4a2028",
+                                  color: "#80676b",
+                                  fontSize: 13,
+                                  lineHeight: 1.7,
+                                }}
+                              >
+                                当前投稿记录没有有效的下载地址。
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <div style={{ marginTop: 24 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
                       投稿图片
