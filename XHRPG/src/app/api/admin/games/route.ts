@@ -8,6 +8,7 @@ const ALLOWED_GAME_STATUSES = [
   "Demo",
   "弃坑",
   "断更",
+  "预告",
 ] as const;
 
 type GameStatus = (typeof ALLOWED_GAME_STATUSES)[number];
