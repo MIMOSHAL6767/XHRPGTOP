@@ -1,246 +1,360 @@
-
-import { NextResponse } from "next/server";
-import { randomBytes } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { randomBytes } from "crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function fail(message: string, status = 400) {
+const CATEGORIES = [
+  "角色扮演",
+  "动作冒险",
+  "策略战棋",
+  "恐怖悬疑",
+  "模拟经营",
+] as const;
+
+const GAME_STATUSES = [
+  "更新中",
+  "完结",
+  "Demo",
+  "弃坑",
+  "断更",
+  "预告",
+] as const;
+
+const OPTIONAL_DOWNLOAD_STATUSES = ["弃坑", "断更", "预告"];
+
+type AssetInput = {
+  cover?: unknown;
+  background?: unknown;
+  logo?: unknown;
+  screenshots?: unknown;
+};
+
+function jsonError(message: string, status = 400) {
   return NextResponse.json(
     { success: false, message },
-    { status }
+    { status },
   );
 }
 
-function normalizeAnswer(value: string) {
-  return value.trim().replace(/\s+/g, "").toLowerCase();
+function cleanText(value: unknown, maxLength: number) {
+  return String(value ?? "").trim().slice(0, maxLength);
 }
 
-function readText(value: unknown, maxLength = 2000): string | null {
+function normalizeAnswer(value: unknown) {
+  return String(value ?? "").trim().replace(/\s+/g, "").toLowerCase();
+}
+
+function isValidHttpUrl(value: string) {
+  if (!value) return true;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isPendingImagePath(value: unknown) {
+  if (typeof value !== "string") return false;
+
+  return /^pending\/[0-9a-f-]{36}\/(cover|background|logo|screenshot)\.(png|jpg|webp)$/i.test(
+    value,
+  );
+}
+
+function cleanAssetPath(value: unknown): string | null {
   if (typeof value !== "string") return null;
 
-  const result = value.trim();
+  const path = value.trim();
 
-  if (result.length > maxLength) return null;
+  if (!isPendingImagePath(path)) return null;
 
-  return result;
+  return path;
 }
 
-export async function POST(req: Request) {
-  try {
-    const body: unknown = await req.json();
+async function checkTempImageExists(path: string) {
+  const owner = process.env.GITHUB_OWNER;
+  const repo = process.env.GITHUB_TEMP_REPO;
+  const branch = process.env.GITHUB_TEMP_BRANCH || "main";
+  const token =
+    process.env.GITHUB_TOKEN || process.env.GITHUB_IMAGE_TOKEN;
 
-    if (
-      !body ||
-      typeof body !== "object" ||
-      Array.isArray(body)
-    ) {
-      return fail("提交的数据格式错误");
+  if (!owner || !repo || !token) {
+    throw new Error("投稿临时仓库环境变量缺失");
+  }
+
+  const encodedPath = path
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
+  const response = await fetch(
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      cache: "no-store",
+    },
+  );
+
+  return response.ok;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body: unknown = await request.json().catch(() => null);
+
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return jsonError("提交的数据格式不正确");
     }
 
     const data = body as Record<string, unknown>;
 
-    // 1. 读取并验证必填资料
-    const name = readText(data.name, 120);
-    const author = readText(data.author, 120);
-    const version = readText(data.version, 80);
-    const category = readText(data.category, 80);
-    const description = readText(data.description, 5000);
-    const en = readText(data.en, 120);
-    const lanzou = readText(data.lanzou, 1000);
-    const pan123 = readText(data.pan123, 1000);
-    const gameStatus = readText(data.gameStatus, 30);
-    const coverPath = readText(data.coverPath, 300);
-    const questionId = data.questionId;
-    const answer = readText(data.answer, 300);
+    const name = cleanText(data.name, 120);
+    const en = cleanText(data.en, 120);
+    const author = cleanText(data.author, 120);
+    const category = cleanText(data.category, 40);
+    const version = cleanText(data.version, 80);
+    const description = cleanText(data.description, 5000);
+    const lanzou = cleanText(data.lanzou, 1000);
+    const pan123 = cleanText(data.pan123, 1000);
+    const gameStatus = cleanText(data.gameStatus || "更新中", 30);
 
-    if (!name) return fail("游戏名称不能为空");
-    if (!author) return fail("作者不能为空");
-    if (!version) return fail("游戏版本不能为空");
-    if (!category) return fail("请选择游戏分类");
-    if (!coverPath) return fail("请先上传封面");
-    if (!gameStatus) return fail("请选择作品状态");
+    const questionId = Number(data.questionId);
+    const answer = cleanText(data.answer, 200);
 
-    const allowedCategories = [
-      "角色扮演",
-      "动作冒险",
-      "策略战棋",
-      "恐怖悬疑",
-      "模拟经营",
-    ];
+    const coverPath = cleanAssetPath(
+      data.coverPath ??
+        (data.assets as AssetInput | undefined)?.cover,
+    );
 
-    if (!allowedCategories.includes(category)) {
-      return fail("不支持的游戏分类");
+    if (!name || !author || !version || !category) {
+      return jsonError("请填写游戏名称、作者、版本并选择分类");
     }
 
-    const allowedGameStatuses = [
-      "更新中",
-      "完结",
-      "Demo",
-      "弃坑",
-      "断更",
-      "预告",
-    ];
-
-    if (!allowedGameStatuses.includes(gameStatus)) {
-      return fail("不支持的作品状态");
+    if (!CATEGORIES.includes(category as (typeof CATEGORIES)[number])) {
+      return jsonError("游戏分类无效");
     }
 
-    // 普通状态至少填写一个下载链接；
-    // 弃坑、断更、预告允许两个链接都为空。
     if (
-      !["弃坑", "断更", "预告"].includes(gameStatus) &&
+      !GAME_STATUSES.includes(gameStatus as (typeof GAME_STATUSES)[number])
+    ) {
+      return jsonError("作品状态无效");
+    }
+
+    if (!coverPath) {
+      return jsonError("封面路径无效，请重新上传封面");
+    }
+
+    if (
+      !OPTIONAL_DOWNLOAD_STATUSES.includes(gameStatus) &&
       !lanzou &&
       !pan123
     ) {
-      return fail("请至少填写一个下载链接");
+      return jsonError(
+        "当前作品状态至少需要填写一个下载链接",
+      );
     }
 
-    // 2. 验证人机验证答案
-    if (
-      typeof questionId !== "number" &&
-      typeof questionId !== "string"
-    ) {
-      return fail("请完成问题验证");
+    if (!isValidHttpUrl(lanzou) || !isValidHttpUrl(pan123)) {
+      return jsonError("下载链接必须是有效的 HTTP 或 HTTPS 地址");
     }
 
-    const parsedQuestionId = Number(questionId);
-
-    if (
-      !Number.isSafeInteger(parsedQuestionId) ||
-      parsedQuestionId < 1 ||
-      !answer
-    ) {
-      return fail("请完成问题验证");
+    if (!questionId || !Number.isSafeInteger(questionId) || !answer) {
+      return jsonError("请完成验证题");
     }
 
-    const question = await prisma.verifyQuestion.findUnique({
-      where: { id: parsedQuestionId },
-      select: {
-        answer: true,
+    const question = await prisma.verifyQuestion.findFirst({
+      where: {
+        id: questionId,
         enabled: true,
+      },
+      select: {
+        id: true,
+        answer: true,
       },
     });
 
     if (
       !question ||
-      !question.enabled ||
-      normalizeAnswer(answer) !== normalizeAnswer(question.answer)
+      normalizeAnswer(question.answer) !== normalizeAnswer(answer)
     ) {
-      return fail("验证答案错误或题目已失效", 403);
+      return jsonError("验证答案错误，请重新获取题目", 403);
     }
 
-    // 3. 只接受本接口生成的随机临时封面路径
-    const pathMatch = coverPath.match(
-      /^pending\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/cover\.(png|jpg|webp)$/
-    );
+    // 支持新页面提交的 assets，也兼容只提交 coverPath 的旧页面。
+    const incomingAssets =
+      data.assets && typeof data.assets === "object"
+        ? (data.assets as AssetInput)
+        : {};
 
-    if (!pathMatch) {
-      return fail("临时封面路径无效");
+    const backgroundPath = incomingAssets.background
+      ? cleanAssetPath(incomingAssets.background)
+      : null;
+
+    const logoPath = incomingAssets.logo
+      ? cleanAssetPath(incomingAssets.logo)
+      : null;
+
+    const screenshotPathsRaw = Array.isArray(incomingAssets.screenshots)
+      ? incomingAssets.screenshots
+      : [];
+
+    if (screenshotPathsRaw.length > 100) {
+      return jsonError("详情预览图最多 100 张");
     }
 
-    const token =
-      process.env.GITHUB_TOKEN ||
-      process.env.GITHUB_IMAGE_TOKEN;
+    const screenshotPaths: string[] = [];
 
-    const owner =
-      process.env.GITHUB_OWNER ||
-      process.env.GITHUB_IMAGE_OWNER;
+    for (const item of screenshotPathsRaw) {
+      const path = cleanAssetPath(item);
 
-    const repo = process.env.GITHUB_TEMP_REPO;
+      if (!path || !path.includes("/screenshot.")) {
+        return jsonError("详情预览图路径无效，请重新上传");
+      }
 
-    const branch =
-      process.env.GITHUB_TEMP_BRANCH || "main";
-
-    if (!token || !owner || !repo) {
-      console.error("临时图片仓库配置不完整");
-      return fail("投稿图片服务尚未配置完成", 500);
+      screenshotPaths.push(path);
     }
 
-    // 4. 向 GitHub 确认图片确实存在
-    const encodedPath = coverPath
-      .split("/")
-      .map(encodeURIComponent)
-      .join("/");
+    if (incomingAssets.background && !backgroundPath) {
+      return jsonError("详情背景路径无效，请重新上传");
+    }
 
-    const imageApiUrl =
-      `https://api.github.com/repos/` +
-      `${encodeURIComponent(owner)}/` +
-      `${encodeURIComponent(repo)}/contents/` +
-      encodedPath +
-      `?ref=${encodeURIComponent(branch)}`;
+    if (incomingAssets.logo && !logoPath) {
+      return jsonError("标题图片路径无效，请重新上传");
+    }
 
-    const imageResponse = await fetch(imageApiUrl, {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
+    if (logoPath && !logoPath.toLowerCase().endsWith(".png")) {
+      return jsonError("标题图片必须是 PNG 格式");
+    }
+
+    const pathsToCheck = [
+      coverPath,
+      ...(backgroundPath ? [backgroundPath] : []),
+      ...(logoPath ? [logoPath] : []),
+      ...screenshotPaths,
+    ];
+
+    // 防止伪造路径，把不存在的文件存进待审核记录。
+    for (const path of pathsToCheck) {
+      const exists = await checkTempImageExists(path);
+
+      if (!exists) {
+        return jsonError(
+          "有图片未成功上传到临时仓库，请重新上传后再提交",
+        );
+      }
+    }
+
+    const tagsRaw = Array.isArray(data.tags) ? data.tags : [];
+
+    const tags = Array.from(
+      new Set(
+        tagsRaw
+          .filter((item): item is string => typeof item === "string")
+          .map((item) => item.trim().slice(0, 40))
+          .filter(Boolean),
+      ),
+    ).slice(0, 30);
+
+    const titleMode =
+      data.titleMode === "image" && logoPath ? "image" : "text";
+
+    const opacityValue = Number(data.detailBackgroundOpacity ?? 35);
+    const detailBackgroundOpacity = Number.isFinite(opacityValue)
+      ? Math.min(100, Math.max(0, Math.round(opacityValue)))
+      : 35;
+
+    const detailBackgroundFit =
+      data.detailBackgroundFit === "contain" ? "contain" : "cover";
+
+    const historyRaw = Array.isArray(data.history) ? data.history : [];
+
+    if (historyRaw.length > 100) {
+      return jsonError("版本历史最多 100 条");
+    }
+
+    const history = historyRaw
+      .filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) &&
+          typeof item === "object" &&
+          !Array.isArray(item),
+      )
+      .map((item) => ({
+        version: cleanText(item.version, 80),
+        date: cleanText(item.date, 40),
+        lanzou: cleanText(item.lanzou, 1000),
+        pan123: cleanText(item.pan123, 1000),
+      }))
+      .filter((item) => item.version || item.date || item.lanzou || item.pan123);
+
+    for (const item of history) {
+      if (!isValidHttpUrl(item.lanzou) || !isValidHttpUrl(item.pan123)) {
+        return jsonError("版本历史中的下载链接必须是 HTTP 或 HTTPS 地址");
+      }
+    }
+
+    // 数据库存储临时仓库路径；审核通过时再由站长端同步到正式仓库。
+    const submissionAssets: Prisma.InputJsonObject = {
+      cover: coverPath,
+      background: backgroundPath,
+      logo: logoPath,
+      screenshots: screenshotPaths,
+    };
+
+    const existing = await prisma.game.findFirst({
+      where: {
+        submissionCoverPath: coverPath,
       },
-      cache: "no-store",
-    });
-
-    if (!imageResponse.ok) {
-      console.error(
-        "核对投稿封面失败:",
-        imageResponse.status
-      );
-
-      return fail(
-        imageResponse.status === 404
-          ? "临时封面不存在，请重新上传"
-          : "暂时无法核对封面，请稍后重试",
-        imageResponse.status === 404 ? 400 : 502
-      );
-    }
-
-    const imageInfo = await imageResponse.json();
-
-    if (
-      imageInfo?.type !== "file" ||
-      imageInfo?.path !== coverPath ||
-      typeof imageInfo?.sha !== "string"
-    ) {
-      return fail("临时封面文件无效");
-    }
-
-    // 5. 防止同一张临时封面重复创建投稿
-    const existingSubmission = await prisma.game.findFirst({
-      where: { submissionCoverPath: coverPath },
       select: { id: true },
     });
 
-    if (existingSubmission) {
-      return fail("这张封面已经关联投稿，请重新上传");
+    if (existing) {
+      return jsonError("这张封面已经用于一份投稿，请重新上传封面");
     }
 
-    // 6. 生成唯一凭证
     const credential = randomBytes(24).toString("hex");
+    const currentDate = new Date().toISOString().slice(0, 10);
 
-    const now = new Date().toISOString().slice(0, 10);
-
-    // 7. 强制进入审核中，不接受客户端指定审核状态
     const game = await prisma.game.create({
       data: {
         name,
-        en: en || "",
+        en: en || null,
         author,
         category,
         version,
-        description: description || "",
+        description,
         cover: "",
-        lanzou: lanzou || "",
-        pan123: pan123 || "",
+        lanzou,
+        pan123,
         downloads: 0,
-        date: now,
-        updateDate: now,
-        history: [],
-        tags: [],
+        date: currentDate,
+        updateDate: currentDate,
+        history: history as Prisma.InputJsonValue,
         status: "审核中",
         gameStatus,
-        symbol: "✦",
+        symbol: "",
+        tags: tags as Prisma.InputJsonValue,
+        titleMode,
+        titleLogo: null,
+        detailBackground: null,
+        detailBackgroundOpacity,
+        detailBackgroundFit,
+        screenshots: screenshotPaths.length
+          ? ([] as Prisma.InputJsonArray)
+          : ([] as Prisma.InputJsonArray),
         submissionCredential: credential,
         submissionCoverPath: coverPath,
+        submissionAssets,
       },
       select: {
         id: true,
@@ -249,21 +363,17 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: "投稿已提交，等待站长审核",
-        game,
-        credential,
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      success: true,
+      message: "投稿提交成功，等待站长审核",
+      id: game.id,
+      name: game.name,
+      status: game.status,
+      credential,
+    });
   } catch (error) {
-    console.error(
-      "创建投稿失败:",
-      error instanceof Error ? error.message : "未知错误"
-    );
+    console.error("提交游戏投稿失败:", error);
 
-    return fail("投稿提交失败，请稍后重试", 500);
+    return jsonError("投稿提交失败，请检查资料后重试", 500);
   }
 }
