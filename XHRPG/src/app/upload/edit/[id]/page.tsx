@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ChangeEvent, FormEvent } from "react";
@@ -49,7 +50,7 @@ type ScreenshotItem = {
 type UploadKind = "cover" | "background" | "logo" | "screenshot";
 
 const GAME_STATUSES = ["完结", "更新中", "Demo", "弃坑", "断更"];
-
+const MAX_SCREENSHOTS = 5;
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -231,8 +232,6 @@ export default function SubmissionGameEditPage() {
   const [screenshots, setScreenshots] = useState<ScreenshotItem[]>([]);
   const [tagInput, setTagInput] = useState("");
 
-  // 统一记录本组件创建的 blob 预览地址。
-  // 只在替换、删除对应预览或组件卸载时撤销，避免预览提前失效。
   const previewUrlsRef = useRef<Set<string>>(new Set());
 
   const createPreview = useCallback((file: File): string => {
@@ -289,9 +288,7 @@ export default function SubmissionGameEditPage() {
       return;
     }
 
-    // 明确将凭证收窄为 string，避免 HeadersInit 类型错误。
     const validCredential: string = storedCredential;
-
     let cancelled = false;
 
     async function loadGame() {
@@ -322,7 +319,19 @@ export default function SubmissionGameEditPage() {
         const history = parseHistory(game.history);
         const screenshotUrls = parseScreenshots(game.screenshots);
 
+        // 保留旧数据，但正常新增时限制为 5 张。
         setCredential(validCredential);
+
+        const rawOpacity = toNumberValue(
+          game.detailBackgroundOpacity,
+          35
+        );
+
+        // 兼容旧版以 0—1 保存的透明度数据。
+        const normalizedOpacity =
+          rawOpacity > 0 && rawOpacity <= 1
+            ? rawOpacity * 100
+            : rawOpacity;
 
         setForm({
           name: toStringValue(game.name),
@@ -344,10 +353,7 @@ export default function SubmissionGameEditPage() {
           detailBackground: toStringValue(game.detailBackground),
           detailBackgroundOpacity: Math.min(
             100,
-            Math.max(
-              0,
-              toNumberValue(game.detailBackgroundOpacity, 35)
-            )
+            Math.max(0, normalizedOpacity)
           ),
           detailBackgroundFit:
             game.detailBackgroundFit === "contain" ? "contain" : "cover",
@@ -510,18 +516,28 @@ export default function SubmissionGameEditPage() {
     setMessage("");
   }
 
+  // 预览图上限：5 张；多选时只接收剩余名额内的图片。
   function addScreenshots(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     event.target.value = "";
 
     if (!files.length) return;
 
-    const validFiles = files.filter(validateImage);
+    const remaining = MAX_SCREENSHOTS - screenshots.length;
 
-    if (!validFiles.length) return;
+    if (remaining <= 0) {
+      setError("详情预览图最多支持 5 张，请先删除已有图片。");
+      return;
+    }
 
-    if (screenshots.length + validFiles.length > 100) {
-      setError("详情预览图最多支持 100 张。");
+    const selectedFiles = files.slice(0, remaining);
+
+    const validFiles = selectedFiles.filter(validateImage);
+
+    if (!validFiles.length) {
+      if (files.length > remaining) {
+        setError(`详情预览图最多支持 5 张，本次最多还能添加 ${remaining} 张。`);
+      }
       return;
     }
 
@@ -531,8 +547,19 @@ export default function SubmissionGameEditPage() {
       preview: createPreview(file),
     }));
 
-    setScreenshots((current) => [...current, ...newItems]);
-    setError("");
+    setScreenshots((current) => [
+      ...current,
+      ...newItems,
+    ]);
+
+    if (files.length > remaining) {
+      setError(
+        `详情预览图最多支持 5 张，本次已截取前 ${remaining} 张进行处理。`
+      );
+    } else {
+      setError("");
+    }
+
     setMessage("");
   }
 
@@ -636,6 +663,12 @@ export default function SubmissionGameEditPage() {
       return;
     }
 
+    // 防止旧数据或其他异常状态绕过前端添加限制。
+    if (screenshots.length > MAX_SCREENSHOTS) {
+      setError("详情预览图最多支持 5 张，请删除多余图片后再保存。");
+      return;
+    }
+
     if (
       form.titleMode === "logo" &&
       !logoFile &&
@@ -650,7 +683,6 @@ export default function SubmissionGameEditPage() {
     setMessage("");
 
     try {
-      // 1. 上传新封面。
       let cover = form.cover;
 
       if (coverFile) {
@@ -658,7 +690,6 @@ export default function SubmissionGameEditPage() {
         cover = await uploadImage(coverFile, "cover");
       }
 
-      // 2. 上传详情背景。
       let detailBackground = form.detailBackground;
 
       if (backgroundFile) {
@@ -669,7 +700,6 @@ export default function SubmissionGameEditPage() {
         );
       }
 
-      // 3. 上传标题图片。
       let titleLogo = form.titleLogo;
 
       if (logoFile) {
@@ -677,7 +707,6 @@ export default function SubmissionGameEditPage() {
         titleLogo = await uploadImage(logoFile, "logo");
       }
 
-      // 4. 按照当前排序处理预览图。
       const screenshotUrls: string[] = [];
 
       for (let index = 0; index < screenshots.length; index++) {
@@ -752,7 +781,6 @@ export default function SubmissionGameEditPage() {
         throw new Error(result?.message || "保存游戏资料失败。");
       }
 
-      // 保存成功后，切换为已上传的远程图片地址。
       if (coverFile) {
         releasePreview(coverPreview);
         setCoverPreview(cover);
@@ -935,9 +963,7 @@ export default function SubmissionGameEditPage() {
           {/* 01 / 基本信息 */}
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
-              <h2 className="text-lg font-bold">
-                01 / 基本信息
-              </h2>
+              <h2 className="text-lg font-bold">01 / 基本信息</h2>
 
               <p className="mt-2 text-xs leading-6 text-[#9e858a]">
                 填写游戏名称、作者、分类、开发进度和下载地址。
@@ -996,9 +1022,7 @@ export default function SubmissionGameEditPage() {
                 <input
                   className={inputClass}
                   value={form.category}
-                  onChange={(e) =>
-                    updateField("category", e.target.value)
-                  }
+                  onChange={(e) => updateField("category", e.target.value)}
                   placeholder="例如：角色扮演、解谜冒险"
                   maxLength={100}
                   disabled={saving}
@@ -1010,9 +1034,7 @@ export default function SubmissionGameEditPage() {
                 <select
                   className={inputClass}
                   value={form.gameStatus}
-                  onChange={(e) =>
-                    updateField("gameStatus", e.target.value)
-                  }
+                  onChange={(e) => updateField("gameStatus", e.target.value)}
                   disabled={saving}
                 >
                   {GAME_STATUSES.map((status) => (
@@ -1062,9 +1084,7 @@ export default function SubmissionGameEditPage() {
               <textarea
                 className={inputClass}
                 value={form.description}
-                onChange={(e) =>
-                  updateField("description", e.target.value)
-                }
+                onChange={(e) => updateField("description", e.target.value)}
                 rows={7}
                 maxLength={30000}
                 placeholder="介绍游戏的故事、玩法、制作情况等。"
@@ -1076,9 +1096,7 @@ export default function SubmissionGameEditPage() {
           {/* 02 / 游戏标签 */}
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
-              <h2 className="text-lg font-bold">
-                02 / 游戏标签
-              </h2>
+              <h2 className="text-lg font-bold">02 / 游戏标签</h2>
 
               <p className="mt-2 text-xs leading-6 text-[#9e858a]">
                 输入标签后点击添加，也可以在标签列表中删除。标签修改会在保存资料时生效。
@@ -1145,9 +1163,7 @@ export default function SubmissionGameEditPage() {
           {/* 03 / 图片资源 */}
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
-              <h2 className="text-lg font-bold">
-                03 / 图片资源
-              </h2>
+              <h2 className="text-lg font-bold">03 / 图片资源</h2>
 
               <p className="mt-2 text-xs leading-6 text-[#9e858a]">
                 支持 PNG、JPG、WebP，单张图片最大 5 MB。新选择的图片会在保存时上传。
@@ -1155,7 +1171,6 @@ export default function SubmissionGameEditPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-              {/* 游戏封面 */}
               <div className="min-w-0 border border-[#4a2028] p-4">
                 <h3 className="font-semibold">游戏封面</h3>
 
@@ -1167,9 +1182,7 @@ export default function SubmissionGameEditPage() {
                       className="max-h-64 max-w-full object-contain"
                     />
                   ) : (
-                    <span className="text-sm text-[#9e858a]">
-                      暂无封面
-                    </span>
+                    <span className="text-sm text-[#9e858a]">暂无封面</span>
                   )}
                 </div>
 
@@ -1191,7 +1204,6 @@ export default function SubmissionGameEditPage() {
                 )}
               </div>
 
-              {/* 详情背景 */}
               <div className="min-w-0 border border-[#4a2028] p-4">
                 <h3 className="font-semibold">详情背景</h3>
 
@@ -1203,9 +1215,7 @@ export default function SubmissionGameEditPage() {
                       className="max-h-64 max-w-full object-contain"
                     />
                   ) : (
-                    <span className="text-sm text-[#9e858a]">
-                      暂无背景
-                    </span>
+                    <span className="text-sm text-[#9e858a]">暂无背景</span>
                   )}
                 </div>
 
@@ -1227,7 +1237,6 @@ export default function SubmissionGameEditPage() {
                 )}
               </div>
 
-              {/* 标题图片 */}
               <div className="min-w-0 border border-[#4a2028] p-4">
                 <h3 className="font-semibold">标题图片</h3>
 
@@ -1239,9 +1248,7 @@ export default function SubmissionGameEditPage() {
                       className="max-h-48 max-w-full object-contain"
                     />
                   ) : (
-                    <span className="text-sm text-[#9e858a]">
-                      暂无标题图片
-                    </span>
+                    <span className="text-sm text-[#9e858a]">暂无标题图片</span>
                   )}
                 </div>
 
@@ -1268,9 +1275,7 @@ export default function SubmissionGameEditPage() {
           {/* 04 / 详情页显示设置 */}
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
-              <h2 className="text-lg font-bold">
-                04 / 详情页显示设置
-              </h2>
+              <h2 className="text-lg font-bold">04 / 详情页显示设置</h2>
 
               <p className="mt-2 text-xs leading-6 text-[#9e858a]">
                 设置详情页标题样式、背景适配方式和背景显示强度。
@@ -1283,9 +1288,7 @@ export default function SubmissionGameEditPage() {
                 <select
                   className={inputClass}
                   value={form.titleMode}
-                  onChange={(e) =>
-                    updateField("titleMode", e.target.value)
-                  }
+                  onChange={(e) => updateField("titleMode", e.target.value)}
                   disabled={saving}
                 >
                   <option value="text">文字标题</option>
@@ -1303,12 +1306,8 @@ export default function SubmissionGameEditPage() {
                   }
                   disabled={saving}
                 >
-                  <option value="cover">
-                    Cover：铺满区域，可能裁切
-                  </option>
-                  <option value="contain">
-                    Contain：完整显示，可能留空
-                  </option>
+                  <option value="cover">Cover：铺满区域，可能裁切</option>
+                  <option value="contain">Contain：完整显示，可能留空</option>
                 </select>
               </label>
 
@@ -1347,27 +1346,25 @@ export default function SubmissionGameEditPage() {
             )}
           </section>
 
-          {/* 05 / 详情预览图 */}
+          {/* 05 / 详情预览图：最多 5 张 */}
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-lg font-bold">
-                  05 / 详情预览图
-                </h2>
+                <h2 className="text-lg font-bold">05 / 详情预览图</h2>
 
                 <span className="text-xs text-[#c77783]">
-                  {screenshots.length} / 100 张
+                  {screenshots.length} / {MAX_SCREENSHOTS} 张
                 </span>
               </div>
 
               <p className="mt-2 text-xs leading-6 text-[#9e858a]">
-                可一次选择多张图片，删除图片或调整顺序。保存后会更新游戏资料中的预览图列表。
+                最多上传 5 张预览图。可一次选择多张图片，也可以删除图片或调整顺序。保存后会更新游戏资料中的预览图列表。
               </p>
             </div>
 
             <label
               className={`inline-flex items-center border border-[#a52a3a] bg-[#8b1e2d] px-4 py-2.5 text-sm font-semibold text-white ${
-                saving || screenshots.length >= 100
+                saving || screenshots.length >= MAX_SCREENSHOTS
                   ? "cursor-not-allowed opacity-50"
                   : "cursor-pointer hover:bg-[#a52a3a]"
               }`}
@@ -1379,7 +1376,9 @@ export default function SubmissionGameEditPage() {
                 accept="image/png,image/jpeg,image/webp"
                 multiple
                 className="hidden"
-                disabled={saving || screenshots.length >= 100}
+                disabled={
+                  saving || screenshots.length >= MAX_SCREENSHOTS
+                }
                 onChange={addScreenshots}
               />
             </label>
@@ -1467,9 +1466,7 @@ export default function SubmissionGameEditPage() {
           <section className={sectionClass}>
             <div className="mb-5 border-b border-[#4a2028] pb-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h2 className="text-lg font-bold">
-                  06 / 历史版本
-                </h2>
+                <h2 className="text-lg font-bold">06 / 历史版本</h2>
 
                 <button
                   type="button"
@@ -1530,11 +1527,7 @@ export default function SubmissionGameEditPage() {
                           className={inputClass}
                           value={item.version || ""}
                           onChange={(e) =>
-                            changeHistory(
-                              index,
-                              "version",
-                              e.target.value
-                            )
+                            changeHistory(index, "version", e.target.value)
                           }
                           maxLength={100}
                           disabled={saving}
@@ -1547,11 +1540,7 @@ export default function SubmissionGameEditPage() {
                           className={inputClass}
                           value={item.date || ""}
                           onChange={(e) =>
-                            changeHistory(
-                              index,
-                              "date",
-                              e.target.value
-                            )
+                            changeHistory(index, "date", e.target.value)
                           }
                           placeholder="例如：2026-10-25"
                           maxLength={100}
@@ -1565,11 +1554,7 @@ export default function SubmissionGameEditPage() {
                           className={inputClass}
                           value={item.lanzou || ""}
                           onChange={(e) =>
-                            changeHistory(
-                              index,
-                              "lanzou",
-                              e.target.value
-                            )
+                            changeHistory(index, "lanzou", e.target.value)
                           }
                           maxLength={2000}
                           disabled={saving}
@@ -1582,11 +1567,7 @@ export default function SubmissionGameEditPage() {
                           className={inputClass}
                           value={item.pan123 || ""}
                           onChange={(e) =>
-                            changeHistory(
-                              index,
-                              "pan123",
-                              e.target.value
-                            )
+                            changeHistory(index, "pan123", e.target.value)
                           }
                           maxLength={2000}
                           disabled={saving}
@@ -1630,9 +1611,7 @@ export default function SubmissionGameEditPage() {
                   className={buttonClass}
                   disabled={saving || !credential}
                 >
-                  {saving
-                    ? "正在上传并保存……"
-                    : "保存修改并提交审核"}
+                  {saving ? "正在上传并保存……" : "保存修改并提交审核"}
                 </button>
               </div>
             </div>
