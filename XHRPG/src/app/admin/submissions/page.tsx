@@ -580,9 +580,9 @@ export default function SubmissionReviewPage() {
                           description: "投稿人提供的蓝奏云游戏资源",
                         },
                         {
-                          name: "123 云盘下载",
+                          name: "123云盘下载",
                           url: selected.pan123,
-                          description: "投稿人提供的 123 云盘游戏资源",
+                          description: "投稿人提供的123云盘游戏资源",
                         },
                       ].map((item) => {
                         const url =
