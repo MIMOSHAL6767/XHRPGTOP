@@ -545,24 +545,23 @@ export default function PublicNewGamePage() {
                 />
               </label>
 
-              <label style={labelStyle}>
-                游戏分类 *
-                <select
-                  name="category"
-                  value={form.category}
-                  onChange={change}
-                  required
-                  disabled={loading}
-                  style={inputStyle}
-                >
-                  <option value="">请选择分类</option>
-                  <option value="角色扮演">角色扮演</option>
-                  <option value="动作冒险">动作冒险</option>
-                  <option value="策略战棋">策略战棋</option>
-                  <option value="恐怖悬疑">恐怖悬疑</option>
-                  <option value="模拟经营">模拟经营</option>
-                </select>
-              </label>
+<label style={labelStyle}>
+  游戏分类 *
+  <input
+    name="category"
+    type="text"
+    value={form.category}
+    onChange={change}
+    maxLength={40}
+    required
+    disabled={loading}
+    placeholder="请填写游戏分类，例如：角色扮演、解谜探索"
+    style={inputStyle}
+  />
+  <small style={{ display: "block", marginTop: 6, opacity: 0.7 }}>
+    可以自行填写分类，方便为不同类型的同人游戏建立索引。
+  </small>
+</label>
 
               <label style={labelStyle}>
                 作品状态 *
