@@ -43,6 +43,10 @@ export default async function AdminPage() {
             <button>进入游戏管理</button>
           </Link>
 
+          <Link href="/admin/submissions">
+            <button>投稿审核</button>
+          </Link>
+
           <Link href="/admin/activities">
             <button>活动管理</button>
           </Link>
@@ -58,11 +62,10 @@ export default async function AdminPage() {
           <Link href="/admin/site-backgrounds">
             <button>网站背景管理</button>
           </Link>
-          
+
           <Link href="/admin/floating-widget">
             <button>首页悬浮按钮与音乐管理</button>
           </Link>
-          
         </div>
 
         <h2>用户管理</h2>
