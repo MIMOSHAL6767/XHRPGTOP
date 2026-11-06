@@ -51,6 +51,10 @@ lanzou:game.lanzou,
 
 pan123:game.pan123,
 
+password:game.password ?? null,
+
+match:game.match ?? null,
+
 
 status:game.status,
 
@@ -98,6 +102,10 @@ cover:game.cover,
 lanzou:game.lanzou,
 
 pan123:game.pan123,
+
+password:game.password ?? null,
+
+match:game.match ?? null,
 
 
 status:game.status,

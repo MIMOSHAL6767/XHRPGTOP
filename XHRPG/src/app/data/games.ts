@@ -28,6 +28,10 @@ export type Game = {
 
   pan123:string;
 
+  password?:string;
+
+  match?:string;
+
   status:
   | "已发布"
   | "审核中"
@@ -119,6 +123,10 @@ export const games:Game[]=[
 
     lanzou:
     "https://wwbai.lanzoup.com/iVwoy4bxl2na",
+
+    password:"1234",
+
+    match:"红太狼",
 
 
     pan123:

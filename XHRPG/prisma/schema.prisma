@@ -125,6 +125,12 @@ model Game {
 
   pan123 String
 
+  // 蓝奏云下载密码（可选，供启动器自动下载）
+  password String?
+
+  // 123 网盘云盘定位关键词（可选，供启动器自动下载）
+  match String?
+
   downloads Int @default(0)
 
   createdAt DateTime @default(now())
