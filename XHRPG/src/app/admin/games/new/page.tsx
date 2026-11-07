@@ -35,6 +35,8 @@ const INITIAL_FORM = {
   cover: "",
   lanzou: "",
   pan123: "",
+  password: "",
+  match: "",
   symbol: "✦",
   tags: [] as string[],
   status: "已发布",
@@ -740,6 +742,28 @@ export default function NewGame() {
               name="pan123"
               value={form.pan123}
               onChange={change}
+              style={inputStyle}
+            />
+          </label>
+
+          <label>
+            蓝奏云密码（启动器自动下载用）
+            <input
+              name="password"
+              value={form.password}
+              onChange={change}
+              placeholder="例如 1234，没有密码可留空"
+              style={inputStyle}
+            />
+          </label>
+
+          <label>
+            网盘文件关键词（123网盘自动下载用）
+            <input
+              name="match"
+              value={form.match}
+              onChange={change}
+              placeholder="例如 红太狼，用于在云盘列表中定位文件"
               style={inputStyle}
             />
           </label>

@@ -784,6 +784,26 @@ export default function EditGameClient({ id }: { id: string }) {
               onChange={change}
             />
           </label>
+
+          <label>
+            蓝奏云密码（启动器自动下载用）
+            <input
+              name="password"
+              value={form.password || ""}
+              onChange={change}
+              placeholder="例如 1234，没有密码可留空"
+            />
+          </label>
+
+          <label>
+            网盘文件关键词（123网盘自动下载用）
+            <input
+              name="match"
+              value={form.match || ""}
+              onChange={change}
+              placeholder="例如 红太狼，用于在云盘列表中定位文件"
+            />
+          </label>
         </div>
 
         {/* 游戏标签管理 */}

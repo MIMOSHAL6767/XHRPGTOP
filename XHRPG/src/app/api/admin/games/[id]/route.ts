@@ -167,6 +167,27 @@ export async function PUT(
       );
     }
 
+    // 校验启动器下载配置
+    if (
+      input.password !== undefined &&
+      !isOptionalString(input.password)
+    ) {
+      return NextResponse.json(
+        { success: false, message: "蓝奏云密码格式错误" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      input.match !== undefined &&
+      !isOptionalString(input.match)
+    ) {
+      return NextResponse.json(
+        { success: false, message: "网盘匹配关键词格式错误" },
+        { status: 400 }
+      );
+    }
+
     // 校验详情页背景
     if (
       input.detailBackground !== undefined &&
@@ -324,6 +345,21 @@ export async function PUT(
 
       ...(input.pan123 !== undefined && {
         pan123: input.pan123 as string,
+      }),
+
+      // 启动器下载配置：蓝奏云密码、网盘定位关键词
+      ...(input.password !== undefined && {
+        password:
+          typeof input.password === "string" && input.password.trim()
+            ? input.password.trim()
+            : null,
+      }),
+
+      ...(input.match !== undefined && {
+        match:
+          typeof input.match === "string" && input.match.trim()
+            ? input.match.trim()
+            : null,
       }),
 
       ...(input.symbol !== undefined && {

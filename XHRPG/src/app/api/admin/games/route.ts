@@ -133,6 +133,14 @@ export async function POST(req: Request) {
         cover: typeof body.cover === "string" ? body.cover : "",
         lanzou: typeof body.lanzou === "string" ? body.lanzou : "",
         pan123: typeof body.pan123 === "string" ? body.pan123 : "",
+        password:
+          typeof body.password === "string" && body.password.trim()
+            ? body.password.trim()
+            : null,
+        match:
+          typeof body.match === "string" && body.match.trim()
+            ? body.match.trim()
+            : null,
         symbol: typeof body.symbol === "string" ? body.symbol : "✦",
         tags: body.tags ?? [],
         status:
