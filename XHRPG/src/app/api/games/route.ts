@@ -25,6 +25,8 @@ export async function GET() {
       createdAt: g.createdAt,
       screenshots: Array.isArray(g.screenshots) ? g.screenshots : [],
       detailBackground: g.detailBackground || "",
+      detailBackgroundOpacity: g.detailBackgroundOpacity ?? 35,
+      detailBackgroundFit: g.detailBackgroundFit || "cover",
       titleMode: g.titleMode || "text",
       titleLogo: g.titleLogo || "",
       updateDate: g.updateDate || "",
