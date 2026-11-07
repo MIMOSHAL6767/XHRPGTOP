@@ -24,6 +24,7 @@ export async function GET() {
       {
         headers: {
           "Cache-Control": "no-store",
+          "Access-Control-Allow-Origin": "*",
         },
       }
     );
