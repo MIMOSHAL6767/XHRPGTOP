@@ -386,8 +386,11 @@ model Rating {
 
   gameId Int
 
-  // 评分设备标识（本地生成，去重）
+  // 评分设备标识（本地生成，仅作记录）
   voterId String
+
+  // 评分来源 IP（同一 IP 对同一游戏只能评一次）
+  ip String @default("")
 
   // 1-5 分
   score Int
@@ -397,6 +400,6 @@ model Rating {
 
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
 
-  @@unique([gameId, voterId])
+  @@unique([gameId, ip])
   @@index([gameId])
 }

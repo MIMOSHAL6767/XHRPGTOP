@@ -30,6 +30,10 @@ export async function POST(req: Request) {
     const score = Number(body.score);
     const voterId = String(body.voterId || "").trim();
 
+    // 取真实来源 IP（Vercel 会写入 x-forwarded-for）
+    const forwarded = req.headers.get("x-forwarded-for") || "";
+    const ip = (forwarded.split(",")[0] || req.headers.get("x-real-ip") || "").trim() || "unknown";
+
     if (!Number.isSafeInteger(gameId) || gameId <= 0) return bad("游戏 ID 无效");
     if (!Number.isInteger(score) || score < 1 || score > 5) return bad("评分必须是 1-5 的整数");
     if (voterId.length < 6 || voterId.length > 120) return bad("设备标识无效");
@@ -40,10 +44,11 @@ export async function POST(req: Request) {
     });
     if (!game) return bad("游戏不存在或尚未发布", 404);
 
+    // 同一 IP 对同一游戏只能评价一次（再次提交视为修改）
     await prisma.rating.upsert({
-      where: { gameId_voterId: { gameId, voterId } },
-      update: { score },
-      create: { gameId, voterId, score },
+      where: { gameId_ip: { gameId, ip } },
+      update: { score, voterId },
+      create: { gameId, voterId, ip, score },
     });
 
     const agg = await prisma.rating.aggregate({
