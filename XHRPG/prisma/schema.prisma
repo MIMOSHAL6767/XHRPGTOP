@@ -173,6 +173,12 @@ model Game {
   submissionCredential String? @unique
   submissionCoverPath  String?
   submissionAssets Json?
+
+  // 评分汇总（提交评分时更新）
+  ratingCount Int @default(0)
+  ratingSum Int @default(0)
+
+  ratings Rating[]
 }
 
 // =====================
@@ -369,3 +375,28 @@ model FloatingWidgetTrack {
 }
 
 
+
+
+// =====================
+// 游戏评分
+// =====================
+
+model Rating {
+  id Int @id @default(autoincrement())
+
+  gameId Int
+
+  // 评分设备标识（本地生成，去重）
+  voterId String
+
+  // 1-5 分
+  score Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, voterId])
+  @@index([gameId])
+}

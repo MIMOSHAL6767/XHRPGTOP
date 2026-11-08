@@ -21,6 +21,8 @@ export async function GET() {
       tags: Array.isArray(g.tags) ? g.tags : [],
       gameStatus: g.gameStatus || "",
       downloads: g.downloads || 0,
+      ratingCount: g.ratingCount || 0,
+      ratingAvg: g.ratingCount ? Math.round(((g.ratingSum || 0) / g.ratingCount) * 100) / 100 : 0,
       date: g.date || "",
       createdAt: g.createdAt,
       screenshots: Array.isArray(g.screenshots) ? g.screenshots : [],
