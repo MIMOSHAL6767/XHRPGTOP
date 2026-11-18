@@ -261,6 +261,13 @@ export async function POST(request: NextRequest) {
       data.description,
       MAX_TEXT_LENGTH,
     );
+    const estimatedTime = cleanText(data.estimatedTime, 80);
+    const engine = cleanText(data.engine, 80);
+    const reqOs = cleanText(data.reqOs, 120);
+    const reqCpu = cleanText(data.reqCpu, 200);
+    const reqMemory = cleanText(data.reqMemory, 80);
+    const reqGpu = cleanText(data.reqGpu, 200);
+    const reqRuntime = cleanText(data.reqRuntime, 160);
     const lanzou = cleanText(data.lanzou, 1000);
     const pan123 = cleanText(data.pan123, 1000);
     const gameStatus = cleanText(
@@ -557,6 +564,13 @@ export async function POST(request: NextRequest) {
         category,
         version,
         description,
+        estimatedTime: estimatedTime || null,
+        engine: engine || null,
+        reqOs: reqOs || null,
+        reqCpu: reqCpu || null,
+        reqMemory: reqMemory || null,
+        reqGpu: reqGpu || null,
+        reqRuntime: reqRuntime || null,
 
         // 审核通过并同步正式封面前，不直接公开临时路径。
         cover: "",

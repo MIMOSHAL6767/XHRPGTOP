@@ -1,8 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+
+type GlobalGame = {
+  id: number;
+  name: string;
+  en?: string | null;
+  author?: string | null;
+  category?: string | null;
+  cover?: string | null;
+  tags?: string[] | null;
+};
 
 type SiteHeaderProps = {
   headerImage?: string | null;
@@ -31,6 +41,135 @@ export default function SiteHeader({
       setUser(null);
     }
   }, []);
+
+  // ===== 全站搜索：任意页面输入即搜索全部已发布游戏 =====
+  const [globalQuery, setGlobalQuery] = useState(searchValue || "");
+  const [globalGames, setGlobalGames] = useState<GlobalGame[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [activeResult, setActiveResult] = useState(-1);
+  const searchWrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setGlobalQuery(searchValue || "");
+  }, [searchValue]);
+
+  useEffect(() => {
+    function handleOutside(event: MouseEvent) {
+      if (
+        searchWrapRef.current &&
+        !searchWrapRef.current.contains(event.target as Node)
+      ) {
+        setSearchFocused(false);
+        setActiveResult(-1);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutside);
+    };
+  }, []);
+
+  const searchKeyword = globalQuery.trim().toLowerCase();
+
+  const searchResults = searchKeyword
+    ? globalGames
+        .filter((game) => {
+          const tags = Array.isArray(game.tags)
+            ? game.tags.join(" ")
+            : "";
+
+          return [
+            game.name,
+            game.en,
+            game.author,
+            game.category,
+            tags,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(searchKeyword);
+        })
+        .slice(0, 8)
+    : [];
+
+  async function loadGlobalGames() {
+    if (globalGames.length > 0) return;
+
+    try {
+      const response = await fetch("/api/games", {
+        cache: "no-store",
+      });
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+
+      if (Array.isArray(data)) {
+        setGlobalGames(data);
+      }
+    } catch {
+      // 搜索失败时静默，不打断当前页面。
+    }
+  }
+
+  function updateSearch(value: string) {
+    setGlobalQuery(value);
+    setActiveResult(-1);
+    void loadGlobalGames();
+    onSearchChange?.(value);
+  }
+
+  function openSearchResult(id: number) {
+    setSearchFocused(false);
+    setActiveResult(-1);
+    router.push(`/game/${id}`);
+  }
+
+  function handleSearchKeyDown(
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) {
+    if (event.key === "Escape") {
+      setSearchFocused(false);
+      setActiveResult(-1);
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSearchFocused(true);
+
+      if (searchResults.length > 0) {
+        setActiveResult((index) =>
+          (index + 1) % searchResults.length
+        );
+      }
+
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSearchFocused(true);
+
+      if (searchResults.length > 0) {
+        setActiveResult((index) =>
+          index <= 0 ? searchResults.length - 1 : index - 1
+        );
+      }
+
+      return;
+    }
+
+    if (event.key === "Enter" && searchResults.length > 0) {
+      event.preventDefault();
+      const target =
+        searchResults[activeResult >= 0 ? activeResult : 0];
+      openSearchResult(target.id);
+    }
+  }
 
   // 退出登录
   function logout() {
@@ -177,60 +316,6 @@ export default function SiteHeader({
             boxSizing: "border-box",
           }}
         >
-          {/* Logo */}
-          <Link
-            href="/"
-            aria-label="XHRPG 首页"
-            className="logo-box"
-            style={{
-              position: "static",
-              flex: "0 0 auto",
-              width: "auto",
-              height: "100%",
-              minWidth: "max-content",
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "6px",
-              padding: "0 8px",
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              boxShadow: "none",
-              boxSizing: "border-box",
-              whiteSpace: "nowrap",
-              textDecoration: "none",
-              transform: "translateY(10px)",
-            }}
-          >
-            <b
-              style={{
-                display: "block",
-                fontSize: "32px",
-                lineHeight: 1,
-                color: "#111111",
-                margin: 0,
-                padding: 0,
-              }}
-            >
-              喜灰
-            </b>
-
-            <span
-              style={{
-                display: "block",
-                fontSize: "32px",
-                lineHeight: 1,
-                color: "#ffffff",
-                margin: 0,
-                padding: 0,
-              }}
-            >
-              RPG
-            </span>
-          </Link>
-
           {/* 主导航 */}
           <nav
             aria-label="主导航"
@@ -241,7 +326,7 @@ export default function SiteHeader({
               justifyContent: "flex-start",
               gap: "6px",
               minWidth: 0,
-              marginLeft: "clamp(24px, 4vw, 64px)",
+              marginLeft: 0,
               overflowX: "auto",
               overflowY: "hidden",
               scrollbarWidth: "none",
@@ -310,25 +395,79 @@ export default function SiteHeader({
               transform: "translateY(14px)",
             }}
           >
-            {/* 搜索框 */}
+            {/* 全站搜索框 */}
             {!hideSearch && (
-              <input
-                aria-label="搜索游戏"
-                placeholder="搜索游戏..."
-                value={searchValue}
-                onChange={(event) => {
-                  onSearchChange?.(event.target.value);
-                }}
-                style={{
-                  width: "160px",
-                  height: "36px",
-                  minWidth: "80px",
-                  maxWidth: "160px",
-                  flex: "0 1 160px",
-                  boxSizing: "border-box",
-                  margin: 0,
-                }}
-              />
+              <div className="site-search" ref={searchWrapRef}>
+                <input
+                  aria-label="搜索游戏"
+                  placeholder="搜索游戏..."
+                  value={globalQuery}
+                  onChange={(event) =>
+                    updateSearch(event.target.value)
+                  }
+                  onFocus={() => {
+                    setSearchFocused(true);
+                    void loadGlobalGames();
+                  }}
+                  onKeyDown={handleSearchKeyDown}
+                  style={{
+                    width: "100%",
+                    height: "36px",
+                    boxSizing: "border-box",
+                    margin: 0,
+                  }}
+                />
+
+                {searchFocused && searchKeyword && (
+                  <div className="site-search-dropdown">
+                    {searchResults.length > 0 ? (
+                      searchResults.map((game, index) => (
+                        <button
+                          key={game.id}
+                          type="button"
+                          className={
+                            index === activeResult
+                              ? "site-search-item active"
+                              : "site-search-item"
+                          }
+                          onMouseDown={(event) =>
+                            event.preventDefault()
+                          }
+                          onClick={() =>
+                            openSearchResult(game.id)
+                          }
+                        >
+                          {game.cover ? (
+                            <img
+                              className="site-search-thumb"
+                              src={game.cover}
+                              alt=""
+                            />
+                          ) : (
+                            <span className="site-search-thumb" />
+                          )}
+
+                          <span className="site-search-text">
+                            <span className="site-search-name">
+                              {game.name}
+                            </span>
+                            <span className="site-search-meta">
+                              {game.author || "未知作者"}
+                              {game.category
+                                ? ` · ${game.category}`
+                                : ""}
+                            </span>
+                          </span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="site-search-empty">
+                        没有找到匹配的游戏
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* 用户信息 */}

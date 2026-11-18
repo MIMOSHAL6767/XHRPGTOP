@@ -98,6 +98,31 @@ export default async function GamePage({
   const screenshots = parseScreenshots(game.screenshots);
   const tags = parseTags(game.tags);
 
+  // 其他推荐：点击量（downloads）前 100 名里随机选 4 个，排除当前游戏。
+  const topGames = await prisma.game.findMany({
+    where: {
+      status: "已发布",
+      id: { not: game.id },
+    },
+    orderBy: { downloads: "desc" },
+    take: 100,
+    select: { id: true, name: true, cover: true },
+  });
+
+  // Fisher–Yates 洗牌后取前 4 个，每次访问顺序与结果都可能不同。
+  for (let i = topGames.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [topGames[i], topGames[j]] = [topGames[j], topGames[i]];
+  }
+
+  const recommendations = topGames.slice(0, 4).map((item) => ({
+    id: item.id,
+    name: item.name,
+    cover:
+      item.cover?.trim() ||
+      `/assets/games/games${item.id}.png`,
+  }));
+
   return (
     <GameDetailClient
       gameId={game.id}
@@ -106,6 +131,13 @@ export default async function GamePage({
       category={game.category}
       version={game.version}
       description={game.description}
+      estimatedTime={game.estimatedTime}
+      engine={game.engine}
+      reqOs={game.reqOs}
+      reqCpu={game.reqCpu}
+      reqMemory={game.reqMemory}
+      reqGpu={game.reqGpu}
+      reqRuntime={game.reqRuntime}
       cover={cover}
       lanzou={game.lanzou}
       pan123={game.pan123}
@@ -117,6 +149,11 @@ export default async function GamePage({
       detailBackgroundFit={game.detailBackgroundFit}
       screenshots={screenshots}
       tags={tags}
+      recommendations={recommendations}
+      uploadDate={game.createdAt.toISOString()}
+      downloads={game.downloads}
+      ratingCount={game.ratingCount}
+      ratingSum={game.ratingSum}
     />
   );
 }

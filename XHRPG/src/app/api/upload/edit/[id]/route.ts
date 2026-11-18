@@ -297,6 +297,13 @@ export async function GET(
         category: game.category,
         version: game.version,
         description: game.description,
+        estimatedTime: game.estimatedTime,
+        engine: game.engine,
+        reqOs: game.reqOs,
+        reqCpu: game.reqCpu,
+        reqMemory: game.reqMemory,
+        reqGpu: game.reqGpu,
+        reqRuntime: game.reqRuntime,
         cover: game.cover,
         lanzou: game.lanzou,
         pan123: game.pan123,
@@ -375,6 +382,13 @@ export async function PUT(
     const category = readString(body, "category", 100);
     const version = readString(body, "version", 100);
     const description = readString(body, "description", 30000);
+    const estimatedTime = readString(body, "estimatedTime", 80);
+    const engine = readString(body, "engine", 80);
+    const reqOs = readString(body, "reqOs", 120);
+    const reqCpu = readString(body, "reqCpu", 200);
+    const reqMemory = readString(body, "reqMemory", 80);
+    const reqGpu = readString(body, "reqGpu", 200);
+    const reqRuntime = readString(body, "reqRuntime", 160);
     const cover = readString(body, "cover", 2000);
     const lanzou = readString(body, "lanzou", 2000);
     const pan123 = readString(body, "pan123", 2000);
@@ -408,6 +422,15 @@ export async function PUT(
     if (category !== undefined) data.category = category;
     if (version !== undefined) data.version = version;
     if (description !== undefined) data.description = description;
+    if (estimatedTime !== undefined) {
+      data.estimatedTime = estimatedTime || null;
+    }
+    if (engine !== undefined) data.engine = engine || null;
+    if (reqOs !== undefined) data.reqOs = reqOs || null;
+    if (reqCpu !== undefined) data.reqCpu = reqCpu || null;
+    if (reqMemory !== undefined) data.reqMemory = reqMemory || null;
+    if (reqGpu !== undefined) data.reqGpu = reqGpu || null;
+    if (reqRuntime !== undefined) data.reqRuntime = reqRuntime || null;
     if (cover !== undefined) data.cover = cover;
     if (lanzou !== undefined) data.lanzou = lanzou;
     if (pan123 !== undefined) data.pan123 = pan123;

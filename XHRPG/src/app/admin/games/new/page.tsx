@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  GPU_OPTIONS,
+  OS_OPTIONS,
+  RUNTIME_OPTIONS,
+} from "@/lib/game-requirements";
 
 type HistoryItem = {
   version: string;
@@ -32,6 +37,13 @@ const INITIAL_FORM = {
   category: "",
   version: "",
   description: "",
+  estimatedTime: "",
+  engine: "",
+  reqOs: "",
+  reqCpu: "",
+  reqMemory: "",
+  reqGpu: "",
+  reqRuntime: "",
   cover: "",
   lanzou: "",
   pan123: "",
@@ -50,6 +62,29 @@ function getToday() {
   const day = String(now.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+// 精确到秒的本地时间，用于历史版本日期。
+function getNowDateTime() {
+  const now = new Date();
+  const pad = (value: number) =>
+    String(value).padStart(2, "0");
+
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
+    now.getDate()
+  )}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(
+    now.getSeconds()
+  )}`;
+}
+
+function toDateTimeLocal(value: string) {
+  if (!value) return "";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return `${value}T00:00:00`;
+  }
+
+  return value.replace(" ", "T").slice(0, 19);
 }
 
 function normalizeTags(tags: string[]) {
@@ -122,7 +157,9 @@ export default function NewGame() {
   }, [coverPreview, backgroundPreview, logoPreview, screenshots]);
 
   function change(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) {
     const { name, value } = e.target;
 
@@ -264,7 +301,7 @@ export default function NewGame() {
       ...prev,
       {
         version: "",
-        date: getToday(),
+        date: getNowDateTime(),
         lanzou: "",
         pan123: "",
       },
@@ -574,6 +611,28 @@ export default function NewGame() {
               style={inputStyle}
               placeholder="例如：角色扮演"
               required
+            />
+          </label>
+
+          <label>
+            预计时长
+            <input
+              name="estimatedTime"
+              value={form.estimatedTime}
+              onChange={change}
+              style={inputStyle}
+              placeholder="默认显示：半小时"
+            />
+          </label>
+
+          <label>
+            制作引擎
+            <input
+              name="engine"
+              value={form.engine}
+              onChange={change}
+              style={inputStyle}
+              placeholder="默认显示：RPG Maker VX Ace"
             />
           </label>
 
@@ -960,6 +1019,83 @@ export default function NewGame() {
         </section>
 
         <section style={sectionStyle}>
+          <h2>系统需求</h2>
+
+          <label>
+            操作系统
+            <select
+              name="reqOs"
+              value={form.reqOs}
+              onChange={change}
+              style={inputStyle}
+            >
+              <option value="">默认（Windows 7 / 8 / 10 / 11）</option>
+              {OS_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            处理器
+            <input
+              name="reqCpu"
+              value={form.reqCpu}
+              onChange={change}
+              style={inputStyle}
+              placeholder="留空默认：Intel Core i3-2100 或 AMD 同级及以上"
+            />
+          </label>
+
+          <label>
+            内存
+            <input
+              name="reqMemory"
+              value={form.reqMemory}
+              onChange={change}
+              style={inputStyle}
+              placeholder="留空默认：4 GB RAM"
+            />
+          </label>
+
+          <label>
+            显卡
+            <select
+              name="reqGpu"
+              value={form.reqGpu}
+              onChange={change}
+              style={inputStyle}
+            >
+              <option value="">默认（DirectX 9.0c 集成显卡）</option>
+              {GPU_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            运行环境
+            <select
+              name="reqRuntime"
+              value={form.reqRuntime}
+              onChange={change}
+              style={inputStyle}
+            >
+              <option value="">默认（RPG Maker RTP）</option>
+              {RUNTIME_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+
+        <section style={sectionStyle}>
           <h2>版本历史</h2>
 
           {history.map((item, index) => (
@@ -986,8 +1122,9 @@ export default function NewGame() {
               <label>
                 更新日期
                 <input
-                  type="date"
-                  value={item.date}
+                  type="datetime-local"
+                  step="1"
+                  value={toDateTimeLocal(item.date)}
                   onChange={(e) =>
                     changeHistory(index, "date", e.target.value)
                   }

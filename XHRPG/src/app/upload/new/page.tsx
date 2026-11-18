@@ -8,6 +8,11 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  GPU_OPTIONS,
+  OS_OPTIONS,
+  RUNTIME_OPTIONS,
+} from "@/lib/game-requirements";
 
 type Question = {
   id: number;
@@ -41,6 +46,13 @@ type GameForm = {
   category: string;
   version: string;
   description: string;
+  estimatedTime: string;
+  engine: string;
+  reqOs: string;
+  reqCpu: string;
+  reqMemory: string;
+  reqGpu: string;
+  reqRuntime: string;
   lanzou: string;
   pan123: string;
   gameStatus: GameStatus;
@@ -59,6 +71,13 @@ const INITIAL_FORM: GameForm = {
   category: "",
   version: "",
   description: "",
+  estimatedTime: "",
+  engine: "",
+  reqOs: "",
+  reqCpu: "",
+  reqMemory: "",
+  reqGpu: "",
+  reqRuntime: "",
   lanzou: "",
   pan123: "",
   gameStatus: "更新中",
@@ -137,10 +156,32 @@ function today() {
   )}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
+function nowDateTime() {
+  const now = new Date();
+  const pad = (value: number) =>
+    String(value).padStart(2, "0");
+
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
+    now.getDate(),
+  )}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(
+    now.getSeconds(),
+  )}`;
+}
+
+function toDateTimeLocal(value: string) {
+  if (!value) return "";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return `${value}T00:00:00`;
+  }
+
+  return value.replace(" ", "T").slice(0, 19);
+}
+
 function createHistoryItem(): HistoryItem {
   return {
     version: "",
-    date: today(),
+    date: nowDateTime(),
     lanzou: "",
     pan123: "",
   };
@@ -643,6 +684,13 @@ export default function PublicNewGamePage() {
         category: normalizeText(form.category),
         version: normalizeText(form.version),
         description: form.description.trim(),
+        estimatedTime: form.estimatedTime.trim(),
+        engine: form.engine.trim(),
+        reqOs: form.reqOs,
+        reqCpu: form.reqCpu.trim(),
+        reqMemory: form.reqMemory.trim(),
+        reqGpu: form.reqGpu,
+        reqRuntime: form.reqRuntime,
         lanzou: normalizeText(form.lanzou),
         pan123: normalizeText(form.pan123),
         gameStatus: form.gameStatus,
@@ -868,6 +916,114 @@ export default function PublicNewGamePage() {
                 >
                   可以自行填写分类，方便为不同类型的同人游戏建立索引。
                 </small>
+              </label>
+
+              <label style={labelStyle}>
+                预计时长
+                <input
+                  name="estimatedTime"
+                  value={form.estimatedTime}
+                  onChange={change}
+                  maxLength={80}
+                  disabled={loading}
+                  placeholder="留空默认显示：半小时"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={labelStyle}>
+                制作引擎
+                <input
+                  name="engine"
+                  value={form.engine}
+                  onChange={change}
+                  maxLength={80}
+                  disabled={loading}
+                  placeholder="留空默认显示：RPG Maker VX Ace"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={labelStyle}>
+                操作系统
+                <select
+                  name="reqOs"
+                  value={form.reqOs}
+                  onChange={change}
+                  disabled={loading}
+                  style={inputStyle}
+                >
+                  <option value="">
+                    默认（Windows 7 / 8 / 10 / 11）
+                  </option>
+                  {OS_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={labelStyle}>
+                处理器
+                <input
+                  name="reqCpu"
+                  value={form.reqCpu}
+                  onChange={change}
+                  disabled={loading}
+                  placeholder="留空默认：Intel Core i3-2100 或 AMD 同级及以上"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={labelStyle}>
+                内存
+                <input
+                  name="reqMemory"
+                  value={form.reqMemory}
+                  onChange={change}
+                  disabled={loading}
+                  placeholder="留空默认：4 GB RAM"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={labelStyle}>
+                显卡
+                <select
+                  name="reqGpu"
+                  value={form.reqGpu}
+                  onChange={change}
+                  disabled={loading}
+                  style={inputStyle}
+                >
+                  <option value="">
+                    默认（DirectX 9.0c 集成显卡）
+                  </option>
+                  {GPU_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={labelStyle}>
+                运行环境
+                <select
+                  name="reqRuntime"
+                  value={form.reqRuntime}
+                  onChange={change}
+                  disabled={loading}
+                  style={inputStyle}
+                >
+                  <option value="">默认（RPG Maker RTP）</option>
+                  {RUNTIME_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <label style={labelStyle}>
@@ -1375,8 +1531,9 @@ export default function PublicNewGamePage() {
                   <label style={labelStyle}>
                     更新日期
                     <input
-                      type="date"
-                      value={item.date}
+                      type="datetime-local"
+                      step="1"
+                      value={toDateTimeLocal(item.date)}
                       onChange={(event) =>
                         changeHistory(
                           index,

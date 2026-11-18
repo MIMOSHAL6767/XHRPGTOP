@@ -10,6 +10,11 @@ import {
 } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import {
+  GPU_OPTIONS,
+  OS_OPTIONS,
+  RUNTIME_OPTIONS,
+} from "@/lib/game-requirements";
 
 type HistoryItem = {
   version?: string;
@@ -18,6 +23,28 @@ type HistoryItem = {
   pan123?: string;
 };
 
+function nowDateTime() {
+  const now = new Date();
+  const pad = (value: number) =>
+    String(value).padStart(2, "0");
+
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
+    now.getDate()
+  )}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(
+    now.getSeconds()
+  )}`;
+}
+
+function toDateTimeLocal(value?: string) {
+  if (!value) return "";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return `${value}T00:00:00`;
+  }
+
+  return value.replace(" ", "T").slice(0, 19);
+}
+
 type GameForm = {
   name: string;
   en: string;
@@ -25,6 +52,13 @@ type GameForm = {
   category: string;
   version: string;
   description: string;
+  estimatedTime: string;
+  engine: string;
+  reqOs: string;
+  reqCpu: string;
+  reqMemory: string;
+  reqGpu: string;
+  reqRuntime: string;
   cover: string;
   lanzou: string;
   pan123: string;
@@ -61,6 +95,13 @@ const initialForm: GameForm = {
   category: "角色扮演",
   version: "",
   description: "",
+  estimatedTime: "",
+  engine: "",
+  reqOs: "",
+  reqCpu: "",
+  reqMemory: "",
+  reqGpu: "",
+  reqRuntime: "",
   cover: "",
   lanzou: "",
   pan123: "",
@@ -340,6 +381,13 @@ export default function SubmissionGameEditPage() {
           category: toStringValue(game.category) || "角色扮演",
           version: toStringValue(game.version),
           description: toStringValue(game.description),
+          estimatedTime: toStringValue(game.estimatedTime),
+          engine: toStringValue(game.engine),
+          reqOs: toStringValue(game.reqOs),
+          reqCpu: toStringValue(game.reqCpu),
+          reqMemory: toStringValue(game.reqMemory),
+          reqGpu: toStringValue(game.reqGpu),
+          reqRuntime: toStringValue(game.reqRuntime),
           cover: toStringValue(game.cover),
           lanzou: toStringValue(game.lanzou),
           pan123: toStringValue(game.pan123),
@@ -496,7 +544,7 @@ export default function SubmissionGameEditPage() {
       ...form.history,
       {
         version: "",
-        date: "",
+        date: nowDateTime(),
         lanzou: "",
         pan123: "",
       },
@@ -745,6 +793,13 @@ export default function SubmissionGameEditPage() {
         category: form.category.trim(),
         version: form.version.trim(),
         description: form.description,
+        estimatedTime: form.estimatedTime,
+        engine: form.engine,
+        reqOs: form.reqOs,
+        reqCpu: form.reqCpu,
+        reqMemory: form.reqMemory,
+        reqGpu: form.reqGpu,
+        reqRuntime: form.reqRuntime,
         cover,
         lanzou: form.lanzou.trim(),
         pan123: form.pan123.trim(),
@@ -1027,6 +1082,115 @@ export default function SubmissionGameEditPage() {
                   maxLength={100}
                   disabled={saving}
                 />
+              </label>
+
+              <label className={labelClass}>
+                预计时长
+                <input
+                  className={inputClass}
+                  value={form.estimatedTime}
+                  onChange={(e) =>
+                    updateField("estimatedTime", e.target.value)
+                  }
+                  placeholder="留空默认显示：半小时"
+                  maxLength={80}
+                  disabled={saving}
+                />
+              </label>
+
+              <label className={labelClass}>
+                制作引擎
+                <input
+                  className={inputClass}
+                  value={form.engine}
+                  onChange={(e) => updateField("engine", e.target.value)}
+                  placeholder="留空默认显示：RPG Maker VX Ace"
+                  maxLength={80}
+                  disabled={saving}
+                />
+              </label>
+
+              <label className={labelClass}>
+                操作系统
+                <select
+                  className={inputClass}
+                  value={form.reqOs}
+                  onChange={(e) => updateField("reqOs", e.target.value)}
+                  disabled={saving}
+                >
+                  <option value="">
+                    默认（Windows 7 / 8 / 10 / 11）
+                  </option>
+                  {OS_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className={labelClass}>
+                处理器
+                <input
+                  className={inputClass}
+                  value={form.reqCpu}
+                  onChange={(e) => updateField("reqCpu", e.target.value)}
+                  placeholder="留空默认：Intel Core i3-2100 或 AMD 同级及以上"
+                  maxLength={200}
+                  disabled={saving}
+                />
+              </label>
+
+              <label className={labelClass}>
+                内存
+                <input
+                  className={inputClass}
+                  value={form.reqMemory}
+                  onChange={(e) =>
+                    updateField("reqMemory", e.target.value)
+                  }
+                  placeholder="留空默认：4 GB RAM"
+                  maxLength={80}
+                  disabled={saving}
+                />
+              </label>
+
+              <label className={labelClass}>
+                显卡
+                <select
+                  className={inputClass}
+                  value={form.reqGpu}
+                  onChange={(e) => updateField("reqGpu", e.target.value)}
+                  disabled={saving}
+                >
+                  <option value="">
+                    默认（DirectX 9.0c 集成显卡）
+                  </option>
+                  {GPU_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className={labelClass}>
+                运行环境
+                <select
+                  className={inputClass}
+                  value={form.reqRuntime}
+                  onChange={(e) =>
+                    updateField("reqRuntime", e.target.value)
+                  }
+                  disabled={saving}
+                >
+                  <option value="">默认（RPG Maker RTP）</option>
+                  {RUNTIME_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <label className={labelClass}>
@@ -1537,13 +1701,14 @@ export default function SubmissionGameEditPage() {
                       <label className={labelClass}>
                         发布日期
                         <input
+                          type="datetime-local"
+                          step="1"
                           className={inputClass}
-                          value={item.date || ""}
+                          value={toDateTimeLocal(item.date)}
                           onChange={(e) =>
                             changeHistory(index, "date", e.target.value)
                           }
-                          placeholder="例如：2026-10-25"
-                          maxLength={100}
+                          title="上传日期（精确到秒）"
                           disabled={saving}
                         />
                       </label>

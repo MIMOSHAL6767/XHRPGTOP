@@ -45,6 +45,7 @@ export default function Footer() {
   return (
     <>
       <footer
+        className="site-footer"
         style={{
           width: "100%",
           marginTop: "28px",

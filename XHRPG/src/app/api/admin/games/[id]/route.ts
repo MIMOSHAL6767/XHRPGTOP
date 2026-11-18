@@ -335,6 +335,58 @@ export async function PUT(
         description: input.description as string,
       }),
 
+      ...(input.estimatedTime !== undefined && {
+        estimatedTime:
+          typeof input.estimatedTime === "string" &&
+          input.estimatedTime.trim()
+            ? input.estimatedTime.trim()
+            : null,
+      }),
+
+      ...(input.engine !== undefined && {
+        engine:
+          typeof input.engine === "string" && input.engine.trim()
+            ? input.engine.trim()
+            : null,
+      }),
+
+      ...(input.reqOs !== undefined && {
+        reqOs:
+          typeof input.reqOs === "string" && input.reqOs.trim()
+            ? input.reqOs.trim()
+            : null,
+      }),
+
+      ...(input.reqCpu !== undefined && {
+        reqCpu:
+          typeof input.reqCpu === "string" && input.reqCpu.trim()
+            ? input.reqCpu.trim()
+            : null,
+      }),
+
+      ...(input.reqMemory !== undefined && {
+        reqMemory:
+          typeof input.reqMemory === "string" &&
+          input.reqMemory.trim()
+            ? input.reqMemory.trim()
+            : null,
+      }),
+
+      ...(input.reqGpu !== undefined && {
+        reqGpu:
+          typeof input.reqGpu === "string" && input.reqGpu.trim()
+            ? input.reqGpu.trim()
+            : null,
+      }),
+
+      ...(input.reqRuntime !== undefined && {
+        reqRuntime:
+          typeof input.reqRuntime === "string" &&
+          input.reqRuntime.trim()
+            ? input.reqRuntime.trim()
+            : null,
+      }),
+
       ...(input.cover !== undefined && {
         cover: input.cover as string,
       }),

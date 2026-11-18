@@ -119,6 +119,22 @@ model Game {
 
   description String
 
+  // 详情页信息：预计时长、制作引擎（留空时前端显示默认值）
+  estimatedTime String?
+
+  engine String?
+
+  // 系统需求（留空时前端显示软件同款默认值）
+  reqOs String?
+
+  reqCpu String?
+
+  reqMemory String?
+
+  reqGpu String?
+
+  reqRuntime String?
+
   cover String
 
   lanzou String

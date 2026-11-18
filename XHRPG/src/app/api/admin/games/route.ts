@@ -130,6 +130,23 @@ export async function POST(req: Request) {
         version: typeof body.version === "string" ? body.version : "",
         description:
           typeof body.description === "string" ? body.description : "",
+        estimatedTime:
+          typeof body.estimatedTime === "string" && body.estimatedTime.trim()
+            ? body.estimatedTime.trim()
+            : null,
+        engine:
+          typeof body.engine === "string" && body.engine.trim()
+            ? body.engine.trim()
+            : null,
+        reqOs: typeof body.reqOs === "string" ? body.reqOs : null,
+        reqCpu: typeof body.reqCpu === "string" ? body.reqCpu : null,
+        reqMemory:
+          typeof body.reqMemory === "string" ? body.reqMemory : null,
+        reqGpu: typeof body.reqGpu === "string" ? body.reqGpu : null,
+        reqRuntime:
+          typeof body.reqRuntime === "string"
+            ? body.reqRuntime
+            : null,
         cover: typeof body.cover === "string" ? body.cover : "",
         lanzou: typeof body.lanzou === "string" ? body.lanzou : "",
         pan123: typeof body.pan123 === "string" ? body.pan123 : "",
