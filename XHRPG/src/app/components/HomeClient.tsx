@@ -1,10 +1,27 @@
-
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import SiteHeader from "@/app/components/SiteHeader";
 import FloatingWidget from "@/app/components/FloatingWidget";
+
+type HomeGame = {
+  id: number;
+  name: string;
+  en?: string | null;
+  author: string;
+  category: string;
+  version: string;
+  description: string;
+  cover: string;
+  downloads: number;
+  date: string;
+  createdAt: string | Date;
+  tags: unknown;
+  gameStatus: string;
+};
+
+type WeeklyGame = HomeGame & { weeklyIncrease: number };
 
 type ActivityItem = {
   id: number;
@@ -15,108 +32,114 @@ type ActivityItem = {
   backgroundOpacity?: number | null;
   titleColor?: string | null;
   titleSize?: number | null;
-  content?: string | null;
-  showOnHome?: boolean;
-  enabled?: boolean;
-  sort?: number;
 };
 
-type ImageFit =
-  | "contain"
-  | "cover"
-  | "fill"
-  | "none"
-  | "scale-down";
+type BannerItem = {
+  id: number;
+  name?: string;
+  background?: string | null;
+  cover?: string | null;
+  title?: string;
+  description?: string;
+  titleColor?: string | null;
+  titleSize?: number | null;
+  buttonUrl?: string | null;
+};
 
-function getImageFit(
-  value: unknown,
-  fallback: ImageFit = "cover"
-): ImageFit {
-  if (
-    value === "contain" ||
-    value === "cover" ||
-    value === "fill" ||
-    value === "none" ||
-    value === "scale-down"
-  ) {
-    return value;
+function coverOf(game: HomeGame) {
+  return game.cover?.trim() || `/assets/games/games${game.id}.png`;
+}
+
+function tagList(tags: unknown): string[] {
+  if (Array.isArray(tags)) {
+    return tags
+      .filter((tag): tag is string => typeof tag === "string")
+      .slice(0, 3);
   }
 
-  return fallback;
+  return [];
+}
+
+function formatDate(value: string | Date | null | undefined) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate()
+  )}`;
 }
 
 export default function HomeClient({
-  games,
+  latestGames = [],
+  hotGames = [],
+  featuredGames = [],
+  weeklyGame = null,
+  announcement = "",
   banners = [],
   headerImage = null,
   activities = [],
 }: {
-  games: any[];
-  banners: any[];
+  latestGames?: HomeGame[];
+  hotGames?: HomeGame[];
+  featuredGames?: HomeGame[];
+  weeklyGame?: WeeklyGame | null;
+  announcement?: string;
+  banners?: BannerItem[];
   headerImage?: string | null;
   activities?: ActivityItem[];
 }) {
   const [bannerIndex, setBannerIndex] = useState(0);
-  const [search, setSearch] = useState("");
+  const [previousBannerIndex, setPreviousBannerIndex] = useState<
+    number | null
+  >(null);
+  const [bannerLightboxOpen, setBannerLightboxOpen] = useState(false);
+  const [showAllHot, setShowAllHot] = useState(false);
 
-  const banner = banners.length
-    ? banners[bannerIndex % banners.length]
-    : null;
+  function changeBanner(index: number) {
+    if (!banners.length) return;
 
-  // 只展示已启用且允许在首页展示的活动
-  const homeActivities = activities
-    .filter(
-      (activity) =>
-        activity.enabled === true && activity.showOnHome === true
-    )
-    .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+    const next = ((index % banners.length) + banners.length) % banners.length;
 
-  // 自动轮播
+    setBannerIndex((current) => {
+      if (next === current) return current;
+      setPreviousBannerIndex(current);
+      return next;
+    });
+  }
+
   useEffect(() => {
     if (banners.length <= 1) return;
 
     const timer = setInterval(() => {
-      setBannerIndex((index) => (index + 1) % banners.length);
-    }, 5000);
+      changeBanner(bannerIndex + 1);
+    }, 6000);
 
     return () => clearInterval(timer);
-  }, [banners.length]);
+  }, [banners.length, bannerIndex]);
 
-  // 首页搜索：按游戏 ID 从大到小排序，只显示前 7 个匹配结果
-  const filteredGames = games
-    .filter((game) => {
-      const key = search.trim().toLowerCase();
+  const visibleHot = showAllHot ? hotGames : hotGames.slice(0, 3);
+  const visibleActivities = activities.slice(0, 2);
+  const activeBannerIndex = banners.length
+    ? bannerIndex % banners.length
+    : 0;
+  const activeBanner = banners[activeBannerIndex] || null;
 
-      if (!key) return true;
+  useEffect(() => {
+    if (!bannerLightboxOpen) return;
 
-      return (
-        game.name?.toLowerCase().includes(key) ||
-        game.en?.toLowerCase().includes(key) ||
-        game.author?.toLowerCase().includes(key) ||
-        game.category?.toLowerCase().includes(key)
-      );
-    })
-    .sort((a, b) => {
-      const idA = Number(a.id) || 0;
-      const idB = Number(b.id) || 0;
-      return idB - idA;
-    })
-    .slice(0, 7);
-
-  // 兼容数字、"40" 和 "40px"
-  function cssSize(value: unknown, fallback: string): string {
-    if (value === null || value === undefined || value === "") {
-      return fallback;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setBannerLightboxOpen(false);
     }
 
-    const str = String(value);
-    return /^\d+(\.\d+)?$/.test(str) ? `${str}px` : str;
-  }
+    window.addEventListener("keydown", onKeyDown);
+    document.body.style.overflow = "hidden";
 
-  function percent(value: unknown, fallback: number): number {
-    const num = Number(value);
-    return Number.isFinite(num) ? num : fallback;
-  }
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = "";
+    };
+  }, [bannerLightboxOpen]);
 
   return (
     <main
@@ -130,448 +153,314 @@ export default function HomeClient({
         margin: 0,
       }}
     >
-      {/* 公共头图、导航栏、搜索栏和用户信息 */}
-      <SiteHeader
-        headerImage={headerImage}
-        searchValue={search}
-        onSearchChange={setSearch}
-      />
+      <SiteHeader headerImage={headerImage} />
 
-      {/* 首页主体 */}
-      <section
-        className="content-area"
-        style={{
-          position: "relative",
-          width: "min(100% - 32px, 1440px)",
-          maxWidth: "1440px",
-          minWidth: 0,
-          margin: "0 auto",
-          padding: "24px 0 40px",
-          boxSizing: "border-box",
-          alignSelf: "center",
-        }}
-      >
-        {/* 首页轮播 */}
-        {banner && (
-          <section
-            className="latest-box"
-            style={{
-              position: "relative",
-              width: "100%",
-              maxWidth: "100%",
-              marginLeft: "auto",
-              marginRight: "auto",
-              height: "500px",
-              minHeight: "320px",
-              overflow: "hidden",
-              isolation: "isolate",
-              borderRadius: 0,
-              backgroundColor: "#171717",
-            }}
-          >
-            {/* 轮播背景图 */}
-            {banner.background && (
-              <img
-                key={banner.background}
-                src={banner.background}
-                alt=""
-                aria-hidden="true"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  objectPosition: "center",
-                  zIndex: 0,
-                }}
-              />
+      <div className="home-wrap">
+        {/* 顶部：轮播 + 公告 */}
+        <section className="home-top">
+          <div className="home-banner">
+            {banners.length > 0 ? (
+              <div className="home-banner-stage">
+                {banners.map((item, index) => {
+                  const active = index === activeBannerIndex;
+                  const previous = index === previousBannerIndex;
+                  const image =
+                    item.background || item.cover || "";
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        if (active) setBannerLightboxOpen(true);
+                      }}
+                      className={
+                        active
+                          ? "home-banner-slide active"
+                          : previous
+                            ? "home-banner-slide previous"
+                            : "home-banner-slide hidden-slide"
+                      }
+                      style={{ backgroundImage: `url("${image}")` }}
+                      aria-hidden={!active}
+                      aria-label={`查看轮播大图：${
+                        item.title || item.name || ""
+                      }`}
+                      tabIndex={active ? 0 : -1}
+                    >
+                      <div className="home-banner-shade" />
+                      <div className="home-banner-text">
+                        <h2
+                          style={{
+                            color: item.titleColor || "#fff",
+                            fontSize: item.titleSize
+                              ? `${item.titleSize}px`
+                              : undefined,
+                          }}
+                        >
+                          {item.title || item.name || ""}
+                        </h2>
+                        {item.description && (
+                          <p>{item.description}</p>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="home-banner-placeholder">
+                暂无轮播内容
+              </div>
             )}
 
-            {/* 背景渐变遮罩 */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "linear-gradient(90deg, rgba(0,0,0,0.45), rgba(0,0,0,0.05))",
-                zIndex: 1,
-                pointerEvents: "none",
-              }}
-            />
-
-            <div
-              className="latest-inner"
-              style={{
-                position: "absolute",
-                inset: 0,
-                zIndex: 2,
-              }}
-            >
-              {/* 轮播封面 */}
-              {banner.cover && (
-                <img
-                  key={banner.cover}
-                  src={banner.cover}
-                  alt={banner.title || "轮播封面"}
-                  style={{
-                    position: "absolute",
-                    width: `min(${cssSize(
-                      banner.coverWidth,
-                      "300px"
-                    )}, 45%)`,
-                    height: `min(${cssSize(
-                      banner.coverHeight,
-                      "300px"
-                    )}, 90%)`,
-                    left: `${percent(banner.coverX, 50)}%`,
-                    top: `${percent(banner.coverY, 50)}%`,
-                    transform: "translate(-50%, -50%)",
-                    objectFit: getImageFit(banner.coverFit, "contain"),
-                    objectPosition: "center",
-                    zIndex: 3,
-                    border: "none",
-                    outline: "none",
-                    boxShadow: "none",
-                    background: "transparent",
-                    WebkitAppearance: "none",
-                    filter: "none",
-                  }}
-                />
-              )}
-
-              {/* 轮播标题 */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: `${percent(banner.titleX, 50)}%`,
-                  top: `${percent(banner.titleY, 30)}%`,
-                  transform: "translate(-50%, -50%)",
-                  maxWidth: "48%",
-                  zIndex: 4,
-                  overflowWrap: "anywhere",
-                }}
-              >
-                <h1
-                  style={{
-                    margin: 0,
-                    fontSize: cssSize(banner.titleSize, "40px"),
-                    color: banner.titleColor || "#ffffff",
-                    whiteSpace: "pre-wrap",
-                    overflowWrap: "anywhere",
-                    textShadow: "0 2px 8px rgba(0,0,0,0.65)",
-                  }}
+            {banners.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="home-banner-arrow prev"
+                  aria-label="上一张"
+                  onClick={() =>
+                    changeBanner(bannerIndex - 1)
+                  }
                 >
-                  {banner.title}
-                </h1>
-              </div>
-
-              {/* 轮播简介 */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: `${percent(banner.descX, 50)}%`,
-                  top: `${percent(banner.descY, 50)}%`,
-                  transform: "translate(-50%, -50%)",
-                  width: "min(42%, 560px)",
-                  zIndex: 4,
-                  overflowWrap: "anywhere",
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: cssSize(banner.descSize, "18px"),
-                    color: banner.descColor || "#ffffff",
-                    whiteSpace: "pre-wrap",
-                    textShadow: "0 2px 8px rgba(0,0,0,0.65)",
-                  }}
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="home-banner-arrow next"
+                  aria-label="下一张"
+                  onClick={() =>
+                    changeBanner(bannerIndex + 1)
+                  }
                 >
-                  {banner.description}
-                </p>
+                  ›
+                </button>
+              </>
+            )}
+
+            {banners.length > 0 && (
+              <div className="home-banner-thumbs">
+                {banners.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={
+                      index === activeBannerIndex
+                        ? "home-banner-thumb active"
+                        : "home-banner-thumb"
+                    }
+                    onClick={() => changeBanner(index)}
+                    aria-label={`切换到第 ${index + 1} 张轮播`}
+                  >
+                    <img
+                      src={item.cover || item.background || ""}
+                      alt=""
+                    />
+                  </button>
+                ))}
               </div>
+            )}
+          </div>
+
+          <aside className="home-announcement">
+            <h3>公告</h3>
+            <div className="home-announcement-body">
+              {announcement?.trim() || "暂无公告"}
+            </div>
+          </aside>
+        </section>
+
+        {/* 最新上传 + 本周热门 */}
+        <section className="home-columns home-columns-main">
+          <div className="home-main-col">
+            <div className="home-section-head">
+              <h3>最新上传</h3>
             </div>
 
-            {/* 上一张 */}
-            {banners.length > 1 && (
-              <button
-                type="button"
-                aria-label="上一张轮播图"
-                onClick={() =>
-                  setBannerIndex(
-                    (index) => (index - 1 + banners.length) % banners.length
-                  )
-                }
-                style={{
-                  position: "absolute",
-                  left: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 5,
-                  borderRadius: 0,
-                }}
-              >
-                ‹
-              </button>
-            )}
-
-            {/* 下一张 */}
-            {banners.length > 1 && (
-              <button
-                type="button"
-                aria-label="下一张轮播图"
-                onClick={() =>
-                  setBannerIndex((index) => (index + 1) % banners.length)
-                }
-                style={{
-                  position: "absolute",
-                  right: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  zIndex: 5,
-                  borderRadius: 0,
-                }}
-              >
-                ›
-              </button>
-            )}
-          </section>
-        )}
-
-        {/* 首页活动专区 */}
-        {homeActivities.length > 0 && (
-          <section
-            className="home-activities"
-            style={{
-              width: "100%",
-              marginTop: "32px",
-              marginBottom: "36px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "12px",
-                flexWrap: "wrap",
-                marginBottom: "16px",
-              }}
-            >
-              <h2 style={{ margin: 0 }}>活动专区</h2>
+            <div className="home-latest-grid">
+              {latestGames.map((game) => (
+                <Link
+                  key={game.id}
+                  href={`/game/${game.id}`}
+                  className="home-card"
+                >
+                  <img src={coverOf(game)} alt={game.name} />
+                  <span>{game.name}</span>
+                </Link>
+              ))}
 
               <Link
-                href="/activities"
-                style={{
-                  color: "#e5484d",
-                  textDecoration: "none",
-                  fontSize: "14px",
-                }}
+                href="/games?sort=latest"
+                className="home-card home-card-more"
               >
-                查看全部活动 →
+                <span>查看更多 →</span>
               </Link>
             </div>
+          </div>
 
-            <div
-              className="home-activity-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                gap: "16px",
-                width: "100%",
-              }}
-            >
-              {homeActivities.map((activity) => (
-                <Link
-                  key={activity.id}
-                  href={`/activities/${activity.id}`}
-                  className="home-activity-card"
-                  style={{
-                    position: "relative",
-                    display: "block",
-                    minWidth: 0,
-                    overflow: "hidden",
-                    aspectRatio: "16 / 7",
-                    backgroundColor: "#160c0f",
-                    border: "1px solid #4a2028",
-                    borderRadius: 0,
-                    color: "#ffffff",
-                    textDecoration: "none",
-                  }}
-                >
-                  {/* 活动背景图；无背景时使用封面铺满 */}
-                  {activity.background ? (
-                    <img
-                      src={activity.background}
-                      alt=""
-                      aria-hidden="true"
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        width: "100%",
-                        height: "100%",
-                        objectFit: getImageFit(
-                          activity.backgroundFit,
-                          "cover"
-                        ),
-                        objectPosition: "center",
-                      }}
-                    />
-                  ) : activity.cover ? (
-                    <img
-                      src={activity.cover}
-                      alt=""
-                      aria-hidden="true"
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        objectPosition: "center",
-                      }}
-                    />
-                  ) : null}
+          <aside className="home-side-col">
+            <div className="home-section-head">
+              <h3>本周热门</h3>
+            </div>
 
-                  {/* 活动背景遮罩 */}
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: `rgba(0,0,0,${Math.min(
-                        100,
-                        Math.max(0, activity.backgroundOpacity ?? 35)
-                      ) / 100})`,
-                    }}
-                  />
+            {weeklyGame ? (
+              <Link
+                href={`/game/${weeklyGame.id}`}
+                className="home-weekly-card"
+              >
+                <img
+                  src={coverOf(weeklyGame)}
+                  alt={weeklyGame.name}
+                />
+                <div className="home-weekly-info">
+                  <b>{weeklyGame.name}</b>
+                  <span>
+                    单周点击量增加{" "}
+                    {weeklyGame.weeklyIncrease}
+                  </span>
+                </div>
+              </Link>
+            ) : (
+              <div className="home-empty">本周暂无点击数据</div>
+            )}
+          </aside>
+        </section>
 
-                  {/* 同时存在背景和封面时，将封面放在右侧 */}
-                  {activity.cover && activity.background && (
-                    <img
-                      src={activity.cover}
-                      alt=""
-                      aria-hidden="true"
-                      style={{
-                        position: "absolute",
-                        right: "5%",
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        height: "76%",
-                        width: "30%",
-                        objectFit: "contain",
-                        objectPosition: "center",
-                      }}
-                    />
-                  )}
+        {/* 活动 + 精选游戏 */}
+        <section className="home-columns home-columns-secondary">
+          <div className="home-main-col">
+            <div className="home-section-head">
+              <h3>活动</h3>
+              <Link href="/activities">查看全部 →</Link>
+            </div>
 
-                  {/* 活动标题与入口 */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "center",
-                      alignItems: "flex-start",
-                      padding: "clamp(12px, 3%, 28px)",
-                      boxSizing: "border-box",
-                      maxWidth:
-                        activity.cover && activity.background
-                          ? "72%"
-                          : "100%",
-                    }}
+            <div className="home-activity-list">
+              {visibleActivities.length > 0 ? (
+                visibleActivities.map((activity) => (
+                  <Link
+                    key={activity.id}
+                    href={`/activities/${activity.id}`}
+                    className="home-activity-card"
                   >
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: `clamp(16px, ${Math.max(
-                          16,
-                          Math.min(36, activity.titleSize ?? 24)
-                        ) / 16}vw, ${Math.min(
-                          36,
-                          activity.titleSize ?? 24
-                        )}px)`,
-                        color: activity.titleColor || "#ffffff",
-                        overflowWrap: "anywhere",
-                        textShadow: "0 2px 8px rgba(0,0,0,0.75)",
-                      }}
-                    >
-                      {activity.title}
-                    </h3>
+                    <img
+                      src={
+                        activity.background ||
+                        activity.cover ||
+                        ""
+                      }
+                      alt={activity.title}
+                    />
+                    <div className="home-activity-shade" />
+                    <div className="home-activity-text">
+                      <b
+                        style={{
+                          color:
+                            activity.titleColor || "#fff",
+                        }}
+                      >
+                        {activity.title}
+                      </b>
+                      <span>查看活动 →</span>
+                    </div>
+                  </Link>
+                ))
+              ) : (
+                <div className="home-empty">暂无首页活动</div>
+              )}
+            </div>
+          </div>
 
-                    <span
-                      style={{
-                        display: "inline-block",
-                        marginTop: "12px",
-                        padding: "6px 12px",
-                        border: "1px solid rgba(255,255,255,0.65)",
-                        background: "rgba(0,0,0,0.3)",
-                        fontSize: "13px",
-                        color: "#ffffff",
-                      }}
-                    >
-                      查看活动 →
-                    </span>
-                  </div>
+          <aside className="home-main-col">
+            <div className="home-section-head">
+              <h3>精选游戏</h3>
+            </div>
+
+            <div className="home-featured-grid">
+              {featuredGames.map((game) => (
+                <Link
+                  key={game.id}
+                  href={`/game/${game.id}`}
+                  className="home-card"
+                >
+                  <img src={coverOf(game)} alt={game.name} />
+                  <span>{game.name}</span>
                 </Link>
               ))}
             </div>
-          </section>
-        )}
+          </aside>
+        </section>
 
-        {/* 最新上传标题：已移除排序按钮 */}
-        <div
-          className="game-library-heading"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "12px",
-            flexWrap: "wrap",
-            marginBottom: "16px",
-          }}
-        >
-          <h2 style={{ margin: 0 }}>最新上传</h2>
-        </div>
+        {/* 热门游戏：默认 3 个，查看更多就地展开 */}
+        <section className="home-hot">
+          <h2>热门游戏</h2>
 
-        {/* 最新上传游戏卡片：最多显示 7 个 */}
-        <div
-          className="game-grid"
-          style={{
-            width: "100%",
-            maxWidth: "100%",
-            marginLeft: "auto",
-            marginRight: "auto",
-            boxSizing: "border-box",
-          }}
-        >
-          {filteredGames.map((game) => (
-            <Link
-              key={game.id}
-              className="square-card"
-              href={`/game/${game.id}`}
+          <div className="home-hot-list">
+            {visibleHot.map((game) => (
+              <Link
+                key={game.id}
+                href={`/game/${game.id}`}
+                className="home-hot-row"
+              >
+                <img src={coverOf(game)} alt={game.name} />
+
+                <div className="home-hot-info">
+                  <b>{game.name}</b>
+                  <span className="home-hot-author">
+                    {game.author || "未知作者"}
+                  </span>
+                  <p>{game.description || "暂无简介"}</p>
+                </div>
+
+                <div className="home-hot-side">
+                  <span>上传日期：{formatDate(game.date)}</span>
+                  <span>点击量：{game.downloads}</span>
+                  <div className="home-hot-tags">
+                    {tagList(game.tags).map((tag) => (
+                      <em key={tag}>{tag}</em>
+                    ))}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {hotGames.length > 3 && (
+            <button
+              type="button"
+              className="home-hot-more"
+              onClick={() => setShowAllHot((value) => !value)}
             >
-              <div className="cover-box">
-                <img
-                  className="cover-img"
-                  src={game.cover || `/assets/games/games${game.id}.png`}
-                  alt={game.name || "游戏封面"}
-                />
-              </div>
-
-              <div className="game-title">{game.name}</div>
-            </Link>
-          ))}
-
-          {filteredGames.length === 0 && (
-            <div>没有找到相关游戏</div>
+              {showAllHot ? "收起" : "查看更多"}
+            </button>
           )}
-        </div>
-      </section>
+        </section>
+      </div>
 
-      {/* 全站首页悬浮 GIF／音乐组件 */}
+      {bannerLightboxOpen && activeBanner && (
+        <div
+          className="home-banner-lightbox"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setBannerLightboxOpen(false)}
+        >
+          <button
+            type="button"
+            className="home-banner-lightbox-close"
+            aria-label="关闭"
+            onClick={() => setBannerLightboxOpen(false)}
+          >
+            ✕
+          </button>
+
+          <img
+            src={activeBanner.background || activeBanner.cover || ""}
+            alt={activeBanner.title || activeBanner.name || "轮播大图"}
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      )}
+
       <FloatingWidget />
     </main>
   );

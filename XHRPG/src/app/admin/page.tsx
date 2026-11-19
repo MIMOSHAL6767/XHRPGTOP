@@ -56,7 +56,7 @@ export default async function AdminPage() {
           </Link>
 
           <Link href="/admin/header">
-            <button>首页头图设置</button>
+            <button>首页设置</button>
           </Link>
 
           <Link href="/admin/site-backgrounds">

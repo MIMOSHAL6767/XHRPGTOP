@@ -259,7 +259,7 @@ export default function RandomGameClient({
 
       <div
         style={{
-          width: "min(100% - 32px, 1440px)",
+          width: "min(1160px, calc(100% - 48px))",
           margin: "0 auto",
           padding: "24px 0 48px",
           boxSizing: "border-box",

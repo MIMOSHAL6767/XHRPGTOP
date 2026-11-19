@@ -33,11 +33,11 @@ type Props = {
 
 const RED = "#8b1e2d";
 const RED_HOVER = "#a52a3a";
-const BG = "#10090b";
-const PANEL = "#160c0f";
-const LINE = "#4a2028";
-const TEXT = "#f8eeee";
-const MUTED = "#c9aeb2";
+const BG = "var(--bg)";
+const PANEL = "var(--panel)";
+const LINE = "var(--line)";
+const TEXT = "var(--text)";
+const MUTED = "var(--text-mute, #c9aeb2)";
 const PAGE_SIZE = 20;
 
 function normalizeTags(value: unknown): string[] {
@@ -228,6 +228,11 @@ export default function GamesClient({
         ? urlCategory
         : "全部"
     );
+
+    const urlSort = params.get("sort");
+    if (urlSort === "latest" || urlSort === "downloads") {
+      setSortOrder(urlSort);
+    }
 
     setUrlInitialized(true);
   }, [allTags, categories, urlInitialized]);
@@ -449,7 +454,7 @@ export default function GamesClient({
     return {
       border: `1px solid ${active ? RED : LINE}`,
       background: active ? RED : PANEL,
-      color: TEXT,
+      color: active ? "#ffffff" : TEXT,
       padding: "8px 13px",
       fontSize: 13,
       cursor: "pointer",
@@ -462,7 +467,7 @@ export default function GamesClient({
 
   const sectionStyle = {
     border: `1px solid ${LINE}`,
-    background: "rgba(22, 12, 15, 0.78)",
+    background: PANEL,
     padding: 16,
     marginBottom: 14,
     borderRadius: 0,
@@ -546,10 +551,12 @@ export default function GamesClient({
       <section
         className="games-content"
         style={{
-          width: "min(calc(100% - 32px), 1440px)",
-          maxWidth: "1440px",
+          width: "min(1160px, calc(100% - 48px))",
+          maxWidth: "1160px",
           margin: "0 auto",
-          padding: "32px 0 0",
+          padding: "28px",
+          background: "var(--panel)",
+          color: "var(--text)",
           boxSizing: "border-box",
         }}
       >
@@ -1000,8 +1007,8 @@ export default function GamesClient({
         .games-content {
           position: relative;
           z-index: 1;
-          width: min(calc(100% - 32px), 1440px);
-          max-width: 1440px;
+          width: min(1160px, calc(100% - 48px));
+          max-width: 1160px;
           margin: 0 auto;
           box-sizing: border-box;
         }
@@ -1010,7 +1017,7 @@ export default function GamesClient({
           display: block;
           margin-bottom: 28px;
           padding: 18px 20px;
-          background: rgba(16, 9, 11, 0.45);
+          background: ${PANEL};
           border-left: 3px solid ${RED};
           box-sizing: border-box;
         }
@@ -1448,7 +1455,7 @@ export default function GamesClient({
           margin: 0;
           padding: 12px;
           box-sizing: border-box;
-          background: rgba(22, 12, 15, 0.78);
+          background: ${PANEL};
           border: 1px solid ${LINE};
           border-radius: 0 !important;
         }
@@ -1516,7 +1523,7 @@ export default function GamesClient({
           padding: 50px 20px;
           text-align: center;
           color: ${MUTED};
-          background: rgba(22, 12, 15, 0.78);
+          background: ${PANEL};
           border: 1px solid rgba(74, 32, 40, 0.85);
           border-radius: 0 !important;
         }
@@ -1542,7 +1549,7 @@ export default function GamesClient({
         @media (max-width: 720px) {
           .games-content {
             width: calc(100% - 24px) !important;
-            max-width: 1440px;
+            max-width: 1160px;
             padding-top: 24px !important;
           }
 

@@ -290,6 +290,27 @@ async function deleteReplacedImageExtensions(args: {
   }
 }
 
+// 投稿中心等页面读取首页头图使用。
+export async function GET() {
+  try {
+    const header = await prisma.homeHeader.findUnique({
+      where: { id: 1 },
+      select: { imageUrl: true },
+    });
+
+    return NextResponse.json(
+      { success: true, imageUrl: header?.imageUrl ?? null },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  } catch (error) {
+    console.error("读取首页头图失败：", error);
+    return NextResponse.json(
+      { success: false, imageUrl: null },
+      { status: 200 }
+    );
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();

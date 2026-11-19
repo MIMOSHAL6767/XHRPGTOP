@@ -1,4 +1,5 @@
 
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import GamesClient from "./GamesClient";
 import { Prisma } from "@prisma/client";
@@ -47,7 +48,8 @@ function parseTags(value: Prisma.JsonValue | null): string[] {
   return [];
 }
 
-export default async function GamesPage() {
+const loadGamesData = unstable_cache(
+  async () => {
   const [games, homeHeader] = await Promise.all([
     prisma.game.findMany({
       where: {
@@ -90,10 +92,22 @@ export default async function GamesPage() {
     gameStatus: game.gameStatus || "更新中",
   }));
 
+  return {
+    games: safeGames,
+    headerImage: homeHeader?.imageUrl ?? null,
+  };
+  },
+  ["xhrpg-games-page"],
+  { revalidate: 60 }
+);
+
+export default async function GamesPage() {
+  const data = await loadGamesData();
+
   return (
     <GamesClient
-      games={safeGames}
-      headerImage={homeHeader?.imageUrl ?? null}
+      games={data.games}
+      headerImage={data.headerImage}
     />
   );
 }

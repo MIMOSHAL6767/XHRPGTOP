@@ -1,11 +1,13 @@
 
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import SiteHeader from "@/app/components/SiteHeader";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function ActivitiesPage() {
+const loadActivitiesData = unstable_cache(
+  async () => {
   const [activities, header] = await Promise.all([
     prisma.activity.findMany({
       where: { enabled: true },
@@ -24,6 +26,15 @@ export default async function ActivitiesPage() {
       },
     }),
   ]);
+
+  return { activities, header };
+  },
+  ["xhrpg-activities-page"],
+  { revalidate: 60 }
+);
+
+export default async function ActivitiesPage() {
+  const { activities, header } = await loadActivitiesData();
 
   return (
     <main
@@ -45,9 +56,11 @@ export default async function ActivitiesPage() {
       <section
         className="activities-content"
         style={{
-          width: "min(calc(100% - 32px), 1440px)",
+          width: "min(1160px, calc(100% - 48px))",
           margin: "0 auto",
-          padding: "32px 0 64px",
+          padding: "28px",
+          background: "var(--panel)",
+          color: "var(--text)",
           boxSizing: "border-box",
         }}
       >
@@ -125,7 +138,8 @@ export default async function ActivitiesPage() {
         .activities-heading {
           margin-bottom: 28px;
           padding: 18px 20px;
-          background: rgba(16, 9, 11, 0.45);
+          color: var(--text);
+          background: var(--panel);
           border-left: 3px solid #8b1e2d;
         }
 
@@ -140,10 +154,10 @@ export default async function ActivitiesPage() {
           display: block;
           min-width: 0;
           overflow: hidden;
-          color: #f8eeee;
+          color: var(--text);
           text-decoration: none;
-          background: rgba(22, 12, 15, 0.78);
-          border: 1px solid rgba(74, 32, 40, 0.85);
+          background: var(--panel);
+          border: 1px solid var(--line);
           border-radius: 0 !important;
           transition:
             border-color 180ms ease,
@@ -152,7 +166,7 @@ export default async function ActivitiesPage() {
 
         .activity-list-card:hover {
           border-color: #8b1e2d;
-          background: rgba(30, 13, 18, 0.88);
+          background: var(--panel);
         }
 
         .activity-cover {

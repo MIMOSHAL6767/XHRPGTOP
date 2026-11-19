@@ -25,8 +25,8 @@ type TimelineClientProps = {
 const pageStyle: CSSProperties = {
   minHeight: "100vh",
   background: "transparent",
-  color: "#f8eeee",
-  padding: "20px 20px 60px",
+  color: "var(--text)",
+  padding: "0 0 60px",
   position: "relative",
   zIndex: 1,
 };
@@ -734,8 +734,13 @@ export default function TimelineClient({
 
         .timeline-container {
           position: relative;
-          max-width: 1050px;
+          width: min(1160px, calc(100% - 48px));
+          max-width: 1160px;
           margin: 0 auto;
+          padding: 24px;
+          background: var(--panel);
+          color: var(--text);
+          box-sizing: border-box;
         }
 
         /* 编辑时把工具栏固定在左侧，长篇编辑或插入图片时无需滚回页面顶部。 */
@@ -1043,7 +1048,7 @@ export default function TimelineClient({
 
         @media (max-width: 1000px) {
           .timeline-container.has-editor-sidebar {
-            max-width: 1050px;
+            max-width: 1160px;
             margin: 0 auto;
           }
 

@@ -34,6 +34,37 @@ export default function SiteBackgroundSwitcher() {
     useState<SavedSettings>(DEFAULT_SETTINGS);
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    setTheme(
+      document.documentElement.dataset.theme === "dark"
+        ? "dark"
+        : "light"
+    );
+  }, []);
+
+  function toggleTheme() {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    document.documentElement.dataset.theme = next;
+
+    try {
+      localStorage.setItem("xhrpg-theme", next);
+    } catch {
+      // 忽略隐私模式下的存储失败。
+    }
+  }
+
+  const themeButton = (
+    <button
+      type="button"
+      className="site-theme-toggle"
+      onClick={toggleTheme}
+    >
+      {theme === "light" ? "深色模式" : "亮色模式"}
+    </button>
+  );
 
   const segments = pathname.split("/").filter(Boolean);
   const route = segments[0];
@@ -120,17 +151,22 @@ export default function SiteBackgroundSwitcher() {
     }
   }, [settings, loaded]);
 
-  const selectedBackground = backgrounds.find(
-    (item) => item.id === settings.backgroundId,
-  );
+  const selectedBackground =
+    backgrounds.find(
+      (item) => item.id === settings.backgroundId,
+    ) ?? backgrounds[0];
 
   function updateSettings(patch: Partial<SavedSettings>) {
     setSettings((previous) => ({ ...previous, ...patch }));
   }
 
-  // 游戏详情页完全不显示全站背景层和背景控制器。
+  // 游戏详情页不显示全站背景层，但仍保留主题切换按钮。
   if (isGameDetail) {
-    return null;
+    return (
+      <div className="site-background-controls">
+        {themeButton}
+      </div>
+    );
   }
 
   return (
@@ -261,14 +297,18 @@ export default function SiteBackgroundSwitcher() {
             </section>
           )}
 
-          <button
-            type="button"
-            className="site-background-toggle"
-            onClick={() => setOpen((previous) => !previous)}
-            aria-expanded={open}
-          >
-            {open ? "关闭背景设置" : "背景设置"}
-          </button>
+          <div className="site-control-buttons">
+            {themeButton}
+
+            <button
+              type="button"
+              className="site-background-toggle"
+              onClick={() => setOpen((previous) => !previous)}
+              aria-expanded={open}
+            >
+              {open ? "关闭背景设置" : "背景设置"}
+            </button>
+          </div>
         </div>
       )}
     </>

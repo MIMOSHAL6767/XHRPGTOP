@@ -13,6 +13,12 @@ export default function AdminHeaderPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [announcement, setAnnouncement] = useState("");
+  const [featuredIds, setFeaturedIds] = useState<number[]>([]);
+  const [games, setGames] = useState<
+    { id: number; name: string }[]
+  >([]);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -31,6 +37,12 @@ export default function AdminHeaderPage() {
         if (active) {
           setImageUrl(data.imageUrl ?? null);
           setPreview(data.imageUrl ?? "");
+          setAnnouncement(data.announcement ?? "");
+          setFeaturedIds(
+            Array.isArray(data.featuredGameIds)
+              ? data.featuredGameIds.map(Number)
+              : []
+          );
         }
       } catch (error) {
         if (active) {
@@ -44,6 +56,41 @@ export default function AdminHeaderPage() {
     }
 
     void loadHeader();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadGames() {
+      try {
+        const response = await fetch("/api/admin/games", {
+          cache: "no-store",
+        });
+        const data = await response.json();
+
+        if (
+          active &&
+          response.ok &&
+          data.success &&
+          Array.isArray(data.games)
+        ) {
+          setGames(
+            data.games.map((game: { id: number; name: string }) => ({
+              id: game.id,
+              name: game.name,
+            }))
+          );
+        }
+      } catch {
+        // 游戏列表读取失败时仍可单独编辑公告。
+      }
+    }
+
+    void loadGames();
 
     return () => {
       active = false;
@@ -167,6 +214,51 @@ export default function AdminHeaderPage() {
     }
   }
 
+  function toggleFeatured(id: number) {
+    setFeaturedIds((current) => {
+      if (current.includes(id)) {
+        return current.filter((item) => item !== id);
+      }
+
+      if (current.length >= 12) {
+        setMessage("精选游戏最多选择 12 个");
+        return current;
+      }
+
+      return [...current, id];
+    });
+  }
+
+  async function saveHomeSettings() {
+    setSavingSettings(true);
+    setMessage("");
+
+    try {
+      const response = await fetch("/api/admin/header", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          announcement,
+          featuredGameIds: featuredIds,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "保存失败");
+      }
+
+      setMessage("公告与精选游戏已保存");
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "保存失败"
+      );
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
   return (
     <main
       style={{
@@ -188,7 +280,7 @@ export default function AdminHeaderPage() {
           }}
         >
           <h1 style={{ fontSize: 26, margin: 0 }}>
-            首页头图设置
+            首页设置
           </h1>
 
           <Link
@@ -339,6 +431,114 @@ export default function AdminHeaderPage() {
               移除首页头图
             </button>
           </div>
+        </section>
+
+        <section
+          style={{
+            marginTop: 24,
+            background: "#160c0f",
+            border: "1px solid #4a2028",
+            padding: 24,
+          }}
+        >
+          <h2 style={{ fontSize: 18, marginTop: 0 }}>
+            首页公告与精选游戏
+          </h2>
+
+          <label
+            htmlFor="announcement"
+            style={{ display: "block", marginBottom: 8 }}
+          >
+            公告（纯文本）
+          </label>
+
+          <textarea
+            id="announcement"
+            value={announcement}
+            onChange={(event) =>
+              setAnnouncement(event.target.value)
+            }
+            rows={8}
+            placeholder="输入首页公告内容，仅支持纯文本"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: 12,
+              background: "#10090b",
+              color: "#f8eeee",
+              border: "1px solid #4a2028",
+              font: "inherit",
+              lineHeight: 1.7,
+              resize: "vertical",
+            }}
+          />
+
+          <h3 style={{ fontSize: 16, marginTop: 24 }}>
+            精选游戏（最多 12 个，已选 {featuredIds.length} 个）
+          </h3>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fill, minmax(210px, 1fr))",
+              gap: 8,
+              maxHeight: 320,
+              overflowY: "auto",
+              padding: 4,
+              border: "1px solid #2e1a1f",
+            }}
+          >
+            {games.length > 0 ? (
+              games.map((game) => {
+                const active = featuredIds.includes(game.id);
+
+                return (
+                  <button
+                    key={game.id}
+                    type="button"
+                    onClick={() => toggleFeatured(game.id)}
+                    style={{
+                      padding: "9px 12px",
+                      textAlign: "left",
+                      color: active ? "#fff" : "#cbb8bc",
+                      background: active
+                        ? "#8b1e2d"
+                        : "transparent",
+                      border: "1px solid #4a2028",
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {active ? "✓ " : ""}
+                    {game.name}
+                  </button>
+                );
+              })
+            ) : (
+              <p style={{ color: "#9c858a", margin: 8 }}>
+                正在读取游戏列表……
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            disabled={savingSettings}
+            onClick={saveHomeSettings}
+            style={{
+              marginTop: 20,
+              padding: "12px 22px",
+              background: savingSettings ? "#4a2028" : "#8b1e2d",
+              color: "#fff",
+              border: "none",
+              cursor: savingSettings ? "not-allowed" : "pointer",
+            }}
+          >
+            {savingSettings ? "正在保存……" : "保存公告与精选"}
+          </button>
         </section>
       </div>
     </main>

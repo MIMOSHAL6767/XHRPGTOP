@@ -1,0 +1,196 @@
+"use client";
+
+import Link from "next/link";
+import SiteHeader from "@/app/components/SiteHeader";
+import FloatingWidget from "@/app/components/FloatingWidget";
+
+export default function UploadClient({
+  headerImage,
+}: {
+  headerImage: string | null;
+}) {
+  return (
+    <main
+      className="xhrpg-upload-page"
+      style={{
+        minHeight: "100vh",
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        background: "transparent",
+        color: "var(--text)",
+      }}
+    >
+      <SiteHeader headerImage={headerImage} />
+
+      <section
+        style={{
+          width: "min(1160px, calc(100% - 48px))",
+          margin: "0 auto",
+          padding: "28px",
+          background: "var(--panel)",
+          color: "var(--text)",
+          boxSizing: "border-box",
+        }}
+      >
+        <header style={{ marginBottom: 28 }}>
+          <h1
+            style={{
+              fontSize: "clamp(26px, 4vw, 36px)",
+              fontWeight: 700,
+              margin: 0,
+            }}
+          >
+            游戏投稿中心
+          </h1>
+
+          <p
+            style={{
+              color: "#bba9ac",
+              marginTop: 12,
+              lineHeight: 1.8,
+            }}
+          >
+            新建游戏投稿，或使用专属凭证编辑已有投稿。
+          </p>
+        </header>
+
+        <div
+          className="upload-entry-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: 20,
+          }}
+        >
+          <Link
+            href="/upload/new"
+            className="upload-entry-card"
+            style={{
+              minHeight: 260,
+              padding: "clamp(20px, 4vw, 40px)",
+              boxSizing: "border-box",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "flex-start",
+              gap: 18,
+              color: "#ffffff",
+              textDecoration: "none",
+              background: "#160c0f",
+              border: "1px solid #8b1e2d",
+              borderRadius: 0,
+              transition: "background 160ms ease, border-color 160ms ease",
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 58,
+                height: 58,
+                border: "1px solid #8b1e2d",
+                color: "#e5484d",
+                fontSize: 36,
+                lineHeight: 1,
+              }}
+            >
+              +
+            </span>
+
+            <span style={{ fontSize: 27, fontWeight: 700 }}>
+              新建游戏
+            </span>
+
+            <span
+              style={{
+                color: "#c9b8bb",
+                fontSize: 14,
+                lineHeight: 1.8,
+              }}
+            >
+              提交新的喜灰同人 RPG 游戏，填写基本信息、下载链接和游戏封面。
+            </span>
+
+            <span style={{ color: "#e5484d", marginTop: 4 }}>
+              开始投稿 →
+            </span>
+          </Link>
+
+          <Link
+            href="/upload/edit"
+            className="upload-entry-card"
+            style={{
+              minHeight: 260,
+              padding: "clamp(20px, 4vw, 40px)",
+              boxSizing: "border-box",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "flex-start",
+              gap: 18,
+              color: "#ffffff",
+              textDecoration: "none",
+              background: "#160c0f",
+              border: "1px solid #8b1e2d",
+              borderRadius: 0,
+              transition: "background 160ms ease, border-color 160ms ease",
+            }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 58,
+                height: 58,
+                border: "1px solid #8b1e2d",
+                color: "#e5484d",
+                fontSize: 30,
+              }}
+            >
+              ✎
+            </span>
+
+            <span style={{ fontSize: 27, fontWeight: 700 }}>
+              编辑游戏
+            </span>
+
+            <span
+              style={{
+                color: "#c9b8bb",
+                fontSize: 14,
+                lineHeight: 1.8,
+              }}
+            >
+              输入投稿时获得的专属编辑凭证，继续修改或完善已有游戏资料。
+            </span>
+
+            <span style={{ color: "#e5484d", marginTop: 4 }}>
+              管理我的投稿 →
+            </span>
+          </Link>
+        </div>
+      </section>
+
+      <FloatingWidget />
+
+      <style jsx>{`
+        .upload-entry-card:hover {
+          background: #261016 !important;
+          border-color: #e5484d !important;
+        }
+
+        @media (max-width: 640px) {
+          .upload-entry-grid {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+        }
+      `}</style>
+    </main>
+  );
+}

@@ -46,6 +46,24 @@ export async function POST(
       );
     }
 
+    // 记录访问日志，用于首页「本周热门」的一周增量统计。
+    try {
+      await prisma.gameViewLog.create({ data: { gameId } });
+
+      // 偶尔清理 30 天前的日志，避免表无限增长。
+      if (Math.random() < 0.01) {
+        await prisma.gameViewLog.deleteMany({
+          where: {
+            createdAt: {
+              lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+            },
+          },
+        });
+      }
+    } catch (logError) {
+      console.error("记录游戏访问日志失败：", logError);
+    }
+
     return NextResponse.json(
       { success: true },
       {

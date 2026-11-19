@@ -17,6 +17,12 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{document.documentElement.dataset.theme=localStorage.getItem('xhrpg-theme')==='dark'?'dark':'light'}catch(e){document.documentElement.dataset.theme='light'}",
+          }}
+        />
         <SiteBackgroundSwitcher />
 
         <div className="site-content-layer">

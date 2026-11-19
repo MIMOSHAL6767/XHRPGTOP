@@ -274,7 +274,20 @@ model VerifyQuestion {
 model HomeHeader {
   id        Int      @id @default(1)
   imageUrl  String?
+  // 首页公告（纯文本）与精选游戏 ID 列表
+  announcement    String? @db.Text
+  featuredGameIds Json?
   updatedAt DateTime @updatedAt
+}
+
+// 访问日志：用于统计“本周热门”的一周内点击量增量
+model GameViewLog {
+  id        Int      @id @default(autoincrement())
+  gameId    Int
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([gameId, createdAt])
 }
 
 // =====================

@@ -93,21 +93,23 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   boxSizing: "border-box",
   padding: "10px 12px",
-  border: "1px solid #4a2028",
-  borderRadius: 0,
-  background: "#10090b",
-  color: "#f8eeee",
+  border: "1px solid var(--line)",
+  borderRadius: 4,
+  background: "var(--bg)",
+  color: "var(--text)",
   marginTop: 6,
 };
 
 const labelStyle: React.CSSProperties = {
   display: "block",
   marginBottom: 18,
-  color: "#f8eeee",
+  color: "var(--text)",
+  fontSize: 14,
+  fontWeight: 600,
 };
 
 const sectionStyle: React.CSSProperties = {
-  borderTop: "1px solid #4a2028",
+  borderTop: "1px solid var(--line)",
   paddingTop: 22,
   marginTop: 28,
 };

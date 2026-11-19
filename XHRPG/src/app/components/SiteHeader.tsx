@@ -19,6 +19,9 @@ type SiteHeaderProps = {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   hideSearch?: boolean;
+  headerImagePosition?: string;
+  onBack?: () => void;
+  backLabel?: string;
 };
 
 export default function SiteHeader({
@@ -26,6 +29,9 @@ export default function SiteHeader({
   searchValue = "",
   onSearchChange,
   hideSearch = false,
+  headerImagePosition = "center",
+  onBack,
+  backLabel = "返回",
 }: SiteHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -250,8 +256,8 @@ export default function SiteHeader({
           aria-label="返回首页"
           style={{
             display: "block",
-            width: "100%",
-            margin: 0,
+            width: "min(1160px, calc(100% - 48px))",
+            margin: "0 auto",
             padding: 0,
             lineHeight: 0,
             cursor: "pointer",
@@ -269,7 +275,7 @@ export default function SiteHeader({
               height: "auto",
               maxHeight: "280px",
               objectFit: "cover",
-              objectPosition: "center",
+              objectPosition: headerImagePosition,
               margin: 0,
               padding: 0,
               border: "none",
@@ -284,12 +290,13 @@ export default function SiteHeader({
         className="drawer-nav"
         style={{
           position: "relative",
-          width: "100%",
+          width: "min(1160px, calc(100% - 48px))",
           minWidth: 0,
           maxWidth: "none",
-          height: "64px",
-          minHeight: "64px",
-          flex: "0 0 64px",
+          margin: "0 auto",
+          height: "52px",
+          minHeight: "52px",
+          flex: "0 0 52px",
           display: "flex",
           flexDirection: "row",
           alignItems: "center",
@@ -308,7 +315,7 @@ export default function SiteHeader({
             display: "flex",
             alignItems: "center",
             width: "100%",
-            maxWidth: "1440px",
+            maxWidth: "100%",
             minWidth: 0,
             height: "100%",
             margin: "0 auto",
@@ -327,16 +334,28 @@ export default function SiteHeader({
               gap: "6px",
               minWidth: 0,
               marginLeft: 0,
-              overflowX: "auto",
-              overflowY: "hidden",
+              overflowX: "visible",
+              overflowY: "visible",
               scrollbarWidth: "none",
               whiteSpace: "nowrap",
               height: "100%",
             }}
           >
+            {onBack && (
+              <button
+                type="button"
+                className="site-nav-back"
+                onClick={onBack}
+                title={backLabel}
+              >
+                ← {backLabel}
+              </button>
+            )}
+
             <Link
               href="/"
               aria-current={isActive("/") ? "page" : undefined}
+              className="site-nav-link"
               style={getNavStyle("/")}
             >
               首页
@@ -345,6 +364,7 @@ export default function SiteHeader({
             <Link
               href="/games"
               aria-current={isActive("/games") ? "page" : undefined}
+              className="site-nav-link"
               style={getNavStyle("/games")}
             >
               游戏库
@@ -353,6 +373,7 @@ export default function SiteHeader({
             <Link
               href="/activities"
               aria-current={isActive("/activities") ? "page" : undefined}
+              className="site-nav-link"
               style={getNavStyle("/activities")}
             >
               活动
@@ -361,6 +382,7 @@ export default function SiteHeader({
             <Link
               href="/timeline"
               aria-current={isActive("/timeline") ? "page" : undefined}
+              className="site-nav-link"
               style={getNavStyle("/timeline")}
             >
               大事记
@@ -370,6 +392,7 @@ export default function SiteHeader({
             <Link
               href="/upload"
               aria-current={isActive("/upload") ? "page" : undefined}
+              className="site-nav-link site-upload-link"
               style={getUploadStyle()}
               title="投稿或编辑游戏"
             >
@@ -392,7 +415,6 @@ export default function SiteHeader({
               background: "transparent",
               boxSizing: "border-box",
               height: "100%",
-              transform: "translateY(14px)",
             }}
           >
             {/* 全站搜索框 */}

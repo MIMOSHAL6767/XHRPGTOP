@@ -1,52 +1,75 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import HomeClient from "./components/HomeClient";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function Home() {
-  const [games, banners, header, activities] = await Promise.all([
-    // 已发布游戏
+const GAME_CARD_SELECT = {
+  id: true,
+  name: true,
+  en: true,
+  author: true,
+  category: true,
+  version: true,
+  description: true,
+  cover: true,
+  downloads: true,
+  date: true,
+  createdAt: true,
+  tags: true,
+  gameStatus: true,
+} as const;
+
+function parseFeaturedIds(value: Prisma.JsonValue | null): number[] {
+  if (!Array.isArray(value)) return [];
+
+  return Array.from(
+    new Set(
+      value
+        .map((item) => Number(item))
+        .filter((id) => Number.isSafeInteger(id) && id > 0)
+    )
+  ).slice(0, 12);
+}
+
+async function loadHomeData() {
+  // 「本周热门」统计上一自然周（周一 00:00 到本周一 00:00，中国时区）。
+  const now = new Date();
+  const chinaNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const daysFromMonday = (chinaNow.getUTCDay() + 6) % 7;
+  const currentMonday = new Date(
+    Date.UTC(
+      chinaNow.getUTCFullYear(),
+      chinaNow.getUTCMonth(),
+      chinaNow.getUTCDate() - daysFromMonday
+    ) -
+      8 * 60 * 60 * 1000
+  );
+  const lastWeekStart = new Date(
+    currentMonday.getTime() - 7 * 24 * 60 * 60 * 1000
+  );
+
+  // 分两批查询，避免远程数据库连接池在并发请求下被瞬间占满。
+  const [allGames, header] = await Promise.all([
     prisma.game.findMany({
-      where: {
-        status: "已发布",
-      },
-      orderBy: {
-        id: "asc",
-      },
+      where: { status: "已发布" },
+      select: GAME_CARD_SELECT,
     }),
 
-    // 已启用轮播图
+    prisma.homeHeader.findUnique({ where: { id: 1 } }),
+  ]);
+
+  const [banners, activities, weeklyGroups] = await Promise.all([
     prisma.banner.findMany({
-      where: {
-        enabled: true,
-      },
-      orderBy: {
-        id: "asc",
-      },
+      where: { enabled: true },
+      orderBy: { id: "asc" },
     }),
 
-    // 首页头图
-    prisma.homeHeader.findUnique({
-      where: {
-        id: 1,
-      },
-    }),
-
-    // 已启用且允许在首页展示的活动
     prisma.activity.findMany({
-      where: {
-        enabled: true,
-        showOnHome: true,
-      },
-      orderBy: [
-        {
-          sort: "asc",
-        },
-        {
-          id: "desc",
-        },
-      ],
+      where: { enabled: true, showOnHome: true },
+      orderBy: [{ sort: "asc" }, { id: "desc" }],
       select: {
         id: true,
         title: true,
@@ -62,14 +85,91 @@ export default async function Home() {
         sort: true,
       },
     }),
+
+    prisma.gameViewLog.groupBy({
+      by: ["gameId"],
+      where: {
+        createdAt: {
+          gte: lastWeekStart,
+          lt: currentMonday,
+        },
+      },
+      _count: { gameId: true },
+      orderBy: { _count: { gameId: "desc" } },
+      take: 1,
+    }),
   ]);
 
-  return (
-    <HomeClient
-      games={games}
-      banners={banners}
-      headerImage={header?.imageUrl ?? null}
-      activities={activities}
-    />
+  const byNewest = [...allGames].sort((a, b) => {
+    const timeA = new Date(a.createdAt).getTime();
+    const timeB = new Date(b.createdAt).getTime();
+    if (timeB !== timeA) return timeB - timeA;
+    return b.id - a.id;
+  });
+
+  const latestGames = byNewest.slice(0, 11);
+
+  const hotGames = [...allGames]
+    .sort((a, b) => {
+      if (b.downloads !== a.downloads) {
+        return b.downloads - a.downloads;
+      }
+      return b.id - a.id;
+    })
+    .slice(0, 10);
+
+  const weeklyIncrease = weeklyGroups[0]?._count.gameId ?? 0;
+  const weeklyGameId = weeklyGroups[0]?.gameId;
+
+  const weeklyFallback =
+    (weeklyGameId &&
+      allGames.find((game) => game.id === weeklyGameId)) ||
+    hotGames[0] ||
+    null;
+
+  const featuredIds = parseFeaturedIds(
+    header?.featuredGameIds ?? null
   );
+
+  const featuredGames = featuredIds
+    .map((id) => allGames.find((game) => game.id === id))
+    .filter((game): game is (typeof allGames)[number] =>
+      Boolean(game)
+    )
+    .slice(0, 12);
+
+  if (featuredGames.length < 12) {
+    const used = new Set(featuredGames.map((game) => game.id));
+
+    for (const game of [...hotGames, ...byNewest]) {
+      if (featuredGames.length >= 12) break;
+      if (used.has(game.id)) continue;
+      featuredGames.push(game);
+      used.add(game.id);
+    }
+  }
+
+  return {
+    latestGames,
+    hotGames,
+    featuredGames,
+    weeklyGame: weeklyFallback
+      ? { ...weeklyFallback, weeklyIncrease }
+      : null,
+    announcement: header?.announcement ?? "",
+    banners,
+    headerImage: header?.imageUrl ?? null,
+    activities,
+  };
+}
+
+// 首页数据缓存 60 秒：远程数据库偶发高延迟时，后续访问直接命中缓存。
+const getHomeData = unstable_cache(loadHomeData, ["xhrpg-home-data"], {
+  revalidate: 60,
+});
+
+export default async function Home() {
+  const data = await getHomeData();
+
+  return <HomeClient {...data} />;
 }

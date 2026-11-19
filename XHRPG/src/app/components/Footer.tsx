@@ -57,7 +57,7 @@ export default function Footer() {
           borderRadius: 0,
         }}
       >
-        <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+        <div style={{ maxWidth: "1160px", margin: "0 auto" }}>
           <nav
             aria-label="页脚导航"
             style={{

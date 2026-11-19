@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import SiteHeader from "@/app/components/SiteHeader";
 import { DEFAULT_REQUIREMENTS } from "@/lib/game-requirements";
 
 export type DetailHistoryItem = {
@@ -351,67 +352,25 @@ export default function GameDetailClient({
       />
       <div className="gd-page-shade" />
 
+      <SiteHeader
+        headerImage={cover}
+        headerImagePosition="center 25%"
+        onBack={handleBack}
+        backLabel="返回"
+      />
+
       <div className="gd-wrap">
-        {/* 顶部：只保留返回按钮 */}
-        <header className="gd-topbar">
-          <button
-            type="button"
-            className="gd-back"
-            onClick={handleBack}
-          >
-            ← 返回上一级
-          </button>
-        </header>
-
-        {/* 头图：主预览图与下方信息面板同宽，点击打开灯箱 */}
-        <section className="gd-hero">
-          <div className="gd-hero-inner">
-            <button
-              type="button"
-              className="gd-main-image"
-              onClick={() => {
-                if (activeImage) setLightboxOpen(true);
-              }}
-              aria-label="查看大图"
-            >
-              {activeImage ? (
-                <img
-                  src={activeImage}
-                  alt={`${name} 预览图`}
-                />
-              ) : (
-                <span className="gd-no-preview">
-                  暂无预览图片
-                </span>
-              )}
-            </button>
-
-            {gallery.length > 1 && (
-              <div className="gd-thumbnails">
-                {gallery.map((image, index) => (
-                  <button
-                    key={`${image}-${index}`}
-                    type="button"
-                    className={
-                      activeImage === image
-                        ? "gd-thumbnail active"
-                        : "gd-thumbnail"
-                    }
-                    onClick={() => setActiveImage(image)}
-                    aria-label={`切换到第 ${index + 1} 张图片`}
-                    aria-pressed={activeImage === image}
-                  >
-                    <img src={image} alt="" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-
         {/* 信息面板：左侧简介 / 详细信息 / 下载，右侧标签、作者与推荐 */}
         <section className="gd-panel">
           <div className="gd-main">
+            <nav className="gd-breadcrumb" aria-label="面包屑导航">
+              <Link href="/">首页</Link>
+              <span aria-hidden="true">›</span>
+              <Link href="/games">游戏库</Link>
+              <span aria-hidden="true">›</span>
+              <span aria-current="page">{name}</span>
+            </nav>
+
             {/* 游戏标题（与右侧标签同一行）与下一行作者 */}
             <div className="gd-main-head">
               <div className="gd-game-title">
@@ -427,38 +386,77 @@ export default function GameDetailClient({
               </div>
             </div>
 
+            {/* 缩小后的预览图，放在作者下方、简介上方 */}
+            <div className="gd-inline-gallery">
+              <button
+                type="button"
+                className="gd-inline-main"
+                onClick={() => {
+                  if (activeImage) setLightboxOpen(true);
+                }}
+                aria-label="查看大图"
+              >
+                {activeImage ? (
+                  <img src={activeImage} alt={`${name} 预览图`} />
+                ) : (
+                  <span className="gd-no-preview">暂无预览图片</span>
+                )}
+              </button>
+
+              {gallery.length > 1 && (
+                <div className="gd-inline-thumbs">
+                  {gallery.map((image, index) => (
+                    <button
+                      key={`${image}-${index}`}
+                      type="button"
+                      className={
+                        activeImage === image
+                          ? "gd-inline-thumb active"
+                          : "gd-inline-thumb"
+                      }
+                      onClick={() => setActiveImage(image)}
+                      aria-label={`切换到第 ${index + 1} 张图片`}
+                      aria-pressed={activeImage === image}
+                    >
+                      <img src={image} alt="" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <h2 className="gd-heading">简介</h2>
 
             <p className="gd-description">
               {description || "暂无简介"}
             </p>
 
-            {/* 系统需求：两列，格式与启动器一致 */}
-            <div className="gd-specs">
-              <h3 className="gd-specs-title">系统需求</h3>
-
-              <div className="gd-spec-grid">
-                {[
-                  ["操作系统", reqOs || DEFAULT_REQUIREMENTS.os],
-                  ["处理器", reqCpu || DEFAULT_REQUIREMENTS.cpu],
-                  ["内存", reqMemory || DEFAULT_REQUIREMENTS.memory],
-                  ["显卡", reqGpu || DEFAULT_REQUIREMENTS.gpu],
-                  ["运行环境", reqRuntime || DEFAULT_REQUIREMENTS.runtime],
-                ].map(([label, value]) => (
-                  <div className="gd-spec-item" key={label}>
-                    <span className="gd-spec-key">{label}</span>
-                    <span className="gd-spec-value">{value}</span>
-                  </div>
-                ))}
-              </div>
-
-              <p className="gd-spec-note">
-                以上为通用需求，实际以游戏文件为准。
-              </p>
-            </div>
-
             {/* 详细信息、下载与其他版本一起沉到左栏底部 */}
             <div className="gd-lower">
+              {/* 系统需求沉底，并与下方类型信息隔开 */}
+              <div className="gd-specs gd-specs-lower">
+                <h3 className="gd-specs-title">系统需求</h3>
+
+                <div className="gd-spec-grid">
+                  {[
+                    ["操作系统", reqOs || DEFAULT_REQUIREMENTS.os],
+                    ["处理器", reqCpu || DEFAULT_REQUIREMENTS.cpu],
+                    ["内存", reqMemory || DEFAULT_REQUIREMENTS.memory],
+                    ["显卡", reqGpu || DEFAULT_REQUIREMENTS.gpu],
+                    ["运行环境", reqRuntime || DEFAULT_REQUIREMENTS.runtime],
+                  ].map(([label, value]) => (
+                    <div className="gd-spec-item" key={label}>
+                      <span className="gd-spec-key">{label}</span>
+                      <span className="gd-spec-value">{value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="gd-spec-note">
+                  以上为通用需求，实际以游戏文件为准。
+                </p>
+              </div>
+
               <dl className="gd-info">
                 <div className="gd-info-row">
                   <dt>类型</dt>
