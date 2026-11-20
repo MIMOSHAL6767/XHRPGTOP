@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isSiteAdmin, isSiteOwner } from "@/lib/admin-auth";
+import { isAllowedImageUrl } from "@/lib/image-url";
+import {
+  deleteCloudinaryUrls,
+  deleteRemovedCloudinaryAssets,
+} from "@/lib/cloudinary";
 import { Prisma } from "@prisma/client";
 
 function unauthorized() {
@@ -25,12 +30,7 @@ function isOptionalString(value: unknown) {
 }
 
 function isValidImageUrl(value: unknown) {
-  return (
-    value === null ||
-    (typeof value === "string" &&
-      (value === "" ||
-        value.startsWith("https://raw.githubusercontent.com/")))
-  );
+  return value === null || value === "" || isAllowedImageUrl(value);
 }
 
 // 作品状态：与发布审核状态 status 分开保存
@@ -259,11 +259,7 @@ export async function PUT(
         !Array.isArray(input.screenshots) ||
         input.screenshots.length > 5 ||
         !input.screenshots.every(
-          (url) =>
-            typeof url === "string" &&
-            url.startsWith(
-              "https://raw.githubusercontent.com/"
-            )
+          (url) => typeof url === "string" && isAllowedImageUrl(url)
         )
       )
     ) {
@@ -471,10 +467,45 @@ export async function PUT(
       updateDate: new Date().toISOString().split("T")[0],
     };
 
+    const previous = await prisma.game.findUnique({
+      where: { id: Number(id) },
+      select: {
+        cover: true,
+        titleLogo: true,
+        detailBackground: true,
+        screenshots: true,
+      },
+    });
+
     const game = await prisma.game.update({
       where: { id: Number(id) },
       data,
     });
+
+    if (previous) {
+      const list = (value: Prisma.JsonValue) =>
+        Array.isArray(value)
+          ? value.filter(
+              (item): item is string => typeof item === "string"
+            )
+          : [];
+
+      // 保存成功后再清理被移除的 Cloudinary 图片。
+      await deleteRemovedCloudinaryAssets(
+        [
+          previous.cover,
+          previous.titleLogo,
+          previous.detailBackground,
+          ...list(previous.screenshots),
+        ],
+        [
+          game.cover,
+          game.titleLogo,
+          game.detailBackground,
+          ...list(game.screenshots),
+        ]
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -523,7 +554,13 @@ export async function DELETE(
 
     const existing = await prisma.game.findUnique({
       where: { id: Number(id) },
-      select: { id: true },
+      select: {
+        id: true,
+        cover: true,
+        titleLogo: true,
+        detailBackground: true,
+        screenshots: true,
+      },
     });
 
     if (!existing) {
@@ -536,6 +573,18 @@ export async function DELETE(
     await prisma.game.delete({
       where: { id: Number(id) },
     });
+
+    // 数据库删除成功后再清理 Cloudinary 图片；旧 GitHub 图片不受影响。
+    await deleteCloudinaryUrls([
+      existing.cover,
+      existing.titleLogo,
+      existing.detailBackground,
+      ...(Array.isArray(existing.screenshots)
+        ? existing.screenshots.filter(
+            (item): item is string => typeof item === "string"
+          )
+        : []),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

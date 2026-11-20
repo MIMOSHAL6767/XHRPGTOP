@@ -7,6 +7,7 @@ import {
   OS_OPTIONS,
   RUNTIME_OPTIONS,
 } from "@/lib/game-requirements";
+import { isAllowedImageUrl } from "@/lib/image-url";
 
 type HistoryItem = {
   version: string;
@@ -26,7 +27,6 @@ type UploadKind = "cover" | "background" | "logo" | "screenshot";
 type GameStatus = "完结" | "更新中" | "Demo" | "弃坑" | "断更";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const RAW_PREFIX = "https://raw.githubusercontent.com/";
 
 const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
@@ -354,10 +354,7 @@ export default function NewGame() {
 
     const data = await readResponse(res);
 
-    if (
-      typeof data.url !== "string" ||
-      !data.url.startsWith(RAW_PREFIX)
-    ) {
+    if (!isAllowedImageUrl(data.url)) {
       throw new Error("图片上传成功响应中缺少有效的图片 URL");
     }
 

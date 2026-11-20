@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { deleteRemovedCloudinaryAssets } from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -512,6 +513,40 @@ export async function PUT(
         status: true,
       },
     });
+
+    const nextImages = await prisma.game.findUnique({
+      where: { id: auth.game.id },
+      select: {
+        cover: true,
+        titleLogo: true,
+        detailBackground: true,
+        screenshots: true,
+      },
+    });
+
+    if (nextImages) {
+      const list = (value: Prisma.JsonValue) =>
+        Array.isArray(value)
+          ? value.filter(
+              (item): item is string => typeof item === "string"
+            )
+          : [];
+
+      await deleteRemovedCloudinaryAssets(
+        [
+          auth.game.cover,
+          auth.game.titleLogo,
+          auth.game.detailBackground,
+          ...list(auth.game.screenshots),
+        ],
+        [
+          nextImages.cover,
+          nextImages.titleLogo,
+          nextImages.detailBackground,
+          ...list(nextImages.screenshots),
+        ]
+      );
+    }
 
     return NextResponse.json({
       success: true,

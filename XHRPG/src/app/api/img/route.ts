@@ -7,6 +7,7 @@ const ALLOWED_HOSTS = [
   "raw.githubusercontent.com",
   "github.com",
   "avatars.githubusercontent.com",
+  "res.cloudinary.com",
 ];
 
 const CORS = {

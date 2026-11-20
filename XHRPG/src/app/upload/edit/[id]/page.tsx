@@ -16,6 +16,7 @@ import {
   OS_OPTIONS,
   RUNTIME_OPTIONS,
 } from "@/lib/game-requirements";
+import { isAllowedImageUrl } from "@/lib/image-url";
 
 type HistoryItem = {
   version?: string;
@@ -675,13 +676,8 @@ export default function SubmissionGameEditPage() {
       );
     }
 
-    if (
-      typeof result.url !== "string" ||
-      !result.url.startsWith("https://raw.githubusercontent.com/")
-    ) {
-      throw new Error(
-        "上传接口没有返回有效的 GitHub Raw 图片地址。"
-      );
+    if (!isAllowedImageUrl(result.url)) {
+      throw new Error("上传接口没有返回有效的图片地址。");
     }
 
     return result.url;

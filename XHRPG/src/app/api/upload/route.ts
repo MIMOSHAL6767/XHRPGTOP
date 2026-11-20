@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { isSiteAdmin } from "@/lib/admin-auth";
+import {
+  isCloudinaryConfigured,
+  uploadImageToCloudinary,
+} from "@/lib/cloudinary";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -527,36 +531,44 @@ export async function POST(req: Request) {
 
     let directory: string;
     let filename: string;
+    // Cloudinary 的 public_id：同名覆盖，替换图片时自动更新同一资源。
+    let cloudinaryPublicId = "";
 
     switch (kind) {
       case "cover":
         directory = "games";
         filename = `games${gameId}.${ext}`;
+        cloudinaryPublicId = `xhrpg/games/${gameId}/cover`;
         break;
 
       case "background":
         directory = "game-details/backgrounds";
         filename = `games${gameId}-background.${ext}`;
+        cloudinaryPublicId = `xhrpg/games/${gameId}/background`;
         break;
 
       case "logo":
         directory = "game-details/logos";
         filename = `games${gameId}-logo.${ext}`;
+        cloudinaryPublicId = `xhrpg/games/${gameId}/logo`;
         break;
 
       case "screenshot":
         directory = "game-details/screenshots";
         filename = `games${gameId}-preview-${slot}.${ext}`;
+        cloudinaryPublicId = `xhrpg/games/${gameId}/screenshots/${slot}`;
         break;
 
       case "homeHeader":
         directory = "home";
         filename = `header.${ext}`;
+        cloudinaryPublicId = "xhrpg/site/header";
         break;
 
       case "siteBackground":
         directory = "backgrounds";
         filename = `site-background-${randomUUID()}.${ext}`;
+        cloudinaryPublicId = `xhrpg/site/backgrounds/${randomUUID()}`;
         break;
 
       case "floatingGif":
@@ -568,6 +580,31 @@ export async function POST(req: Request) {
         directory = "music";
         filename = `track-${randomUUID()}.${ext}`;
         break;
+    }
+
+    // 图片优先存 Cloudinary；GIF/音乐仍走 GitHub。
+    if (!isGif && !isMusic && isCloudinaryConfigured()) {
+      try {
+        const result = await uploadImageToCloudinary({
+          bytes,
+          publicId: cloudinaryPublicId,
+        });
+
+        return NextResponse.json({
+          success: true,
+          url: result.url,
+          filename: `${result.publicId.split("/").pop()}.${result.format}`,
+          gameId,
+          kind,
+          slot: kind === "screenshot" ? slot : null,
+          path: result.publicId,
+          commit: null,
+          provider: "cloudinary",
+        });
+      } catch (error) {
+        // 上传失败时回退 GitHub，避免图片功能整体不可用。
+        console.error("Cloudinary 上传失败，回退 GitHub：", error);
+      }
     }
 
     const repoPath = `${directory}/${filename}`;
