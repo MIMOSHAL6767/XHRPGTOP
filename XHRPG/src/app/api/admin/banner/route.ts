@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 // 获取全部轮换图：仅限站长
 export async function GET() {
-  const isOwner = await isSiteOwner();
+  const isOwner = await isSiteAdmin();
 
   if (!isOwner) {
     return NextResponse.json(
@@ -42,7 +42,7 @@ export async function GET() {
 
 // 新增轮换图：仅限站长
 export async function POST(req: Request) {
-  const isOwner = await isSiteOwner();
+  const isOwner = await isSiteAdmin();
 
   if (!isOwner) {
     return NextResponse.json(

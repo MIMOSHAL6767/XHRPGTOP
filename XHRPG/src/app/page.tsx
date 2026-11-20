@@ -16,6 +16,9 @@ const GAME_CARD_SELECT = {
   description: true,
   cover: true,
   downloads: true,
+  weeklyViews: true,
+  lastWeekViews: true,
+  weeklyViewsWeekStart: true,
   date: true,
   createdAt: true,
   tags: true,
@@ -47,10 +50,6 @@ async function loadHomeData() {
     ) -
       8 * 60 * 60 * 1000
   );
-  const lastWeekStart = new Date(
-    currentMonday.getTime() - 7 * 24 * 60 * 60 * 1000
-  );
-
   // 分两批查询，避免远程数据库连接池在并发请求下被瞬间占满。
   const [allGames, header] = await Promise.all([
     prisma.game.findMany({
@@ -61,7 +60,7 @@ async function loadHomeData() {
     prisma.homeHeader.findUnique({ where: { id: 1 } }),
   ]);
 
-  const [banners, activities, weeklyGroups] = await Promise.all([
+  const [banners, activities] = await Promise.all([
     prisma.banner.findMany({
       where: { enabled: true },
       orderBy: { id: "asc" },
@@ -85,19 +84,6 @@ async function loadHomeData() {
         sort: true,
       },
     }),
-
-    prisma.gameViewLog.groupBy({
-      by: ["gameId"],
-      where: {
-        createdAt: {
-          gte: lastWeekStart,
-          lt: currentMonday,
-        },
-      },
-      _count: { gameId: true },
-      orderBy: { _count: { gameId: "desc" } },
-      take: 1,
-    }),
   ]);
 
   const byNewest = [...allGames].sort((a, b) => {
@@ -107,7 +93,8 @@ async function loadHomeData() {
     return b.id - a.id;
   });
 
-  const latestGames = byNewest.slice(0, 11);
+  // 首页「最新上传」：1 条大卡 + 11 条小卡，第 12 格留给「查看更多」。
+  const latestGames = byNewest.slice(0, 12);
 
   const hotGames = [...allGames]
     .sort((a, b) => {
@@ -118,14 +105,23 @@ async function loadHomeData() {
     })
     .slice(0, 10);
 
-  const weeklyIncrease = weeklyGroups[0]?._count.gameId ?? 0;
-  const weeklyGameId = weeklyGroups[0]?.gameId;
+  // 上周点击量最多的游戏：只统计本周已发生周切换的计数。
+  const weeklyGame =
+    allGames
+      .filter(
+        (game) =>
+          game.weeklyViewsWeekStart &&
+          new Date(game.weeklyViewsWeekStart) >= currentMonday
+      )
+      .sort((a, b) => {
+        if (b.lastWeekViews !== a.lastWeekViews) {
+          return b.lastWeekViews - a.lastWeekViews;
+        }
+        return b.id - a.id;
+      })[0] || null;
 
-  const weeklyFallback =
-    (weeklyGameId &&
-      allGames.find((game) => game.id === weeklyGameId)) ||
-    hotGames[0] ||
-    null;
+  const weeklyIncrease = weeklyGame?.lastWeekViews ?? 0;
+  const weeklyFallback = weeklyGame || hotGames[0] || null;
 
   const featuredIds = parseFeaturedIds(
     header?.featuredGameIds ?? null
@@ -160,6 +156,16 @@ async function loadHomeData() {
     banners,
     headerImage: header?.imageUrl ?? null,
     activities,
+    stats: {
+      totalGames: allGames.length,
+      totalDownloads: allGames.reduce(
+        (sum, game) => sum + (game.downloads || 0),
+        0
+      ),
+      weekNew: allGames.filter(
+        (game) => new Date(game.createdAt) >= currentMonday
+      ).length,
+    },
   };
 }
 

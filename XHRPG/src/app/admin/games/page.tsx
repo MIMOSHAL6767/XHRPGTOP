@@ -1,10 +1,10 @@
 
 import { prisma } from "@/lib/prisma";
 import GamesAdmin from "./GamesAdmin";
-import { requireOwnerPage } from "@/lib/admin-auth";
+import { requireAdminPage } from "@/lib/admin-auth";
 
 export default async function GamesPage() {
-  await requireOwnerPage();
+  await requireAdminPage();
 
   const games = await prisma.game.findMany({
     orderBy: {

@@ -20,8 +20,46 @@ function isRetryableDbError(error: unknown) {
 
 const RETRY_DELAYS = [400, 900, 1600];
 
+// Serverless 下每个实例只占 1 条数据库连接，避免并发实例打满数据库连接数；
+// 本地长驻进程默认 5 条，均可用 DB_CONNECTION_LIMIT 覆盖。
+function buildDatasourceUrl() {
+  const raw = process.env.DATABASE_URL;
+
+  if (!raw) return undefined;
+
+  try {
+    const url = new URL(raw);
+
+    if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") {
+      return raw;
+    }
+
+    if (!url.searchParams.has("connection_limit")) {
+      url.searchParams.set(
+        "connection_limit",
+        process.env.DB_CONNECTION_LIMIT ||
+          (process.env.VERCEL ? "1" : "5")
+      );
+    }
+
+    if (!url.searchParams.has("pool_timeout")) {
+      url.searchParams.set("pool_timeout", "20");
+    }
+
+    if (!url.searchParams.has("connect_timeout")) {
+      url.searchParams.set("connect_timeout", "10");
+    }
+
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}
+
 function createPrismaClient() {
-  const base = new PrismaClient();
+  const base = new PrismaClient({
+    datasourceUrl: buildDatasourceUrl(),
+  });
 
   return base.$extends({
     query: {

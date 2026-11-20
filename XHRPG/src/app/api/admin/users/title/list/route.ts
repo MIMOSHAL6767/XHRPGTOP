@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 export async function GET() {
   try {
-    if (!(await isSiteOwner())) {
+    if (!(await isSiteAdmin())) {
       return NextResponse.json(
         {
           success: false,

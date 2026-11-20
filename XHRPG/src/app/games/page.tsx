@@ -60,6 +60,7 @@ const loadGamesData = unstable_cache(
         name: true,
         en: true,
         author: true,
+        description: true,
         category: true,
         version: true,
         cover: true,

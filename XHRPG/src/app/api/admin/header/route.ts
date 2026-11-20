@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,7 +38,7 @@ export async function GET() {
 // 保存或移除首页头图
 export async function PUT(req: Request) {
   try {
-    if (!(await isSiteOwner())) {
+    if (!(await isSiteAdmin())) {
       return errorResponse("只有站长可以修改首页头图", 403);
     }
 

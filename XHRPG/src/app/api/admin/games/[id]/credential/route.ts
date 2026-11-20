@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,7 +28,7 @@ export async function GET(
   _req: Request,
   context: RouteContext
 ) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json(
       { success: false, message: "无权访问，请先登录站长账号" },
       { status: 401 }
@@ -90,7 +90,7 @@ export async function POST(
   _req: Request,
   context: RouteContext
 ) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json(
       { success: false, message: "无权操作，请先登录站长账号" },
       { status: 401 }

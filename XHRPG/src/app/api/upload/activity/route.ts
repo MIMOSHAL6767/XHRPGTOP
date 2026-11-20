@@ -21,7 +21,7 @@ function jsonError(message: string, status: number) {
   );
 }
 
-async function isSiteOwner() {
+async function isSiteAdmin() {
   try {
     const token = (await cookies()).get("token")?.value;
     if (!token) return false;
@@ -35,8 +35,8 @@ async function isSiteOwner() {
     });
 
     return (
-      String(payload.id) === "1" &&
-      payload.role === "owner"
+      (String(payload.id) === "1" && payload.role === "owner") ||
+      payload.role === "admin"
     );
   } catch {
     return false;
@@ -45,7 +45,7 @@ async function isSiteOwner() {
 
 export async function POST(req: Request) {
   try {
-    if (!(await isSiteOwner())) {
+    if (!(await isSiteAdmin())) {
       return jsonError("无权上传活动图片", 401);
     }
 

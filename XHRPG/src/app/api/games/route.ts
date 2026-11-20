@@ -41,7 +41,12 @@ export async function GET() {
     }));
 
     return NextResponse.json(data, {
-      headers: { "Access-Control-Allow-Origin": "*" },
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        // 启动器与全站搜索共用此接口：允许浏览器/CDN 短暂缓存，减少函数与数据库命中。
+        "Cache-Control":
+          "public, max-age=30, s-maxage=60, stale-while-revalidate=300",
+      },
     });
   } catch (error) {
     console.error("读取游戏列表失败：", error);

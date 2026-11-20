@@ -25,6 +25,21 @@ export default function GamesAdmin({
 }) {
   const router = useRouter();
 
+  const [myRole, setMyRole] = useState("");
+
+  useEffect(() => {
+    void fetch("/api/auth/me", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data.user) {
+          setMyRole(String(data.user.role || ""));
+        }
+      })
+      .catch(() => {
+        setMyRole("");
+      });
+  }, []);
+
   const [keyword, setKeyword] = useState("");
   const [credentials, setCredentials] = useState<Record<number, string>>({});
   const [visibleCredentials, setVisibleCredentials] = useState<Record<number, boolean>>({});
@@ -333,12 +348,14 @@ export default function GamesAdmin({
                           <button className="edit-btn">编辑</button>
                         </Link>
 
-                        <button
-                          className="delete-btn"
-                          onClick={() => remove(game.id)}
-                        >
-                          删除
-                        </button>
+                        {myRole === "owner" && (
+                          <button
+                            className="delete-btn"
+                            onClick={() => remove(game.id)}
+                          >
+                            删除
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

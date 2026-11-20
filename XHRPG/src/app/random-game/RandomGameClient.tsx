@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import SiteHeader from "@/app/components/SiteHeader";
+import { Check, Plus } from "lucide-react";
 
 type Game = {
   id: number;
@@ -770,7 +771,7 @@ export default function RandomGameClient({
                           boxSizing: "border-box",
                         }}
                       >
-                        {isPlayed ? "✓ 已玩 · 点击取消" : "＋ 标记已玩"}
+                        {isPlayed ? (<><Check size={14} /> 已玩 · 点击取消</>) : (<><Plus size={14} /> 标记已玩</>)}
                       </button>
                     </div>
                   </article>

@@ -165,6 +165,25 @@ export default function UsersAdminForm() {
     }
   }
 
+  async function changeRole(user: UserItem, role: string) {
+    if (myRole !== "owner" || user.role === "owner") return;
+
+    if (busyUserId !== null) return;
+
+    try {
+      setBusyUserId(user.id);
+      await update({
+        id: user.id,
+        type: "role",
+        role,
+      });
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "修改权限失败");
+    } finally {
+      setBusyUserId(null);
+    }
+  }
+
   async function updateUser(user: UserItem, type: string) {
     if (busyUserId !== null) return;
 
@@ -315,7 +334,22 @@ export default function UsersAdminForm() {
                 <td>{user.id}</td>
                 <td>{user.username}</td>
                 <td>{user.nickname || "-"}</td>
-                <td>{user.role}</td>
+                <td>
+                  {myRole === "owner" && user.role !== "owner" ? (
+                    <select
+                      value={user.role}
+                      disabled={busyUserId !== null}
+                      onChange={(event) =>
+                        void changeRole(user, event.target.value)
+                      }
+                    >
+                      <option value="user">普通用户</option>
+                      <option value="admin">管理员</option>
+                    </select>
+                  ) : (
+                    user.role
+                  )}
+                </td>
 
                 <td>
                   {user.hidden
@@ -361,6 +395,8 @@ export default function UsersAdminForm() {
 
                     {user.role === "owner" ? (
                       <span>站长保护</span>
+                    ) : myRole === "admin" && user.role === "admin" ? (
+                      <span>仅站长可管理</span>
                     ) : (
                       <>
                         {user.banUntil ? (
@@ -397,21 +433,25 @@ export default function UsersAdminForm() {
                           </button>
                         )}
 
-                        <button
-                          type="button"
-                          disabled={busyUserId !== null}
-                          onClick={() => void updateUser(user, "hide")}
-                        >
-                          {user.hidden ? "取消隐藏" : "隐藏"}
-                        </button>
+                        {myRole === "owner" && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={busyUserId !== null}
+                              onClick={() => void updateUser(user, "hide")}
+                            >
+                              {user.hidden ? "取消隐藏" : "隐藏"}
+                            </button>
 
-                        <button
-                          type="button"
-                          disabled={busyUserId !== null}
-                          onClick={() => void removeUser(user)}
-                        >
-                          删除
-                        </button>
+                            <button
+                              type="button"
+                              disabled={busyUserId !== null}
+                              onClick={() => void removeUser(user)}
+                            >
+                              删除
+                            </button>
+                          </>
+                        )}
                       </>
                     )}
                   </div>

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { ArrowLeft, ArrowRight, Pencil } from "lucide-react";
 
 export default function SubmissionEditEntryPage() {
   const router = useRouter();
@@ -59,7 +60,7 @@ export default function SubmissionEditEntryPage() {
             href="/upload"
             className="inline-flex items-center gap-2 text-sm text-[#c9a6ac] transition hover:text-white"
           >
-            <span aria-hidden="true">←</span>
+            <ArrowLeft size={14} aria-hidden="true" />
             返回投稿中心
           </Link>
         </div>
@@ -81,7 +82,7 @@ export default function SubmissionEditEntryPage() {
               </p>
 
               <div className="mt-8 flex h-14 w-14 items-center justify-center border border-[#a52a3a] text-3xl text-[#e5484d]">
-                ✎
+                <Pencil size={24} />
               </div>
 
               <h1 className="mt-5 text-2xl font-bold leading-tight sm:text-3xl">
@@ -171,7 +172,7 @@ export default function SubmissionEditEntryPage() {
                 ) : (
                   <>
                     验证并进入编辑页面
-                    <span aria-hidden="true">→</span>
+                    <ArrowRight size={14} aria-hidden="true" />
                   </>
                 )}
               </button>

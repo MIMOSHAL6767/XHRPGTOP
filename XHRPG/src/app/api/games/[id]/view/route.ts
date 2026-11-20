@@ -1,7 +1,23 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+// 中国时区的本周一 00:00。
+function getCurrentWeekStart() {
+  const now = new Date();
+  const chinaNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+  const daysFromMonday = (chinaNow.getUTCDay() + 6) % 7;
+
+  return new Date(
+    Date.UTC(
+      chinaNow.getUTCFullYear(),
+      chinaNow.getUTCMonth(),
+      chinaNow.getUTCDate() - daysFromMonday
+    ) -
+      8 * 60 * 60 * 1000
+  );
+}
 
 export async function POST(
   _request: Request,
@@ -22,21 +38,34 @@ export async function POST(
       );
     }
 
-    // 只统计已发布的游戏。
-    // updateMany 在数据库中原子递增，不会出现普通的读后写覆盖。
-    const result = await prisma.game.updateMany({
-      where: {
-        id: gameId,
-        status: "已发布",
-      },
-      data: {
-        downloads: {
-          increment: 1,
-        },
-      },
-    });
+    const currentWeekStart = getCurrentWeekStart();
+    const previousWeekStart = new Date(
+      currentWeekStart.getTime() - 7 * 24 * 60 * 60 * 1000
+    );
 
-    if (result.count === 0) {
+    // 单次原子 UPDATE 完成：总点击 +1、本周点击、上周点击、周起始时间重置。
+    // 不再逐条插入访问日志，每次访问只产生 1 次数据库写操作。
+    const affected = await prisma.$executeRaw`
+      UPDATE "Game"
+      SET
+        "downloads" = "downloads" + 1,
+        "lastWeekViews" = CASE
+          WHEN "weeklyViewsWeekStart" >= ${currentWeekStart}
+            THEN "lastWeekViews"
+          WHEN "weeklyViewsWeekStart" >= ${previousWeekStart}
+            THEN "weeklyViews"
+          ELSE 0
+        END,
+        "weeklyViews" = CASE
+          WHEN "weeklyViewsWeekStart" >= ${currentWeekStart}
+            THEN "weeklyViews" + 1
+          ELSE 1
+        END,
+        "weeklyViewsWeekStart" = ${currentWeekStart}
+      WHERE "id" = ${gameId} AND "status" = '已发布'
+    `;
+
+    if (affected === 0) {
       return NextResponse.json(
         {
           success: false,
@@ -44,24 +73,6 @@ export async function POST(
         },
         { status: 404 }
       );
-    }
-
-    // 记录访问日志，用于首页「本周热门」的一周增量统计。
-    try {
-      await prisma.gameViewLog.create({ data: { gameId } });
-
-      // 偶尔清理 30 天前的日志，避免表无限增长。
-      if (Math.random() < 0.01) {
-        await prisma.gameViewLog.deleteMany({
-          where: {
-            createdAt: {
-              lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-            },
-          },
-        });
-      }
-    } catch (logError) {
-      console.error("记录游戏访问日志失败：", logError);
     }
 
     return NextResponse.json(

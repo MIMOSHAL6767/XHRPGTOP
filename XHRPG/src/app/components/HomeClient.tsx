@@ -2,6 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  X,
+} from "lucide-react";
 import SiteHeader from "@/app/components/SiteHeader";
 import FloatingWidget from "@/app/components/FloatingWidget";
 
@@ -79,6 +85,7 @@ export default function HomeClient({
   banners = [],
   headerImage = null,
   activities = [],
+  stats = { totalGames: 0, totalDownloads: 0, weekNew: 0 },
 }: {
   latestGames?: HomeGame[];
   hotGames?: HomeGame[];
@@ -88,6 +95,11 @@ export default function HomeClient({
   banners?: BannerItem[];
   headerImage?: string | null;
   activities?: ActivityItem[];
+  stats?: {
+    totalGames: number;
+    totalDownloads: number;
+    weekNew: number;
+  };
 }) {
   const [bannerIndex, setBannerIndex] = useState(0);
   const [previousBannerIndex, setPreviousBannerIndex] = useState<
@@ -120,6 +132,8 @@ export default function HomeClient({
 
   const visibleHot = showAllHot ? hotGames : hotGames.slice(0, 3);
   const visibleActivities = activities.slice(0, 2);
+  const editorialGame = latestGames[0] || null;
+  const latestRest = latestGames.slice(1);
   const activeBannerIndex = banners.length
     ? bannerIndex % banners.length
     : 0;
@@ -224,7 +238,7 @@ export default function HomeClient({
                     changeBanner(bannerIndex - 1)
                   }
                 >
-                  ‹
+                  <ChevronLeft size={24} />
                 </button>
                 <button
                   type="button"
@@ -234,7 +248,7 @@ export default function HomeClient({
                     changeBanner(bannerIndex + 1)
                   }
                 >
-                  ›
+                  <ChevronRight size={24} />
                 </button>
               </>
             )}
@@ -261,6 +275,21 @@ export default function HomeClient({
                 ))}
               </div>
             )}
+
+            <div className="home-stats">
+              <div>
+                <b>{stats.totalGames}</b>
+                <span>收录游戏</span>
+              </div>
+              <div>
+                <b>{stats.weekNew}</b>
+                <span>本周新增</span>
+              </div>
+              <div>
+                <b>{stats.totalDownloads.toLocaleString("zh-CN")}</b>
+                <span>累计点击</span>
+              </div>
+            </div>
           </div>
 
           <aside className="home-announcement">
@@ -278,8 +307,34 @@ export default function HomeClient({
               <h3>最新上传</h3>
             </div>
 
+            {editorialGame && (
+              <Link
+                href={`/game/${editorialGame.id}`}
+                className="home-editorial"
+              >
+                <div className="home-editorial-cover">
+                  <img
+                    src={coverOf(editorialGame)}
+                    alt={editorialGame.name}
+                  />
+                </div>
+
+                <div className="home-editorial-body">
+                  <h4>{editorialGame.name}</h4>
+                  <p>
+                    {editorialGame.description || "暂无简介"}
+                  </p>
+                  <div className="home-editorial-meta">
+                    <span>{editorialGame.author || "未知作者"}</span>
+                    <span>{editorialGame.category || "未分类"}</span>
+                    <span>{formatDate(editorialGame.date)}</span>
+                  </div>
+                </div>
+              </Link>
+            )}
+
             <div className="home-latest-grid">
-              {latestGames.map((game) => (
+              {latestRest.map((game) => (
                 <Link
                   key={game.id}
                   href={`/game/${game.id}`}
@@ -294,7 +349,10 @@ export default function HomeClient({
                 href="/games?sort=latest"
                 className="home-card home-card-more"
               >
-                <span>查看更多 →</span>
+                <span className="home-more-label">
+                  <span>查看</span>
+                  <span>更多</span>
+                </span>
               </Link>
             </div>
           </div>
@@ -332,7 +390,7 @@ export default function HomeClient({
           <div className="home-main-col">
             <div className="home-section-head">
               <h3>活动</h3>
-              <Link href="/activities">查看全部 →</Link>
+              <Link href="/activities">查看全部 <ArrowRight size={13} /></Link>
             </div>
 
             <div className="home-activity-list">
@@ -361,7 +419,7 @@ export default function HomeClient({
                       >
                         {activity.title}
                       </b>
-                      <span>查看活动 →</span>
+                      <span>查看活动 <ArrowRight size={12} /></span>
                     </div>
                   </Link>
                 ))
@@ -450,7 +508,7 @@ export default function HomeClient({
             aria-label="关闭"
             onClick={() => setBannerLightboxOpen(false)}
           >
-            ✕
+            <X size={18} />
           </button>
 
           <img

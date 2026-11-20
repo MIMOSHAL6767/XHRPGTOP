@@ -16,7 +16,7 @@ function errorJson(message: string, status: number) {
   return NextResponse.json({ success: false, message }, { status });
 }
 
-async function isSiteOwner() {
+async function isSiteAdmin() {
   try {
     const token = (await cookies()).get("token")?.value;
     if (!token) return false;
@@ -28,7 +28,7 @@ async function isSiteOwner() {
       algorithms: ["HS256"],
     });
 
-    return String(payload.id) === "1" && payload.role === "owner";
+    return (String(payload.id) === "1" && payload.role === "owner") || payload.role === "admin";
   } catch {
     return false;
   }
@@ -112,7 +112,7 @@ function normalizeActivity(body: Record<string, unknown>) {
 }
 
 export async function GET(_request: Request, context: Context) {
-  if (!(await isSiteOwner())) return errorJson("无权访问活动管理接口", 401);
+  if (!(await isSiteAdmin())) return errorJson("无权访问活动管理接口", 401);
 
   const id = await getId(context);
   if (!id) return errorJson("活动 ID 不正确", 400);
@@ -130,7 +130,7 @@ export async function GET(_request: Request, context: Context) {
 }
 
 export async function PUT(request: Request, context: Context) {
-  if (!(await isSiteOwner())) return errorJson("无权编辑活动", 401);
+  if (!(await isSiteAdmin())) return errorJson("无权编辑活动", 401);
 
   const id = await getId(context);
   if (!id) return errorJson("活动 ID 不正确", 400);
@@ -172,7 +172,7 @@ export async function PUT(request: Request, context: Context) {
 }
 
 export async function DELETE(_request: Request, context: Context) {
-  if (!(await isSiteOwner())) return errorJson("无权删除活动", 401);
+  if (!(await isSiteAdmin())) return errorJson("无权删除活动", 401);
 
   const id = await getId(context);
   if (!id) return errorJson("活动 ID 不正确", 400);

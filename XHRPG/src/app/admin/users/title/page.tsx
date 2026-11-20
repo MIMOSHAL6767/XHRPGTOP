@@ -1,8 +1,8 @@
-import { requireOwnerPage } from "@/lib/admin-auth";
+import { requireAdminPage } from "@/lib/admin-auth";
 import TitleAdminForm from "./TitleAdminForm";
 
 export default async function TitleAdminPage() {
-  await requireOwnerPage();
+  await requireAdminPage();
 
   return <TitleAdminForm />;
 }

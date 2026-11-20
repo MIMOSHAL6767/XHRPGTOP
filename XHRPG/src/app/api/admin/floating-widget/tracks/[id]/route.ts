@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { isSiteOwner } from "@/lib/admin-auth";
+import {
+  getAdminPayload,
+  isSiteAdmin,
+  isSiteOwner,
+} from "@/lib/admin-auth";
 
 // 获取用户列表：仅限站长
 export async function GET(req: Request) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json(
       { success: false, message: "无权访问，请先登录站长账号" },
       { status: 401 }
@@ -68,14 +72,18 @@ export async function GET(req: Request) {
   }
 }
 
-// 修改用户：仅限站长
+// 修改用户：站长可改全部；管理员仅可封禁 / 禁言普通用户。
 export async function PUT(req: Request) {
-  if (!(await isSiteOwner())) {
+  const actor = await getAdminPayload();
+
+  if (!actor) {
     return NextResponse.json(
-      { success: false, message: "无权操作，请先登录站长账号" },
+      { success: false, message: "无权操作，请先登录后台账号" },
       { status: 401 }
     );
   }
+
+  const actorIsOwner = String(actor.role) === "owner";
 
   try {
     const body = await req.json();
@@ -107,8 +115,23 @@ export async function PUT(req: Request) {
       );
     }
 
-    // 修改用户角色
+    // 管理员不能操作其他管理员
+    if (!actorIsOwner && targetUser.role === "admin") {
+      return NextResponse.json(
+        { success: false, message: "管理员不能操作其他管理员" },
+        { status: 403 }
+      );
+    }
+
+    // 修改用户角色：仅站长
     if (body.type === "role") {
+      if (!actorIsOwner) {
+        return NextResponse.json(
+          { success: false, message: "仅站长可以授予或撤销管理员" },
+          { status: 403 }
+        );
+      }
+
       // 仅允许设置为项目已有的普通用户或管理员角色
       if (!["user", "admin"].includes(body.role)) {
         return NextResponse.json(
@@ -125,8 +148,15 @@ export async function PUT(req: Request) {
       return NextResponse.json({ success: true, user });
     }
 
-    // 修改用户昵称
+    // 修改用户昵称：仅站长
     if (body.type === "nickname") {
+      if (!actorIsOwner) {
+        return NextResponse.json(
+          { success: false, message: "管理员仅可封禁或禁言用户" },
+          { status: 403 }
+        );
+      }
+
       const nickname = String(body.nickname || "").trim();
 
       if (!nickname) {
@@ -232,7 +262,7 @@ export async function PUT(req: Request) {
 
 // 删除用户：仅限站长
 export async function DELETE(req: Request) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json(
       { success: false, message: "无权操作，请先登录站长账号" },
       { status: 401 }

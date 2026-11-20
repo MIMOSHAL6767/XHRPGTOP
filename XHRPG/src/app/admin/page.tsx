@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { requireOwnerPage } from "@/lib/admin-auth";
+import { requireAdminPage } from "@/lib/admin-auth";
 
 export default async function AdminPage() {
-  const payload = await requireOwnerPage();
+  const payload = await requireAdminPage();
 
   return (
     <main
@@ -27,10 +27,10 @@ export default async function AdminPage() {
           <button className="back-btn">← 返回首页</button>
         </Link>
 
-        <h1>喜灰RPG资源交流站 站长后台</h1>
+        <h1>喜灰RPG资源交流站 管理后台</h1>
 
         <p>
-          欢迎站长：
+          欢迎{String(payload.role) === "owner" ? "站长" : "管理员"}：
           <strong>{String(payload.username)}</strong>
         </p>
 
@@ -65,6 +65,14 @@ export default async function AdminPage() {
 
           <Link href="/admin/floating-widget">
             <button>首页悬浮按钮与音乐管理</button>
+          </Link>
+        </div>
+
+        <h2>评论管理</h2>
+
+        <div className="admin-actions">
+          <Link href="/admin/comments">
+            <button>评论管理</button>
           </Link>
         </div>
 

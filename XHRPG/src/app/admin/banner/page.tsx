@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { requireOwnerPage } from "@/lib/admin-auth";
+import { requireAdminPage } from "@/lib/admin-auth";
 
 export default async function BannerAdmin() {
   // 验证站长身份，未通过验证则跳转到登录页
-  await requireOwnerPage();
+  await requireAdminPage();
 
   const banners = await prisma.banner.findMany({
     orderBy: {

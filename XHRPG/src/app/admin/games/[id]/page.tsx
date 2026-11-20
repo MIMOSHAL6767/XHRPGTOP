@@ -1,4 +1,4 @@
-import { requireOwnerPage } from "@/lib/admin-auth";
+import { requireAdminPage } from "@/lib/admin-auth";
 import EditGameClient from "./EditGameClient";
 
 export default async function EditGamePage({
@@ -6,7 +6,7 @@ export default async function EditGamePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireOwnerPage();
+  await requireAdminPage();
 
   const { id } = await params;
 

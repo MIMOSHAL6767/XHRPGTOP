@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import SiteHeader from "@/app/components/SiteHeader";
+import GiscusComments from "@/app/components/GiscusComments";
 import { DEFAULT_REQUIREMENTS } from "@/lib/game-requirements";
 
 export type DetailHistoryItem = {
@@ -132,6 +134,18 @@ export default function GameDetailClient({
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
+  // 其他版本超过 3 条时默认折叠，避免拉长页面影响评论区浏览。
+  const HISTORY_PREVIEW_COUNT = 3;
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+
+  useEffect(() => {
+    setHistoryExpanded(false);
+  }, [gameId]);
+
+  const visibleHistory = historyExpanded
+    ? history
+    : history.slice(0, HISTORY_PREVIEW_COUNT);
+
   // 网盘分享页的压缩包大小（用于在版本号后显示储存空间）。
   const [shareSizes, setShareSizes] = useState<
     Record<string, number>
@@ -254,26 +268,19 @@ export default function GameDetailClient({
   };
 
   // 历史版本的上传日期：缺失时回退到游戏上传时间，保证不出现横杠。
+  // 历史版本只显示年月日，不显示时分秒。
   const formatVersionDate = (value?: string | null) => {
-    if (!value) return formatDateTime(uploadDate);
+    if (!value) return formatDateTime(uploadDate).slice(0, 10);
 
     const text = String(value).trim();
 
-    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-      return `${text} 00:00:00`;
+    if (/^\d{4}-\d{2}-\d{2}/.test(text)) {
+      return text.replace("T", " ").slice(0, 10);
     }
 
-    if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}$/.test(text)) {
-      return `${text.replace("T", " ")}:00`;
-    }
+    const formatted = formatDateTime(text);
 
-    if (
-      /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(text)
-    ) {
-      return text.replace("T", " ").slice(0, 19);
-    }
-
-    return formatDateTime(text);
+    return formatted === "—" ? formatted : formatted.slice(0, 10);
   };
 
   const ratingAverage =
@@ -365,9 +372,9 @@ export default function GameDetailClient({
           <div className="gd-main">
             <nav className="gd-breadcrumb" aria-label="面包屑导航">
               <Link href="/">首页</Link>
-              <span aria-hidden="true">›</span>
+              <ChevronRight size={12} aria-hidden="true" />
               <Link href="/games">游戏库</Link>
-              <span aria-hidden="true">›</span>
+              <ChevronRight size={12} aria-hidden="true" />
               <span aria-current="page">{name}</span>
             </nav>
 
@@ -531,7 +538,7 @@ export default function GameDetailClient({
                   <h3 className="gd-subheading">其他版本</h3>
 
                   <div className="gd-history-list">
-                    {history.map((item, index) => {
+                    {visibleHistory.map((item, index) => {
                       const href = item.lanzou || item.pan123;
                       const size = formatSize(
                         shareSizes[(item.lanzou || "").trim()] ||
@@ -576,6 +583,23 @@ export default function GameDetailClient({
                       );
                     })}
                   </div>
+
+                  {history.length > HISTORY_PREVIEW_COUNT && (
+                    <button
+                      type="button"
+                      className="gd-history-toggle"
+                      onClick={() =>
+                        setHistoryExpanded((value) => !value)
+                      }
+                      aria-expanded={historyExpanded}
+                    >
+                      {historyExpanded
+                        ? "收起其他版本"
+                        : `展开更多（还有 ${
+                            history.length - HISTORY_PREVIEW_COUNT
+                          } 个）`}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -635,6 +659,8 @@ export default function GameDetailClient({
             )}
           </aside>
         </section>
+
+        <GiscusComments />
       </div>
 
       {/* 大图灯箱 */}
@@ -651,7 +677,7 @@ export default function GameDetailClient({
             aria-label="关闭"
             onClick={() => setLightboxOpen(false)}
           >
-            ✕
+            <X size={18} />
           </button>
 
           {gallery.length > 1 && (
@@ -664,7 +690,7 @@ export default function GameDetailClient({
                 moveLightbox(-1);
               }}
             >
-              ‹
+              <ChevronLeft size={34} />
             </button>
           )}
 
@@ -684,7 +710,7 @@ export default function GameDetailClient({
                 moveLightbox(1);
               }}
             >
-              ›
+              <ChevronRight size={34} />
             </button>
           )}
         </div>

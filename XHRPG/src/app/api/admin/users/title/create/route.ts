@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json(
@@ -40,7 +40,7 @@ function validShadow(value: unknown): value is string {
 export async function POST(req: Request) {
   try {
     // 必须由服务端验证站长身份
-    if (!(await isSiteOwner())) {
+    if (!(await isSiteAdmin())) {
       return errorResponse("未登录或没有站长权限", 403);
     }
 

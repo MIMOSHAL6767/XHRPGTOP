@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 function jsonError(message: string, status: number) {
   return NextResponse.json(
@@ -52,7 +52,7 @@ function isValidShadow(value: unknown): value is string {
 
 async function requireOwner() {
   try {
-    return await isSiteOwner();
+    return await isSiteAdmin();
   } catch (error) {
     console.error("站长权限检查失败:", error);
     return false;

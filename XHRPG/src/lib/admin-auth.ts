@@ -60,3 +60,51 @@ export async function requireOwnerPage(): Promise<OwnerPayload> {
 export async function isSiteOwner(): Promise<boolean> {
   return (await getOwnerPayload()) !== null;
 }
+
+// 管理员（admin）与站长（owner）都可进入后台；
+// “删除游戏”“授予管理员”等敏感操作再单独校验站长。
+export async function getAdminPayload(): Promise<OwnerPayload | null> {
+  try {
+    const secret = process.env.JWT_SECRET;
+
+    if (!secret || secret.length < 32) {
+      return null;
+    }
+
+    const token = (await cookies()).get("token")?.value;
+
+    if (!token) {
+      return null;
+    }
+
+    const { payload } = await jwtVerify(
+      token,
+      new TextEncoder().encode(secret),
+      { algorithms: ["HS256"] }
+    );
+
+    const role = String(payload.role || "");
+
+    if (role !== "owner" && role !== "admin") {
+      return null;
+    }
+
+    return payload as OwnerPayload;
+  } catch {
+    return null;
+  }
+}
+
+export async function requireAdminPage(): Promise<OwnerPayload> {
+  const payload = await getAdminPayload();
+
+  if (!payload) {
+    redirect("/login");
+  }
+
+  return payload;
+}
+
+export async function isSiteAdmin(): Promise<boolean> {
+  return (await getAdminPayload()) !== null;
+}

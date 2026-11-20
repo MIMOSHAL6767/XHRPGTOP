@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -351,7 +351,7 @@ export async function POST(req: Request) {
       return errorResponse("缺少上传文件", 400);
     }
 
-    const isOwner = await isSiteOwner();
+    const isOwner = await isSiteAdmin();
 
     // 普通投稿用户只能上传自己游戏的图片。
     if (

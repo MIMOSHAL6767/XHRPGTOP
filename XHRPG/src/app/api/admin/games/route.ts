@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 const ALLOWED_GAME_STATUSES = [
   "完结",
@@ -15,7 +15,7 @@ type GameStatus = (typeof ALLOWED_GAME_STATUSES)[number];
 
 // 获取游戏列表：仅限站长
 export async function GET() {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json(
       { success: false, message: "无权访问，请先登录站长账号" },
       { status: 401 }
@@ -45,7 +45,7 @@ export async function GET() {
 
 // 新建游戏：仅限站长
 export async function POST(req: Request) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json(
       { success: false, message: "无权操作，请先登录站长账号" },
       { status: 401 }

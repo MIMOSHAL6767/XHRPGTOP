@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -202,7 +202,7 @@ export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return jsonError("无权访问，请使用站长账号登录", 401);
   }
 

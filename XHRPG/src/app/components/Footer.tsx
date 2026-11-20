@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 const linkStyle: React.CSSProperties = {
-  color: "#c9b9bb",
+  color: "var(--text-mute, #c9b9bb)",
   textDecoration: "none",
   fontSize: "14px",
   background: "transparent",
@@ -50,9 +50,9 @@ export default function Footer() {
           width: "100%",
           marginTop: "28px",
           padding: "12px 24px 20px",
-          background: "#10090b",
-          borderTop: "1px solid #4a2028",
-          color: "#c9b9bb",
+          background: "var(--panel)",
+          borderTop: "1px solid var(--line)",
+          color: "var(--text-mute, #c9b9bb)",
           boxSizing: "border-box",
           borderRadius: 0,
         }}
@@ -102,7 +102,7 @@ export default function Footer() {
 
           <div
             style={{
-              borderTop: "1px solid #4a2028",
+              borderTop: "1px solid var(--line)",
               marginBottom: "16px",
             }}
           />
@@ -136,10 +136,10 @@ export default function Footer() {
             style={{
               width: "100%",
               maxWidth: "560px",
-              background: "#160c0f",
-              border: "1px solid #8b1e2d",
+              background: "var(--panel)",
+              border: "1px solid var(--line-strong)",
               borderRadius: 0,
-              color: "#f8eeee",
+              color: "var(--text)",
               boxSizing: "border-box",
               boxShadow: "0 16px 60px rgba(0,0,0,0.55)",
             }}
@@ -150,7 +150,7 @@ export default function Footer() {
                 alignItems: "center",
                 justifyContent: "space-between",
                 padding: "18px 22px",
-                borderBottom: "1px solid #4a2028",
+                borderBottom: "1px solid var(--line)",
               }}
             >
               <h2
@@ -172,7 +172,7 @@ export default function Footer() {
                   background: "transparent",
                   border: "none",
                   borderRadius: 0,
-                  color: "#c9b9bb",
+                  color: "var(--text-mute, #c9b9bb)",
                   fontSize: "26px",
                   cursor: "pointer",
                   lineHeight: 1,
@@ -187,7 +187,7 @@ export default function Footer() {
                 padding: "24px 22px 30px",
                 fontSize: "14px",
                 lineHeight: 2,
-                color: "#c9b9bb",
+                color: "var(--text-mute, #c9b9bb)",
                 whiteSpace: "pre-wrap",
                 overflowWrap: "anywhere",
               }}
@@ -198,7 +198,7 @@ export default function Footer() {
             <div
               style={{
                 padding: "14px 22px",
-                borderTop: "1px solid #4a2028",
+                borderTop: "1px solid var(--line)",
                 display: "flex",
                 justifyContent: "flex-end",
               }}

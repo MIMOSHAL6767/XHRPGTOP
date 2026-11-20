@@ -19,6 +19,7 @@ type GameItem = {
   author: string;
   category: string;
   version: string;
+  description?: string | null;
   cover: string;
   tags: string[];
   downloads: number;
@@ -141,6 +142,8 @@ export default function GamesClient({
   const [selectedAuthors, setSelectedAuthors] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState("全部");
+  const [selectedYear, setSelectedYear] = useState("全部");
+  const [tagSearch, setTagSearch] = useState("");
   const [sortOrder, setSortOrder] = useState("default");
   const [urlInitialized, setUrlInitialized] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -192,6 +195,20 @@ export default function GamesClient({
             .filter(Boolean)
         )
       ).sort((a, b) => a.localeCompare(b, "zh-CN")),
+    [normalizedGames]
+  );
+
+  const years = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          normalizedGames.map((game) =>
+            String(new Date(game.createdAt).getFullYear())
+          )
+        )
+      )
+        .filter((year) => /^\d{4}$/.test(year))
+        .sort((a, b) => Number(b) - Number(a)),
     [normalizedGames]
   );
 
@@ -333,11 +350,17 @@ export default function GamesClient({
         selectedCategory === "全部" ||
         game.category === selectedCategory;
 
+      const matchesYear =
+        selectedYear === "全部" ||
+        String(new Date(game.createdAt).getFullYear()) ===
+          selectedYear;
+
       return (
         matchesSearch &&
         matchesAuthor &&
         matchesTags &&
-        matchesCategory
+        matchesCategory &&
+        matchesYear
       );
     });
 
@@ -363,6 +386,7 @@ export default function GamesClient({
     validSelectedAuthors,
     validSelectedTags,
     selectedCategory,
+    selectedYear,
     sortOrder,
   ]);
 
@@ -419,6 +443,8 @@ export default function GamesClient({
     setSelectedAuthors([]);
     setSelectedTags([]);
     setSelectedCategory("全部");
+    setSelectedYear("全部");
+    setTagSearch("");
     setSortOrder("default");
     setCurrentPage(1);
     setPageInput("");
@@ -526,6 +552,97 @@ export default function GamesClient({
     visiblePages.push(page);
   });
 
+  const filteredTagOptions = allTags.filter((tag) =>
+    tagSearch.trim()
+      ? tag.includes(tagSearch.trim())
+      : true
+  );
+
+  function renderPager(position: "top" | "bottom") {
+    if (pageCount <= 1) return null;
+
+    return (
+      <nav
+        aria-label={`游戏库分页（${position === "top" ? "顶部" : "底部"}）`}
+        className="games-pager"
+      >
+        <button
+          type="button"
+          disabled={safePage === 1}
+          onClick={() => goToPage(safePage - 1)}
+          style={pageButtonStyle(false, safePage === 1)}
+        >
+          上一页
+        </button>
+
+        {visiblePages.map((page, index) =>
+          page === "ellipsis" ? (
+            <span
+              key={`ellipsis-${position}-${index}`}
+              className="games-pager-ellipsis"
+              aria-hidden="true"
+            >
+              …
+            </span>
+          ) : (
+            <button
+              key={`${position}-page-${page}`}
+              type="button"
+              aria-current={page === safePage ? "page" : undefined}
+              onClick={() => goToPage(page)}
+              style={pageButtonStyle(page === safePage)}
+            >
+              {page}
+            </button>
+          )
+        )}
+
+        <button
+          type="button"
+          disabled={safePage === pageCount}
+          onClick={() => goToPage(safePage + 1)}
+          style={pageButtonStyle(false, safePage === pageCount)}
+        >
+          下一页
+        </button>
+
+        <span className="library-page-jump">
+          <label htmlFor={`page-jump-${position}`}>跳转到</label>
+          <input
+            id={`page-jump-${position}`}
+            className="library-page-number-input"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={6}
+            autoComplete="off"
+            value={pageInput}
+            onChange={(event) => setPageInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                submitPageJump();
+              }
+            }}
+            aria-label="输入要跳转的页码"
+          />
+          <span>页</span>
+          <button
+            type="button"
+            className="library-page-jump-button"
+            onClick={submitPageJump}
+          >
+            跳转
+          </button>
+        </span>
+
+        <span className="games-pager-total">
+          第 {safePage} / {pageCount} 页
+        </span>
+      </nav>
+    );
+  }
+
   return (
     <main
       className="games-page"
@@ -562,432 +679,244 @@ export default function GamesClient({
       >
         <div className="games-heading">
           <h1 className="library-page-heading">游戏库</h1>
-
-          <p className="library-page-description">
-            探索游戏、查找作者，发现更多喜灰 RPG 作品。
-          </p>
         </div>
 
-        <div style={sectionStyle}>
-          <label
-            htmlFor="games-search"
-            style={{ ...labelStyle, display: "block" }}
-          >
-            搜索游戏
-          </label>
+        <div className="games-layout">
+          <div className="games-main-col">
+            <div className="library-results-toolbar">
+              <div className="library-results-count">
+                找到 <strong>{filteredGames.length}</strong> 款游戏
+              </div>
 
-          <input
-            id="games-search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="输入游戏名、英文名、作者、版本或关键词……"
-            style={{
-              boxSizing: "border-box",
-              width: "100%",
-              padding: "12px 14px",
-              background: BG,
-              color: TEXT,
-              border: `1px solid ${LINE}`,
-              borderRadius: 0,
-              outlineColor: RED,
-              fontSize: 14,
-            }}
-          />
-        </div>
+              <div className="library-results-actions">
+                <select
+                  aria-label="游戏排序"
+                  value={sortOrder}
+                  onChange={(event) => setSortOrder(event.target.value)}
+                  className="library-sort-select"
+                >
+                  <option value="default">默认排序</option>
+                  <option value="latest">最新上传</option>
+                  <option value="downloads">点击量优先</option>
+                </select>
+              </div>
+            </div>
 
-        <div style={sectionStyle}>
-          <div style={labelStyle}>游戏分类</div>
+            {renderPager("top")}
 
-          <div className="library-filter-options">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory("全部")}
-              aria-pressed={selectedCategory === "全部"}
-              style={filterButtonStyle(selectedCategory === "全部")}
-            >
-              全部
-            </button>
+            {filteredGames.length > 0 ? (
+              <div className="games-list">
+                {pageGames.map((game) => {
+                  const coverSrc =
+                    game.cover || "/assets/games/games" + game.id + ".png";
+                  const statusLabel = getStatusLabel(game.gameStatus);
+                  const statusColor = getStatusColor(statusLabel);
 
-            {categories.map((category) => (
-              <button
-                key={category}
-                type="button"
-                aria-pressed={selectedCategory === category}
-                onClick={() => setSelectedCategory(category)}
-                style={filterButtonStyle(
-                  selectedCategory === category
-                )}
+                  return (
+                    <Link
+                      key={game.id}
+                      href={"/game/" + game.id}
+                      className="games-row"
+                    >
+                      <div className="games-row-cover">
+                        <img
+                          src={coverSrc}
+                          alt={game.name}
+                          loading="lazy"
+                          onError={(event) => {
+                            const img = event.currentTarget;
+                            const stage = img.dataset.fallbackStage ?? "0";
+
+                            if (stage === "0") {
+                              img.dataset.fallbackStage = "1";
+                              img.src = "/assets/games/games" + game.id + ".png";
+                            } else if (stage === "1") {
+                              img.dataset.fallbackStage = "2";
+                              img.src = "/assets/games/games" + game.id + ".jpg";
+                            } else {
+                              img.style.visibility = "hidden";
+                            }
+                          }}
+                        />
+
+                        <span
+                          className="games-row-status"
+                          style={{ background: statusColor }}
+                        >
+                          {statusLabel}
+                        </span>
+                      </div>
+
+                      <div className="games-row-info">
+                        <h2 className="games-row-title">{game.name}</h2>
+                        <span className="games-row-author">
+                          作者：{game.author || "未知"}
+                        </span>
+                        <p className="games-row-desc">
+                          {game.description || "暂无简介"}
+                        </p>
+                      </div>
+
+                      <div className="games-row-side">
+                        <time
+                          className="games-row-date"
+                          dateTime={game.createdAt}
+                          title={"上传日期：" + formatUploadDate(game.createdAt)}
+                        >
+                          上传日期：{formatUploadDate(game.createdAt)}
+                        </time>
+
+                        <span className="games-row-downloads">
+                          点击量：{game.downloads.toLocaleString("zh-CN")}
+                        </span>
+
+                        <div className="games-row-tags">
+                          {game.tags.length > 0 ? (
+                            game.tags.slice(0, 4).map((tag) => (
+                              <span key={tag} className="games-row-tag">
+                                {tag}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="games-row-no-tags">暂无标签</span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="library-games-empty">
+                <div className="library-games-empty-title">
+                  没有找到符合条件的游戏
+                </div>
+                <div className="library-games-empty-description">
+                  试试取消某些作者或标签，或者清空筛选条件。
+                </div>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  style={filterButtonStyle(true)}
+                >
+                  清空筛选
+                </button>
+              </div>
+            )}
+
+            {renderPager("bottom")}
+          </div>
+
+          <aside className="games-filter-rail">
+            <h3>搜索与筛选</h3>
+
+            <label className="games-filter-field">
+              游戏名
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="输入游戏名或关键词"
+              />
+            </label>
+
+            <label className="games-filter-field">
+              作者
+              <select
+                value={selectedAuthors[0] || ""}
+                onChange={(event) =>
+                  setSelectedAuthors(
+                    event.target.value ? [event.target.value] : []
+                  )
+                }
               >
-                {category}
-              </button>
-            ))}
-          </div>
-        </div>
+                <option value="">全部作者</option>
+                {authors.map((author) => (
+                  <option key={author} value={author}>
+                    {author}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <div style={sectionStyle}>
-          <div className="library-filter-heading" style={labelStyle}>
-            <span>游戏标签</span>
-            <span className="library-filter-hint">
-              可多选 · 满足任意一个已选标签即可
-            </span>
-          </div>
+            <label className="games-filter-field">
+              分类
+              <select
+                value={selectedCategory}
+                onChange={(event) => setSelectedCategory(event.target.value)}
+              >
+                <option value="全部">全部分类</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          {allTags.length > 0 ? (
-            <div className="library-filter-options">
-              {allTags.map((tag) => {
+            <label className="games-filter-field">
+              年份
+              <select
+                value={selectedYear}
+                onChange={(event) => setSelectedYear(event.target.value)}
+              >
+                <option value="全部">全部年份</option>
+                {years.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="games-filter-field">
+              标签
+              <input
+                value={tagSearch}
+                onChange={(event) => setTagSearch(event.target.value)}
+                placeholder="筛选标签…"
+              />
+            </label>
+
+            <div className="games-tag-cloud">
+              {filteredTagOptions.map((tag) => {
                 const active = validSelectedTags.includes(tag);
-
                 return (
                   <button
                     key={tag}
                     type="button"
                     aria-pressed={active}
                     onClick={() =>
-                      toggleValue(
-                        tag,
-                        validSelectedTags,
-                        setSelectedTags
-                      )
+                      toggleValue(tag, validSelectedTags, setSelectedTags)
                     }
                     style={filterButtonStyle(active)}
                   >
-                    {active ? "✓ " : ""}
                     {tag}
                   </button>
                 );
               })}
             </div>
-          ) : (
-            <p className="library-empty-hint">
-              当前已发布游戏还没有可用标签。
-            </p>
-          )}
 
-          {validSelectedTags.length > 0 && (
-            <div className="library-selected-tags">
-              <span>当前选中：</span>
-
-              {validSelectedTags.map((tag) => (
-                <span key={tag} className="library-selected-tag">
-                  {tag}
-                </span>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => setSelectedTags([])}
-                className="library-clear-inline"
-              >
-                清除标签
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div style={sectionStyle}>
-          <div className="library-filter-heading" style={labelStyle}>
-            <span>游戏作者</span>
-            <span className="library-filter-hint">
-              自动读取数据库 · 可多选
-            </span>
-          </div>
-
-          {authors.length > 0 ? (
-            <div className="library-filter-options">
-              {authors.map((author) => {
-                const active = validSelectedAuthors.includes(author);
-
-                return (
-                  <button
-                    key={author}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() =>
-                      toggleValue(
-                        author,
-                        validSelectedAuthors,
-                        setSelectedAuthors
-                      )
-                    }
-                    style={filterButtonStyle(active)}
-                  >
-                    {active ? "✓ " : ""}
-                    {author}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="library-empty-hint">
-              当前没有可供筛选的作者。
-            </p>
-          )}
-        </div>
-
-        <div className="library-results-toolbar">
-          <div className="library-results-count">
-            找到{" "}
-            <strong>{filteredGames.length}</strong>{" "}
-            款游戏
-            <span>
-              第 {safePage} / {pageCount} 页
-            </span>
-          </div>
-
-          <div className="library-results-actions">
-            <select
-              aria-label="游戏排序"
-              value={sortOrder}
-              onChange={(event) => setSortOrder(event.target.value)}
-              className="library-sort-select"
-            >
-              <option value="default">默认排序</option>
-              <option value="latest">最新上传</option>
-              <option value="downloads">点击量优先</option>
-            </select>
-
-            <button
-              type="button"
-              onClick={clearFilters}
-              style={{
-                ...filterButtonStyle(false),
-                background: "transparent",
-              }}
-            >
-              清空筛选
-            </button>
-          </div>
-        </div>
-
-        {filteredGames.length > 0 ? (
-          <>
-            <div className="xhrpg-games-grid">
-              {pageGames.map((game) => {
-                const coverSrc =
-                  game.cover || `/assets/games/games${game.id}.png`;
-
-                const statusLabel = getStatusLabel(game.gameStatus);
-                const statusColor = getStatusColor(statusLabel);
-
-                return (
-                  <Link
-                    key={game.id}
-                    href={`/game/${game.id}`}
-                    className="library-game-card"
-                  >
-                    <div className="library-game-cover">
-                      <img
-                        src={coverSrc}
-                        alt={game.name}
-                        loading="lazy"
-                        onError={(event) => {
-                          const img = event.currentTarget;
-                          const stage =
-                            img.dataset.fallbackStage ?? "0";
-
-                          if (stage === "0") {
-                            img.dataset.fallbackStage = "1";
-                            img.src = `/assets/games/games${game.id}.png`;
-                          } else if (stage === "1") {
-                            img.dataset.fallbackStage = "2";
-                            img.src = `/assets/games/games${game.id}.jpg`;
-                          } else {
-                            img.style.visibility = "hidden";
-                          }
-                        }}
-                      />
-
-                      <span
-                        className="library-game-status"
-                        style={{ background: statusColor }}
-                      >
-                        {statusLabel}
-                      </span>
-                    </div>
-
-                    <div className="library-game-info">
-                      <div className="library-game-title-row">
-                        <h2
-                          title={game.name}
-                          className="library-game-title"
-                        >
-                          {game.name || "未命名游戏"}
-                        </h2>
-
-                        <time
-                          dateTime={game.createdAt}
-                          title={`上传日期：${formatUploadDate(game.createdAt)}`}
-                          className="library-game-upload-date"
-                        >
-                          {formatUploadDate(game.createdAt)}
-                        </time>
-                      </div>
-
-                      <div className="library-game-author-row">
-                        <span
-                          title={`作者：${game.author || "未知"}`}
-                          className="library-game-author"
-                        >
-                          作者：{game.author || "未知"}
-                        </span>
-
-                        <span
-                          title={`点击量：${game.downloads}`}
-                          className="library-game-downloads"
-                        >
-                          点击量：
-                          {game.downloads.toLocaleString("zh-CN")}
-                        </span>
-                      </div>
-
-                      <div className="library-game-meta-row">
-                        <div className="library-game-tags">
-                          {game.tags.length > 0 ? (
-                            game.tags.slice(0, 3).map((tag) => (
-                              <span
-                                key={tag}
-                                className="library-game-tag"
-                              >
-                                {tag}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="library-game-no-tags">
-                              暂无标签
-                            </span>
-                          )}
-                        </div>
-
-                        <span
-                          title={game.category || "未分类"}
-                          className="library-game-category"
-                        >
-                          {game.category || "未分类"}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-
-            {pageCount > 1 && (
-              <nav
-                aria-label="游戏库分页"
-                className="library-games-pagination"
-              >
-                <div className="library-pagination-pages">
-                  <button
-                    type="button"
-                    disabled={safePage === 1}
-                    onClick={() => goToPage(safePage - 1)}
-                    style={pageButtonStyle(false, safePage === 1)}
-                  >
-                    上一页
-                  </button>
-
-                  {visiblePages.map((page, index) =>
-                    page === "ellipsis" ? (
-                      <span
-                        key={`ellipsis-${index}`}
-                        aria-hidden="true"
-                        className="library-pagination-ellipsis"
-                      >
-                        …
-                      </span>
-                    ) : (
-                      <button
-                        key={page}
-                        type="button"
-                        aria-current={
-                          page === safePage ? "page" : undefined
-                        }
-                        onClick={() => goToPage(page)}
-                        style={pageButtonStyle(page === safePage)}
-                      >
-                        {page}
-                      </button>
-                    )
-                  )}
-
-                  <button
-                    type="button"
-                    disabled={safePage === pageCount}
-                    onClick={() => goToPage(safePage + 1)}
-                    style={pageButtonStyle(
-                      false,
-                      safePage === pageCount
-                    )}
-                  >
-                    下一页
-                  </button>
-                </div>
-
-                <form
-                  className="library-page-jump"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    submitPageJump();
-                  }}
-                >
-                  <label htmlFor="library-page-number">
-                    跳转到
-                  </label>
-
-                  <input
-                    id="library-page-number"
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={pageCount}
-                    step={1}
-                    value={pageInput}
-                    onChange={(event) =>
-                      setPageInput(event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        setPageInput("");
-                      }
-                    }}
-                    placeholder="页码"
-                    aria-label={`输入页码，范围为 1 到 ${pageCount}`}
-                    className="library-page-number-input"
-                  />
-
-                  <span className="library-page-total">
-                    / {pageCount} 页
+            {validSelectedTags.length > 0 && (
+              <div className="library-selected-tags">
+                <span>已选：</span>
+                {validSelectedTags.map((tag) => (
+                  <span key={tag} className="library-selected-tag">
+                    {tag}
                   </span>
-
-                  <button
-                    type="submit"
-                    className="library-page-jump-button"
-                  >
-                    跳转
-                  </button>
-                </form>
-              </nav>
+                ))}
+              </div>
             )}
-          </>
-        ) : (
-          <div className="library-games-empty">
-            <div className="library-games-empty-title">
-              没有找到符合条件的游戏
-            </div>
-
-            <div className="library-games-empty-description">
-              试试取消某些作者或标签，或者清空筛选条件。
-            </div>
 
             <button
               type="button"
               onClick={clearFilters}
-              style={filterButtonStyle(true)}
+              style={{ ...filterButtonStyle(false), width: "100%", marginTop: 14 }}
             >
               清空筛选
             </button>
-          </div>
-        )}
+          </aside>
+        </div>
+
       </section>
 
       <style jsx>{`
@@ -1015,10 +944,11 @@ export default function GamesClient({
 
         .games-heading {
           display: block;
-          margin-bottom: 28px;
-          padding: 18px 20px;
-          background: ${PANEL};
-          border-left: 3px solid ${RED};
+          margin-bottom: 26px;
+          padding: 0 0 14px;
+          background: transparent;
+          border-left: 0;
+          border-bottom: 1px solid ${LINE};
           box-sizing: border-box;
         }
 
@@ -1030,8 +960,9 @@ export default function GamesClient({
           margin: 0 !important;
           padding: 0 !important;
           color: ${TEXT} !important;
-          font-size: 30px !important;
-          font-weight: 800 !important;
+          font-size: 34px !important;
+          font-weight: 700 !important;
+          letter-spacing: 0.06em !important;
           line-height: 1.4 !important;
           white-space: normal !important;
           transform: none !important;
@@ -1444,80 +1375,6 @@ export default function GamesClient({
           padding: 0 2px;
         }
 
-        /* 页码输入和跳转按钮 */
-        .library-page-jump {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-wrap: wrap;
-          gap: 8px;
-          width: 100%;
-          margin: 0;
-          padding: 12px;
-          box-sizing: border-box;
-          background: ${PANEL};
-          border: 1px solid ${LINE};
-          border-radius: 0 !important;
-        }
-
-        .library-page-jump label {
-          color: ${TEXT};
-          font-size: 13px;
-          white-space: nowrap;
-        }
-
-        .library-page-number-input {
-          display: block;
-          width: 84px;
-          height: 36px;
-          min-width: 0;
-          margin: 0;
-          padding: 0 9px;
-          box-sizing: border-box;
-          color: ${TEXT};
-          background: ${BG};
-          border: 1px solid ${LINE};
-          border-radius: 0 !important;
-          outline-color: ${RED};
-          font-size: 13px;
-          text-align: center;
-        }
-
-        .library-page-number-input:focus {
-          border-color: ${RED};
-        }
-
-        .library-page-total {
-          color: ${MUTED};
-          font-size: 12px;
-          white-space: nowrap;
-        }
-
-        .library-page-jump-button {
-          display: inline-flex !important;
-          align-items: center;
-          justify-content: center;
-          min-width: 64px;
-          height: 36px;
-          margin: 0;
-          padding: 0 16px;
-          box-sizing: border-box;
-          color: #fff;
-          background: ${RED};
-          border: 1px solid ${RED};
-          border-radius: 0 !important;
-          font-size: 13px;
-          cursor: pointer;
-          transition:
-            background-color 180ms ease,
-            border-color 180ms ease;
-        }
-
-        .library-page-jump-button:hover {
-          background: ${RED_HOVER};
-          border-color: ${RED_HOVER};
-        }
-
         .library-games-empty {
           display: block;
           padding: 50px 20px;
@@ -1609,14 +1466,6 @@ export default function GamesClient({
             padding: 0 8px;
           }
 
-          .library-page-jump {
-            gap: 7px;
-            padding: 10px 8px;
-          }
-
-          .library-page-number-input {
-            width: 76px;
-          }
         }
 
         @media (max-width: 420px) {

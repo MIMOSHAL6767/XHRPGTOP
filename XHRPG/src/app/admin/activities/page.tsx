@@ -1,12 +1,12 @@
 
 import Link from "next/link";
-import { requireOwnerPage } from "@/lib/admin-auth";
+import { requireAdminPage } from "@/lib/admin-auth";
 import ActivitiesClient from "./ActivitiesClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminActivitiesPage() {
-  await requireOwnerPage();
+  await requireAdminPage();
 
   return (
     <main

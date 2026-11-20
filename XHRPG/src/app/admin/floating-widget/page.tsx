@@ -1,11 +1,11 @@
 
 import FloatingWidgetClient from "./FloatingWidgetClient";
-import { requireOwnerPage } from "@/lib/admin-auth";
+import { requireAdminPage } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function FloatingWidgetPage() {
-  await requireOwnerPage();
+  await requireAdminPage();
 
   return <FloatingWidgetClient />;
 }

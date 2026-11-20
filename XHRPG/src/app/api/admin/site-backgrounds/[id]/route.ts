@@ -1,7 +1,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ async function getId(context: Context) {
 
 export async function PUT(request: Request, context: Context) {
   try {
-    if (!(await isSiteOwner())) {
+    if (!(await isSiteAdmin())) {
       return NextResponse.json({ error: "无权操作" }, { status: 403 });
     }
 
@@ -129,7 +129,7 @@ export async function PUT(request: Request, context: Context) {
 
 export async function DELETE(_request: Request, context: Context) {
   try {
-    if (!(await isSiteOwner())) {
+    if (!(await isSiteAdmin())) {
       return NextResponse.json({ error: "无权操作" }, { status: 403 });
     }
 

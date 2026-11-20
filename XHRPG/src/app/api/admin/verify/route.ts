@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 // 获取全部验证题：仅限站长
 export async function GET() {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json(
       { success: false, message: "无权访问，请先登录站长账号" },
       { status: 401 }
@@ -34,7 +34,7 @@ export async function GET() {
 
 // 添加验证题：仅限站长
 export async function POST(req: Request) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json(
       { success: false, message: "无权操作，请先登录站长账号" },
       { status: 401 }
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
 
 // 修改启用状态：仅限站长
 export async function PUT(req: Request) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json(
       { success: false, message: "无权操作，请先登录站长账号" },
       { status: 401 }
@@ -140,7 +140,7 @@ export async function PUT(req: Request) {
 
 // 删除验证题：仅限站长
 export async function DELETE(req: Request) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json(
       { success: false, message: "无权操作，请先登录站长账号" },
       { status: 401 }

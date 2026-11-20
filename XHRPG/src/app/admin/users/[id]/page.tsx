@@ -1,5 +1,5 @@
 
-import { requireOwnerPage } from "@/lib/admin-auth";
+import { requireAdminPage } from "@/lib/admin-auth";
 import UserDetailForm from "./UserDetailForm";
 
 export default async function UserDetailPage({
@@ -7,7 +7,7 @@ export default async function UserDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireOwnerPage();
+  await requireAdminPage();
 
   const { id } = await params;
 

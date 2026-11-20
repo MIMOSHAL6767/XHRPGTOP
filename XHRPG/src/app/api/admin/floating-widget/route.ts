@@ -1,7 +1,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ function isValidUrl(value: unknown): value is string {
 }
 
 export async function GET() {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json({ error: "无权访问" }, { status: 403 });
   }
 
@@ -58,7 +58,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return NextResponse.json({ error: "无权访问" }, { status: 403 });
   }
 

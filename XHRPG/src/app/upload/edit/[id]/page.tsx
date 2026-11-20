@@ -10,6 +10,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { ArrowLeft, Plus } from "lucide-react";
 import {
   GPU_OPTIONS,
   OS_OPTIONS,
@@ -934,7 +935,7 @@ export default function SubmissionGameEditPage() {
             href="/upload/edit"
             className="mt-6 inline-block text-sm text-[#e8a2ac] hover:text-white"
           >
-            ← 返回重新验证凭证
+            <ArrowLeft size={14} /> 返回重新验证凭证
           </Link>
         </div>
       </main>
@@ -1288,7 +1289,7 @@ export default function SubmissionGameEditPage() {
                 onClick={addTag}
                 disabled={saving}
               >
-                ＋ 添加标签
+                <Plus size={14} /> 添加标签
               </button>
             </div>
 
@@ -1533,7 +1534,7 @@ export default function SubmissionGameEditPage() {
                   : "cursor-pointer hover:bg-[#a52a3a]"
               }`}
             >
-              ＋ 添加预览图片
+              <Plus size={14} /> 添加预览图片
 
               <input
                 type="file"
@@ -1638,7 +1639,7 @@ export default function SubmissionGameEditPage() {
                   onClick={addHistory}
                   disabled={saving || form.history.length >= 100}
                 >
-                  ＋ 添加历史版本
+                  <Plus size={14} /> 添加历史版本
                 </button>
               </div>
 
@@ -1659,7 +1660,7 @@ export default function SubmissionGameEditPage() {
                   onClick={addHistory}
                   disabled={saving}
                 >
-                  ＋ 添加第一条记录
+                  <Plus size={14} /> 添加第一条记录
                 </button>
               </div>
             ) : (

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import SiteHeader from "@/app/components/SiteHeader";
 import FloatingWidget from "@/app/components/FloatingWidget";
+import { ArrowRight, Pencil, Plus } from "lucide-react";
 
 export default function UploadClient({
   headerImage,
@@ -98,7 +99,7 @@ export default function UploadClient({
                 lineHeight: 1,
               }}
             >
-              +
+              <Plus size={30} />
             </span>
 
             <span style={{ fontSize: 27, fontWeight: 700 }}>
@@ -116,7 +117,7 @@ export default function UploadClient({
             </span>
 
             <span style={{ color: "#e5484d", marginTop: 4 }}>
-              开始投稿 →
+              开始投稿 <ArrowRight size={14} />
             </span>
           </Link>
 
@@ -153,7 +154,7 @@ export default function UploadClient({
                 fontSize: 30,
               }}
             >
-              ✎
+              <Pencil size={24} />
             </span>
 
             <span style={{ fontSize: 27, fontWeight: 700 }}>
@@ -171,7 +172,7 @@ export default function UploadClient({
             </span>
 
             <span style={{ color: "#e5484d", marginTop: 4 }}>
-              管理我的投稿 →
+              管理我的投稿 <ArrowRight size={14} />
             </span>
           </Link>
         </div>

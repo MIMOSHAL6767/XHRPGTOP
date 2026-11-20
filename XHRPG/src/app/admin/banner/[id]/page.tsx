@@ -1,5 +1,5 @@
 
-import { requireOwnerPage } from "@/lib/admin-auth";
+import { requireAdminPage } from "@/lib/admin-auth";
 import EditBannerForm from "./EditBannerForm";
 
 export default async function EditBannerPage({
@@ -7,7 +7,7 @@ export default async function EditBannerPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireOwnerPage();
+  await requireAdminPage();
 
   const { id } = await params;
 

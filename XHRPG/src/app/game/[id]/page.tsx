@@ -1,4 +1,5 @@
 
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { Prisma } from "@prisma/client";
@@ -7,6 +8,20 @@ import GameDetailClient, {
 } from "./GameDetailClient";
 
 export const dynamic = "force-dynamic";
+
+// 「其他推荐」候选池与当前游戏无关，全站共用一份，缓存 60 秒，
+// 避免每次打开详情页都对全部已发布游戏做一次排序查询。
+const getRecommendationPool = unstable_cache(
+  async () =>
+    prisma.game.findMany({
+      where: { status: "已发布" },
+      orderBy: { downloads: "desc" },
+      take: 100,
+      select: { id: true, name: true, cover: true },
+    }),
+  ["xhrpg-recommendation-pool"],
+  { revalidate: 60 }
+);
 
 function parseHistory(
   value: Prisma.JsonValue
@@ -99,15 +114,9 @@ export default async function GamePage({
   const tags = parseTags(game.tags);
 
   // 其他推荐：点击量（downloads）前 100 名里随机选 4 个，排除当前游戏。
-  const topGames = await prisma.game.findMany({
-    where: {
-      status: "已发布",
-      id: { not: game.id },
-    },
-    orderBy: { downloads: "desc" },
-    take: 100,
-    select: { id: true, name: true, cover: true },
-  });
+  const topGames = (await getRecommendationPool()).filter(
+    (item) => item.id !== game.id
+  );
 
   // Fisher–Yates 洗牌后取前 4 个，每次访问顺序与结果都可能不同。
   for (let i = topGames.length - 1; i > 0; i -= 1) {

@@ -1,14 +1,14 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    if (!(await isSiteOwner())) {
+    if (!(await isSiteAdmin())) {
       return NextResponse.json({ error: "无权访问" }, { status: 403 });
     }
 
@@ -28,7 +28,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    if (!(await isSiteOwner())) {
+    if (!(await isSiteAdmin())) {
       return NextResponse.json({ error: "无权操作" }, { status: 403 });
     }
 

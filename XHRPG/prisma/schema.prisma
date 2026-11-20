@@ -149,6 +149,13 @@ model Game {
 
   downloads Int @default(0)
 
+  // 点击统计：当前周与上一自然周的点击量，替代逐条访问日志
+  weeklyViews Int @default(0)
+
+  lastWeekViews Int @default(0)
+
+  weeklyViewsWeekStart DateTime?
+
   createdAt DateTime @default(now())
 
   updateDate String
@@ -195,6 +202,10 @@ model Game {
   ratingSum Int @default(0)
 
   ratings Rating[]
+
+  // 首页/游戏库与详情页推荐的高频查询
+  @@index([status, downloads])
+  @@index([status, createdAt])
 }
 
 // =====================
@@ -278,16 +289,6 @@ model HomeHeader {
   announcement    String? @db.Text
   featuredGameIds Json?
   updatedAt DateTime @updatedAt
-}
-
-// 访问日志：用于统计“本周热门”的一周内点击量增量
-model GameViewLog {
-  id        Int      @id @default(autoincrement())
-  gameId    Int
-  createdAt DateTime @default(now())
-
-  @@index([createdAt])
-  @@index([gameId, createdAt])
 }
 
 // =====================

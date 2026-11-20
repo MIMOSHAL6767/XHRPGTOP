@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin, isSiteOwner } from "@/lib/admin-auth";
 import { Prisma } from "@prisma/client";
 
 function unauthorized() {
@@ -50,7 +50,7 @@ export async function GET(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return unauthorized();
   }
 
@@ -94,7 +94,7 @@ export async function PUT(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return unauthorized();
   }
 
@@ -500,8 +500,15 @@ export async function DELETE(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  // 管理员只能隐藏游戏，删除仅限站长。
   if (!(await isSiteOwner())) {
-    return unauthorized();
+    return NextResponse.json(
+      {
+        success: false,
+        message: "仅站长可以删除游戏，管理员可改为隐藏",
+      },
+      { status: 403 }
+    );
   }
 
   try {

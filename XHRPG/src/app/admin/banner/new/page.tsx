@@ -1,9 +1,9 @@
 
-import { requireOwnerPage } from "@/lib/admin-auth";
+import { requireAdminPage } from "@/lib/admin-auth";
 import NewBannerForm from "./NewBannerForm";
 
 export default async function NewBannerPage() {
-  await requireOwnerPage();
+  await requireAdminPage();
 
   return <NewBannerForm />;
 }

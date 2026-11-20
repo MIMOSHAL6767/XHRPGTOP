@@ -2,6 +2,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import SiteHeader from "@/app/components/SiteHeader";
+import { ArrowRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -117,7 +118,7 @@ export default async function ActivitiesPage() {
 
                 <div className="activity-card-info">
                   <h2>{activity.title || "未命名活动"}</h2>
-                  <span>查看活动详情 →</span>
+                  <span>查看活动详情 <ArrowRight size={13} /></span>
                 </div>
               </a>
             ))}

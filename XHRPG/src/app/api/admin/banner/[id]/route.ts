@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 type RouteContext = {
   params: Promise<{
@@ -33,7 +33,7 @@ export async function GET(
   req: NextRequest,
   context: RouteContext
 ) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return unauthorized();
   }
 
@@ -78,7 +78,7 @@ export async function PUT(
   req: NextRequest,
   context: RouteContext
 ) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return unauthorized();
   }
 
@@ -233,7 +233,7 @@ export async function DELETE(
   req: NextRequest,
   context: RouteContext
 ) {
-  if (!(await isSiteOwner())) {
+  if (!(await isSiteAdmin())) {
     return unauthorized();
   }
 

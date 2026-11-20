@@ -1,8 +1,8 @@
-import { requireOwnerPage } from "@/lib/admin-auth";
+import { requireAdminPage } from "@/lib/admin-auth";
 import UserTitleSettingsForm from "./UserTitleSettingsForm";
 
 export default async function UserTitleSettingsPage() {
-  await requireOwnerPage();
+  await requireAdminPage();
 
   return <UserTitleSettingsForm />;
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { isSiteOwner } from "@/lib/admin-auth";
+import { isSiteAdmin } from "@/lib/admin-auth";
 
 function errorResponse(message: string, status: number) {
   return NextResponse.json(
@@ -12,7 +12,7 @@ function errorResponse(message: string, status: number) {
 export async function DELETE(req: Request) {
   try {
     // 统一使用站长认证逻辑，不允许旧密钥回退
-    if (!(await isSiteOwner())) {
+    if (!(await isSiteAdmin())) {
       return errorResponse("未登录或没有站长权限", 403);
     }
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
 type GlobalGame = {
   id: number;
@@ -348,7 +349,7 @@ export default function SiteHeader({
                 onClick={onBack}
                 title={backLabel}
               >
-                ← {backLabel}
+                <ArrowLeft size={15} /> {backLabel}
               </button>
             )}
 

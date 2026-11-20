@@ -12,7 +12,7 @@ function errorJson(message: string, status: number) {
   return NextResponse.json({ success: false, message }, { status });
 }
 
-async function isSiteOwner() {
+async function isSiteAdmin() {
   try {
     const token = (await cookies()).get("token")?.value;
     if (!token) return false;
@@ -24,7 +24,7 @@ async function isSiteOwner() {
       algorithms: ["HS256"],
     });
 
-    return String(payload.id) === "1" && payload.role === "owner";
+    return (String(payload.id) === "1" && payload.role === "owner") || payload.role === "admin";
   } catch {
     return false;
   }
@@ -108,7 +108,7 @@ function normalizeActivity(body: Record<string, unknown>) {
 }
 
 export async function GET() {
-  if (!(await isSiteOwner())) return errorJson("无权访问活动管理接口", 401);
+  if (!(await isSiteAdmin())) return errorJson("无权访问活动管理接口", 401);
 
   try {
     const activities = await prisma.activity.findMany({
@@ -123,7 +123,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!(await isSiteOwner())) return errorJson("无权创建活动", 401);
+  if (!(await isSiteAdmin())) return errorJson("无权创建活动", 401);
 
   try {
     const body = await request.json();
