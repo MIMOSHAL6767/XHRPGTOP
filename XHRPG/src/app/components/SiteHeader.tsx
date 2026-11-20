@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { displayImageUrl } from "@/lib/display-image";
 
 type GlobalGame = {
   id: number;
@@ -268,7 +269,7 @@ export default function SiteHeader({
           }}
         >
           <img
-            src={headerImage}
+            src={displayImageUrl(headerImage)}
             alt="XHRPG 首页头图"
             style={{
               display: "block",

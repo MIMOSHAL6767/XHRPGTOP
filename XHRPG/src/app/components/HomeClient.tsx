@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import SiteHeader from "@/app/components/SiteHeader";
 import FloatingWidget from "@/app/components/FloatingWidget";
+import { displayImageUrl } from "@/lib/display-image";
 
 type HomeGame = {
   id: number;
@@ -195,7 +196,9 @@ export default function HomeClient({
                             ? "home-banner-slide previous"
                             : "home-banner-slide hidden-slide"
                       }
-                      style={{ backgroundImage: `url("${image}")` }}
+                      style={{
+                        backgroundImage: `url("${displayImageUrl(image)}")`,
+                      }}
                       aria-hidden={!active}
                       aria-label={`查看轮播大图：${
                         item.title || item.name || ""
@@ -268,7 +271,7 @@ export default function HomeClient({
                     aria-label={`切换到第 ${index + 1} 张轮播`}
                   >
                     <img
-                      src={item.cover || item.background || ""}
+                      src={displayImageUrl(item.cover || item.background)}
                       alt=""
                     />
                   </button>
@@ -314,7 +317,7 @@ export default function HomeClient({
               >
                 <div className="home-editorial-cover">
                   <img
-                    src={coverOf(editorialGame)}
+                    src={displayImageUrl(coverOf(editorialGame))}
                     alt={editorialGame.name}
                   />
                 </div>
@@ -340,7 +343,7 @@ export default function HomeClient({
                   href={`/game/${game.id}`}
                   className="home-card"
                 >
-                  <img src={coverOf(game)} alt={game.name} />
+                  <img src={displayImageUrl(coverOf(game))} alt={game.name} />
                   <span>{game.name}</span>
                 </Link>
               ))}
@@ -368,7 +371,7 @@ export default function HomeClient({
                 className="home-weekly-card"
               >
                 <img
-                  src={coverOf(weeklyGame)}
+                  src={displayImageUrl(coverOf(weeklyGame))}
                   alt={weeklyGame.name}
                 />
                 <div className="home-weekly-info">
@@ -402,11 +405,9 @@ export default function HomeClient({
                     className="home-activity-card"
                   >
                     <img
-                      src={
-                        activity.background ||
-                        activity.cover ||
-                        ""
-                      }
+                      src={displayImageUrl(
+                        activity.background || activity.cover
+                      )}
                       alt={activity.title}
                     />
                     <div className="home-activity-shade" />
@@ -441,7 +442,7 @@ export default function HomeClient({
                   href={`/game/${game.id}`}
                   className="home-card"
                 >
-                  <img src={coverOf(game)} alt={game.name} />
+                  <img src={displayImageUrl(coverOf(game))} alt={game.name} />
                   <span>{game.name}</span>
                 </Link>
               ))}
@@ -460,7 +461,7 @@ export default function HomeClient({
                 href={`/game/${game.id}`}
                 className="home-hot-row"
               >
-                <img src={coverOf(game)} alt={game.name} />
+                <img src={displayImageUrl(coverOf(game))} alt={game.name} />
 
                 <div className="home-hot-info">
                   <b>{game.name}</b>
@@ -512,7 +513,9 @@ export default function HomeClient({
           </button>
 
           <img
-            src={activeBanner.background || activeBanner.cover || ""}
+            src={displayImageUrl(
+              activeBanner.background || activeBanner.cover
+            )}
             alt={activeBanner.title || activeBanner.name || "轮播大图"}
             onClick={(event) => event.stopPropagation()}
           />

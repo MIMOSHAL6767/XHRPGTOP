@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import SiteHeader from "@/app/components/SiteHeader";
 import { ArrowRight } from "lucide-react";
+import { displayImageUrl } from "@/lib/display-image";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -105,7 +106,7 @@ export default async function ActivitiesPage() {
                   {activity.cover ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={activity.cover}
+                      src={displayImageUrl(activity.cover)}
                       alt={activity.title || "活动封面"}
                       loading="lazy"
                     />

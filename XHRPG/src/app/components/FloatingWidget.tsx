@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { displayImageUrl } from "@/lib/display-image";
 
 type Track = {
   id: number;
@@ -411,7 +412,7 @@ export default function FloatingWidget() {
         }}
       >
         <img
-          src={config.gifUrl}
+          src={displayImageUrl(config.gifUrl)}
           alt="悬浮互动按钮"
           draggable={false}
           style={{

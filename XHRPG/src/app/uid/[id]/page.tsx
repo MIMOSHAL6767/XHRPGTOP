@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
+import { displayImageUrl } from "@/lib/display-image";
 
 type UserPageProps = {
   params: Promise<{
@@ -109,7 +110,7 @@ export default async function UserPage({
       style={{
         minHeight: "100vh",
         backgroundImage: user.background
-          ? `url("${user.background}")`
+          ? `url("${displayImageUrl(user.background)}")`
           : "none",
         backgroundSize: "cover",
         backgroundPosition: "center",
@@ -133,7 +134,7 @@ export default async function UserPage({
           }}
         >
           <img
-            src={user.avatar || "/default-avatar.png"}
+            src={displayImageUrl(user.avatar) || "/default-avatar.png"}
             alt={`${user.nickname} 的头像`}
             style={{
               width: "150px",

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import SiteHeader from "@/app/components/SiteHeader";
 import GiscusComments from "@/app/components/GiscusComments";
+import { displayImageUrl } from "@/lib/display-image";
 import { DEFAULT_REQUIREMENTS } from "@/lib/game-requirements";
 
 export type DetailHistoryItem = {
@@ -351,7 +352,7 @@ export default function GameDetailClient({
         className="gd-page-bg"
         style={{
           backgroundImage: pageBackground
-            ? `url("${pageBackground}")`
+            ? `url("${displayImageUrl(pageBackground)}")`
             : "none",
           backgroundSize: backgroundFit,
           opacity: backgroundOpacity / 100,
@@ -382,7 +383,7 @@ export default function GameDetailClient({
             <div className="gd-main-head">
               <div className="gd-game-title">
                 {titleMode === "image" && titleLogo ? (
-                  <img src={titleLogo} alt={name} />
+                  <img src={displayImageUrl(titleLogo)} alt={name} />
                 ) : (
                   <span>{name}</span>
                 )}
@@ -404,7 +405,10 @@ export default function GameDetailClient({
                 aria-label="查看大图"
               >
                 {activeImage ? (
-                  <img src={activeImage} alt={`${name} 预览图`} />
+                  <img
+                    src={displayImageUrl(activeImage)}
+                    alt={`${name} 预览图`}
+                  />
                 ) : (
                   <span className="gd-no-preview">暂无预览图片</span>
                 )}
@@ -425,7 +429,7 @@ export default function GameDetailClient({
                       aria-label={`切换到第 ${index + 1} 张图片`}
                       aria-pressed={activeImage === image}
                     >
-                      <img src={image} alt="" />
+                      <img src={displayImageUrl(image)} alt="" />
                     </button>
                   ))}
                 </div>
@@ -650,7 +654,10 @@ export default function GameDetailClient({
                       className="gd-rec"
                       title={item.name}
                     >
-                      <img src={item.cover} alt={item.name} />
+                      <img
+                        src={displayImageUrl(item.cover)}
+                        alt={item.name}
+                      />
                       <span>{item.name}</span>
                     </Link>
                   ))}
@@ -695,7 +702,7 @@ export default function GameDetailClient({
           )}
 
           <img
-            src={activeImage}
+            src={displayImageUrl(activeImage)}
             alt={`${name} 大图`}
             onClick={(event) => event.stopPropagation()}
           />

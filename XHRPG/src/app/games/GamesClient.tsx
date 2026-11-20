@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SiteHeader from "@/app/components/SiteHeader";
+import { displayImageUrl } from "@/lib/display-image";
 
 type GameStatus =
   | "完结"
@@ -720,7 +721,7 @@ export default function GamesClient({
                     >
                       <div className="games-row-cover">
                         <img
-                          src={coverSrc}
+                          src={displayImageUrl(coverSrc)}
                           alt={game.name}
                           loading="lazy"
                           onError={(event) => {

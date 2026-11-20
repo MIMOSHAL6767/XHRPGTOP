@@ -2,6 +2,10 @@ import { notFound } from "next/navigation";
 import sanitizeHtml from "sanitize-html";
 import { prisma } from "@/lib/prisma";
 import SiteHeader from "@/app/components/SiteHeader";
+import {
+  displayImageUrl,
+  proxyImagesInHtml,
+} from "@/lib/display-image";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -128,7 +132,7 @@ export default async function ActivityDetailPage({ params }: PageProps) {
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={activity.background}
+              src={displayImageUrl(activity.background)}
               alt=""
               aria-hidden="true"
               style={{
@@ -193,7 +197,7 @@ export default async function ActivityDetailPage({ params }: PageProps) {
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={activity.cover}
+                  src={displayImageUrl(activity.cover)}
                   alt={activity.title}
                   style={{
                     display: "block",
@@ -240,7 +244,7 @@ export default async function ActivityDetailPage({ params }: PageProps) {
             <div
               className="activity-rich-content"
               dangerouslySetInnerHTML={{
-                __html: safeContent,
+                __html: proxyImagesInHtml(safeContent),
               }}
               style={{
                 padding: "28px 30px 42px",

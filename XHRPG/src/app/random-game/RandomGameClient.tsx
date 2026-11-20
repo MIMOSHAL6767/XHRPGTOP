@@ -6,6 +6,7 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import SiteHeader from "@/app/components/SiteHeader";
 import { Check, Plus } from "lucide-react";
+import { displayImageUrl } from "@/lib/display-image";
 
 type Game = {
   id: number;
@@ -221,7 +222,7 @@ export default function RandomGameClient({
   function renderCover(game: Game) {
     return (
       <img
-        src={game.cover || fallbackCover(game.id)}
+        src={displayImageUrl(game.cover || fallbackCover(game.id))}
         alt={game.name}
         loading="lazy"
         onError={(event) => {

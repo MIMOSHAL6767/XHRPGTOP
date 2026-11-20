@@ -10,6 +10,7 @@ import {
   type ChangeEvent,
 } from "react";
 import SiteHeader from "@/app/components/SiteHeader";
+import { proxyImagesInHtml } from "@/lib/display-image";
 
 type TimelineResponse = {
   content?: string;
@@ -123,8 +124,11 @@ export default function TimelineClient({
 
     if (loading || editing || !editor) return;
 
-    if (editor.innerHTML !== content) {
-      editor.innerHTML = content;
+    // 查看状态把图片改为同源代理；编辑时仍使用原始 HTML，避免把代理地址写回数据库。
+    const displayContent = proxyImagesInHtml(content);
+
+    if (editor.innerHTML !== displayContent) {
+      editor.innerHTML = displayContent;
     }
 
     applyImageStyles(editor);

@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { displayImageUrl } from "@/lib/display-image";
 
 type SiteBackground = {
   id: number;
@@ -183,7 +184,9 @@ export default function SiteBackgroundSwitcher() {
           <div
             className="site-background-image"
             style={{
-              backgroundImage: `url("${selectedBackground.imageUrl.replace(/["\\]/g, "")}")`,
+              backgroundImage: `url("${displayImageUrl(
+                selectedBackground.imageUrl.replace(/["\\]/g, "")
+              )}")`,
               filter: `blur(${settings.blur}px)`,
             }}
           />
@@ -245,7 +248,7 @@ export default function SiteBackgroundSwitcher() {
               {selectedBackground && (
                 <div className="site-background-preview">
                   <img
-                    src={selectedBackground.imageUrl}
+                    src={displayImageUrl(selectedBackground.imageUrl)}
                     alt={selectedBackground.name}
                   />
                 </div>

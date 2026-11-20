@@ -12,7 +12,8 @@ const ALLOWED_HOSTS = [
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Cache-Control": "public, max-age=86400",
+  "Cache-Control":
+    "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400",
 };
 
 // 图片代理：/api/img?url=https://raw.githubusercontent.com/...
